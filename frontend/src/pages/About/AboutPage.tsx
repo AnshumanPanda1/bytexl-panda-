@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Github, Mail } from 'lucide-react';
+import { Code2, Mail } from 'lucide-react';
 import { AboutPanel, HealthMark } from '@neuronection/assistant-ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useSettingsStore } from '../../store/slices/settingsSlice';
@@ -34,7 +34,7 @@ const AboutPage = () => {
               href: 'https://github.com/AnshumanPanda1/bytexl-panda-',
               label: 'GitHub Repository',
               subtitle: 'AnshumanPanda1/bytexl-panda-',
-              icon: Github,
+              icon: Code2,
             },
             {
               group: 'Team',
