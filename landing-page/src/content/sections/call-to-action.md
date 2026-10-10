@@ -1,9 +1,9 @@
 ---
 enable: true
-title: "Ready to put Your Local Business Growth on <strong>Autopilot?</strong>"
-description: "Stop wasting thousands on scattered tools that don't convert and start enjoying streamlined, predictable growth."
+title: "Ready to Transform Your Medical Records with <strong>MediBot?</strong>"
+description: "Ingest medical lab reports, review extracted clinical facts with source provenance, and generate grounded bilingual summaries in seconds."
 button:
   enable: true
-  label: "Start Your 14-Days Free Trial"
-  link: "#!"
+  label: "Launch MediBot Copilot"
+  link: "http://localhost:5173"
 ---
