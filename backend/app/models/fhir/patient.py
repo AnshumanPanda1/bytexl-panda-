@@ -8,7 +8,9 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    Integer,
     String,
+    Text,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -133,7 +135,11 @@ class Patient(
                 "id": str(self.id),
                 "identifier": identifiers or None,
                 "name": _coerce_human_name_list(self.name),
-                "gender": self.gender.value.lower() if self.gender else None,
+                "gender": (
+                    self.gender.value.lower()
+                    if hasattr(self.gender, "value")
+                    else (str(self.gender).lower() if self.gender else None)
+                ),
                 "birthDate": self.birth_date.isoformat() if self.birth_date else None,
                 "deceasedBoolean": self.deceased_boolean,
                 "deceasedDateTime": self.deceased_datetime.isoformat()
@@ -225,6 +231,12 @@ class Observation(
     relative_score = Column(Float, nullable=True)
     lab_reference_range = Column(JSONB, nullable=True)
 
+    # Provenance, confidence, review status, and raw extracted text
+    original_text = Column(Text, nullable=True)
+    page_number = Column(Integer, nullable=True)
+    confidence = Column(Float, nullable=True)
+    review_status = Column(String(50), nullable=True, default="extracted")
+
     # Relationships
     biomarker = relationship("BiomarkerDefinition", lazy="selectin")
     lab = relationship("Laboratory", lazy="selectin")
@@ -278,11 +290,21 @@ class Observation(
             "examination_id": str(self.examination_id) if self.examination_id else None,
             "document_id": str(self.document_id) if self.document_id else None,
             "patient_id": str(self.patient_id) if self.patient_id else None,
+            "original_text": self.original_text,
+            "page_number": self.page_number,
+            "confidence": self.confidence,
+            "review_status": self.review_status,
         }
 
     def to_fhir_dict(self) -> dict:
         """Serialize to a FHIR R4B Observation resource via fhir.resources (validated)."""
         from app.services.fhir_helpers import _normalize_interpretation, fhir_isoformat
+
+        clean_qty = _clean_quantity(self.value_quantity)
+        val_string = (
+            self.value_string if (not clean_qty and not self.value_codeable_concept) else None
+        )
+        val_cc = self.value_codeable_concept if not clean_qty else None
 
         return build_fhir_resource(
             "Observation",
@@ -294,9 +316,9 @@ class Observation(
                 "code": self.code,
                 "subject": self.subject,
                 "effectiveDateTime": fhir_isoformat(self.effective_datetime),
-                "valueQuantity": _clean_quantity(self.value_quantity),
-                "valueString": self.value_string,
-                "valueCodeableConcept": self.value_codeable_concept,
+                "valueQuantity": clean_qty,
+                "valueString": val_string,
+                "valueCodeableConcept": val_cc,
                 "referenceRange": self.reference_range,
                 "interpretation": _normalize_interpretation(self.interpretation),
                 "component": self.component,

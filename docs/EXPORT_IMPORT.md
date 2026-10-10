@@ -156,3 +156,239 @@ Generated files are written to `HA_UPLOAD_DIR/exports/<tenant_id>/`. There is no
 ## 9. Frontend UI
 
 Admins reach the feature at **Settings → Export & Import** (`/settings/export-import`, `ADMIN`+). Two tabs — Export (scope, includes, trigger) and Import (upload, dry-run, history) — with a confirmation modal before any mutating run. Job progress polls live from the jobs tables; no page reload needed.
+
+---
+
+## 10. Patient FHIR Export & Mock ABHA/ABDM Readiness (Person 4)
+
+In addition to asynchronous bulk exports, the platform provides direct synchronous FHIR R4-inspired export and simulated ABDM interoperability endpoints:
+
+### A. Patient FHIR R4-Inspired Bundle Export
+- **Endpoints**:
+  - `GET /api/v1/export/fhir/patient/{patient_id}`
+  - `GET /api/v1/patients/{patient_id}/fhir-export`
+- **Output**: Valid JSON `Bundle` of type `collection` labeled with meta-tag `urn:health-assistant:interop:profile#limited-fhir-r4-inspired`.
+- **Supported Resources**:
+  - `Patient`: Demographics, MRN, gender, birth date.
+  - `DocumentReference`: Uploaded source medical records.
+  - `Observation`: Vital signs, biomarker values, reference ranges, interpretation, and source document link.
+  - `MedicationStatement` / `MedicationRequest`: Prescriptions, dosages, frequencies.
+  - `Condition`: Diagnoses, clinical status, onset dates, and source document/evidence references (`clinical_events`).
+- **Scope & Limitations**:
+  - Scoped strictly to relational data available in the tenant database.
+  - Clearly tagged as a limited, machine-readable export; does NOT claim official ABDM or HL7 conformance certification.
+
+### B. Mock ABHA/ABDM Simulation
+- **Endpoints**:
+  - `POST /api/v1/mock-abdm/patient/{patient_id}/preview`: Computes deterministic SHA-256 fingerprint, previews observations/medications/conditions, checks whether the record was previously imported, and returns preview records without database mutations.
+  - `POST /api/v1/mock-abdm/patient/{patient_id}/confirm`: Persists synthetic records into canonical tables (`Observation`, `Medication`, `ClinicalEvent`), logs an `AuditEvent`, tracks provenance (`mock_abdm`), and rejects duplicate submissions (status: `duplicate` with existing record ID).
+  - `GET /api/v1/mock-abdm/imports`: Returns tenant import history.
+  - `GET /api/v1/mock-abdm/samples`: Returns pre-packaged bilingual synthetic bundles (English and Hindi).
+- **Simulation Boundary**:
+  - Strictly synthetic data using provider identifier `mock_abdm`.
+  - No real ABHA identifiers or live ABDM gateway connectivity is utilized or required.
+
+### C. Clinical Facts & Health Summary Staleness
+- **Facts Retrieval & Correction**:
+  - `GET /api/v1/facts/document/{document_id}` (`GET /api/v1/documents/{document_id}/facts`): Aggregates extracted facts with `original_text`, `confidence`, and `review_status`.
+  - `POST /api/v1/facts/correct`: Applies user corrections, preserving `original_text` untouched, updating normalized values, creating an `AuditEvent`, and marking dependent patient summaries as stale.
+- **Health Summaries**:
+  - `GET /api/v1/summaries/patient/{patient_id}`: Returns summaries with `is_stale`, `stale_reason`, and `stale_at`.
+  - `POST /api/v1/summaries/patient/{patient_id}`: Stores plain-language summaries in English (`en`) and Hindi (`hi`).
+  - `POST /api/v1/summaries/{summary_id}/invalidate`: Explicit invalidation.
+
+---
+
+### D. Versioned Data-Contract Examples (v1.0)
+
+#### 1. Limited FHIR R4-Inspired Bundle Export (`GET /api/v1/export/patient/{patient_id}/fhir`)
+```json
+{
+  "resourceType": "Bundle",
+  "id": "export-c5559436-2a9a-4288-a890-c0748bf7fc8a-a1b2c3d4",
+  "type": "collection",
+  "timestamp": "2026-10-10T10:15:00.000000Z",
+  "meta": {
+    "versionId": "1.0",
+    "lastUpdated": "2026-10-10T10:15:00.000000Z",
+    "tag": [
+      {
+        "system": "urn:health-assistant:interop:profile",
+        "code": "limited-fhir-r4-inspired",
+        "display": "Health Assistant Limited FHIR R4-Inspired Export (Not official ABDM/HL7 certified)"
+      }
+    ]
+  },
+  "total": 5,
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:c5559436-2a9a-4288-a890-c0748bf7fc8a",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "c5559436-2a9a-4288-a890-c0748bf7fc8a",
+        "name": [{ "family": "Sharma", "given": ["Rohit"] }],
+        "gender": "male",
+        "birthDate": "1988-04-30"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:d1111111-2222-3333-4444-555555555555",
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "d1111111-2222-3333-4444-555555555555",
+        "status": "current",
+        "docStatus": "final",
+        "subject": { "reference": "Patient/c5559436-2a9a-4288-a890-c0748bf7fc8a" },
+        "content": [{ "attachment": { "title": "lab_report.pdf", "url": "urn:ha-document:d1111111-2222-3333-4444-555555555555" } }]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:e2222222-3333-4444-5555-666666666666",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "e2222222-3333-4444-5555-666666666666",
+        "status": "final",
+        "code": { "text": "Fasting Plasma Glucose", "coding": [{ "system": "http://loinc.org", "code": "1558-6" }] },
+        "subject": { "reference": "Patient/c5559436-2a9a-4288-a890-c0748bf7fc8a" },
+        "valueQuantity": { "value": 115.0, "unit": "mg/dL" },
+        "derivedFrom": [{ "reference": "DocumentReference/d1111111-2222-3333-4444-555555555555" }]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:f3333333-4444-5555-6666-777777777777",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "f3333333-4444-5555-6666-777777777777",
+        "status": "active",
+        "medicationCodeableConcept": { "text": "Metformin 500mg" },
+        "subject": { "reference": "Patient/c5559436-2a9a-4288-a890-c0748bf7fc8a" },
+        "dosage": [{ "text": "Once daily with dinner" }]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:a4444444-5555-6666-7777-888888888888",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "a4444444-5555-6666-7777-888888888888",
+        "clinicalStatus": { "coding": [{ "code": "active" }] },
+        "code": { "text": "Impaired Fasting Glycemia" },
+        "subject": { "reference": "Patient/c5559436-2a9a-4288-a890-c0748bf7fc8a" },
+        "evidence": [{ "detail": [{ "reference": "DocumentReference/d1111111-2222-3333-4444-555555555555" }] }]
+      }
+    }
+  ]
+}
+```
+
+#### 2. Mock ABDM Synthetic Bundle Payload (`POST /api/v1/mock-abdm/patient/{patient_id}/confirm`)
+```json
+{
+  "external_record_id": "SIM-RECORD-2026-001",
+  "source_system": "mock_abdm",
+  "facility_name": "Apollo Clinic (Simulated)",
+  "facility_id": "IN-DL-SIM-01",
+  "care_context": "OPD Consultation",
+  "recorded_at": "2026-10-10T10:00:00Z",
+  "observations": [
+    {
+      "test_name": "Fasting Plasma Glucose",
+      "code": "1558-6",
+      "coding_system": "LOINC",
+      "value": 118.0,
+      "unit": "mg/dL",
+      "reference_range": "70 - 100 mg/dL",
+      "confidence": 0.98,
+      "original_text": "FBS: 118 mg/dL"
+    }
+  ],
+  "medications": [
+    {
+      "name": "Metformin HCl",
+      "dosage": "500 mg",
+      "frequency": "Once daily with dinner",
+      "confidence": 0.95
+    }
+  ],
+  "conditions": [
+    {
+      "name": "Impaired Fasting Glucose",
+      "status": "active",
+      "confidence": 0.90
+    }
+  ],
+  "notes_en": "Patient advised to maintain low-glycemic diet.",
+  "notes_hi": "मरीज को कम ग्लाइसेमिक आहार बनाए रखने की सलाह दी गई।"
+}
+```
+
+#### 3. Fact Correction Request & Response (`POST /api/v1/facts/correct`)
+**Request**:
+```json
+{
+  "fact_type": "observation",
+  "fact_id": "e2222222-3333-4444-5555-666666666666",
+  "corrected_value": 112.0,
+  "corrected_unit": "mg/dL",
+  "correction_reason": "Clinician verified Fasting Glucose adjustment following manual strip verification",
+  "new_review_status": "verified"
+}
+```
+**Response**:
+```json
+{
+  "fact_type": "observation",
+  "fact_id": "e2222222-3333-4444-5555-666666666666",
+  "old_value": { "normalized_value": 118.0, "review_status": "extracted" },
+  "new_value": { "normalized_value": 112.0, "review_status": "verified", "_correction_reason": "Clinician verified Fasting Glucose adjustment following manual strip verification" },
+  "invalidated_summaries_count": 1,
+  "message": "Fact corrected and audit logged successfully"
+}
+```
+
+#### 4. Bilingual Health Summary (`GET /api/v1/summaries/patient/{patient_id}`)
+```json
+[
+  {
+    "id": "s1111111-2222-3333-4444-555555555555",
+    "patient_id": "c5559436-2a9a-4288-a890-c0748bf7fc8a",
+    "title": "Comprehensive Health Overview",
+    "summary_text": "Patient has impaired fasting glucose (112 mg/dL) managed with Metformin 500mg. Kidney function and blood pressure remain within normal parameters.",
+    "language": "en",
+    "is_stale": false,
+    "stale_reason": null,
+    "source_references": [
+      { "type": "observation", "id": "e2222222-3333-4444-5555-666666666666", "name": "Fasting Plasma Glucose", "value": 112.0 },
+      { "type": "medication", "id": "f3333333-4444-5555-6666-777777777777", "name": "Metformin HCl" }
+    ],
+    "created_at": "2026-10-10T10:15:00Z"
+  },
+  {
+    "id": "s2222222-3333-4444-5555-666666666666",
+    "patient_id": "c5559436-2a9a-4288-a890-c0748bf7fc8a",
+    "title": "स्वास्थ्य अवलोकन",
+    "summary_text": "मरीज का फास्टिंग ग्लूकोज (112 mg/dL) मेटफॉर्मिन 500mg द्वारा नियंत्रित है। रक्तचाप और अन्य परीक्षण सामान्य सीमा में हैं।",
+    "language": "hi",
+    "is_stale": false,
+    "stale_reason": null,
+    "source_references": [
+      { "type": "observation", "id": "e2222222-3333-4444-5555-666666666666", "name": "Fasting Plasma Glucose", "value": 112.0 }
+    ],
+    "created_at": "2026-10-10T10:15:00Z"
+  }
+]
+```
+
+---
+
+### E. Documented API Error Codes
+
+| Status Code | Error Classification | Scenario | Behavior & Guarantee |
+|:---|:---|:---|:---|
+| **400 Bad Request** | `ValidationError` | Group export missing `patient_ids`; invalid request payload structure | Reject before DB execution with specific missing-field detail. |
+| **401 Unauthorized** | `AuthenticationError` | Missing, expired, or improperly signed JWT | Reject request immediately; HttpOnly cookie rotation required. |
+| **403 Forbidden** | `AuthorizationError` | `Role.USER` attempting to read or write another patient's timeline, facts, summaries, or exports | Access denied with explicit error; patient ownership check strictly enforced. |
+| **404 Not Found** | `NotFoundError` | Target patient, document, or record belongs to another tenant or does not exist | Tenant isolation returns 404 (zero information leak regarding other tenants' records). |
+| **409 Conflict** | `DuplicateRecordError` | Mock ABDM bundle with identical SHA-256 checksum confirmed again | Returns `status: "duplicate"` with `is_duplicate: true`; no duplicate clinical rows inserted. |
+| **422 Unprocessable** | `PydanticValidationError` | Request body fields violate type, range, or regex constraints | Standard FastAPI validation error specifying parameter location. |
+| **503 Service Unavail** | `UpstreamProviderError` | AI summary provider unconfigured, unreachable, or upstream timeout | Preserves clear error status without mock fabrication; upstream API keys and tokens scrubbed. |
+

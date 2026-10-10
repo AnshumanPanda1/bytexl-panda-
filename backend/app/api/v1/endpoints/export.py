@@ -60,14 +60,14 @@ async def _validate_patient_scoping(
                 status_code=403,
                 detail="USER role can only export a single patient (their own).",
             )
-        if scope == ExportScope.GROUP and not patient_ids:
+        for pid in patient_ids:
+            await check_patient_access(pid, current_user, db)
+    elif scope == ExportScope.GROUP:
+        if not patient_ids:
             raise HTTPException(
                 status_code=400,
                 detail="patient_ids is required for group-scoped export.",
             )
-        # API-H2 (audit 2026-08): every requested patient is access-checked.
-        # Previously a USER could export ANY tenant patient's full record
-        # (observations, medications, raw documents) by UUID.
         for pid in patient_ids:
             await check_patient_access(pid, current_user, db)
     return patient_ids
@@ -166,3 +166,24 @@ async def download_export(
         filename=Path(job.file_path).name,
         media_type="application/octet-stream",
     )
+
+
+@router.get("/fhir/patient/{patient_id}")
+@router.get("/patient/{patient_id}/fhir")
+async def export_patient_fhir_endpoint(
+    patient_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Export a patient's records as a limited FHIR R4-inspired Bundle JSON.
+
+    Outputs Patient, DocumentReference, Observation, MedicationStatement/Request,
+    and Condition resources with source document linkages.
+    """
+    from app.services.access import check_patient_access
+    from app.services.fhir_export_service import export_patient_fhir_bundle
+
+    pid = _parse_uuid(patient_id)
+    await check_patient_access(str(pid), current_user, db)
+    tenant_id = _parse_uuid(str(current_user.tenant_id))
+    return await export_patient_fhir_bundle(db, tenant_id, pid)

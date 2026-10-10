@@ -22,6 +22,7 @@ import { AuthenticatedTextViewer } from '../../components/ui/AuthenticatedTextVi
 import { User, Clock, FileText, Database, Shield, Download, Trash2, RotateCw, Maximize2, MoreVertical, RefreshCw } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StickyToolbar } from '../../components/ui/StickyToolbar';
+import { FactReviewCard } from '../../components/documents/FactReviewCard';
 
 export default function DocumentDetail() {
   const { t } = useTranslation();
@@ -514,6 +515,15 @@ export default function DocumentDetail() {
 
       {status === 'completed' && (
         <div className="space-y-6">
+          {documentId && (
+            <FactReviewCard
+              documentId={documentId}
+              onFactUpdated={() => {
+                // Keep data in sync
+              }}
+            />
+          )}
+
           {biomarkers.length > 0 && (
             <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-xs border border-gray-100 dark:border-dark-border p-8">
               <h2 className="text-xl font-bold text-gray-900 dark:text-dark-text tracking-tight mb-6">

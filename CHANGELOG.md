@@ -12,6 +12,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 3A: Security, Reliability, and Data-Integrity Audit:**
+  - Hardened group export scoping by un-nesting `ExportScope.GROUP` and enforcing per-patient access verification (`check_patient_access`).
+  - Restricted patientless document access so `Role.USER` cannot view unowned documents with `patient_id=None`.
+  - Sanitized mock ABDM preview and confirm duplicate responses to prevent leaking cross-patient import record IDs.
+  - Scrubbed upstream API keys and authentication tokens from AI summary 503 error responses.
+  - Captured clinician's correction reason in audit log `new_value["_correction_reason"]`.
+  - Added simulated ABDM disclaimer banner to frontend import modal.
+  - Added versioned data-contract examples and error status documentation to `docs/EXPORT_IMPORT.md` and `README.md`.
+  - Expanded automated test suite to 36 tests covering E2E fact correction, summary invalidation, FHIR DocumentReference provenance, and tenant isolation.
+- **Phase 2: End-to-End Health Assistant Ingestion, Extraction, AI Summary, and Frontend Integration:**
+  - Connected extraction pipeline persistence (`persistence.py`) directly to canonical models (`Observation`, `Medication`, `ClinicalEvent`), preserving tenant isolation, `document_id`, `page_number`, `confidence`, `review_status="extracted"`, and `original_text` without duplicate fact creation on reprocessing.
+  - Connected AI patient health summary generation endpoint (`POST /api/v1/summaries/patient/{patient_id}/generate`), generating bilingual English (`en`) and Hindi (`hi`) summaries backed by persisted clinical observations, medications, and conditions, with robust source tracking and 503 error preservation when unconfigured.
+  - Connected frontend UI components to backend contracts:
+    - Added `FactReviewCard` to `DocumentDetail.tsx` providing HITL fact review, confidence indicators, and inline correction modals.
+    - Added `PatientSummaryCard` to `PatientDetail.tsx` with English/Hindi language switching, stale status indicators, regenerate action, and source references.
+    - Added `PatientTimelineCard` to `PatientDetail.tsx` with chronological health history and category filtering pills.
+    - Added `MockAbdmImportModal` and "Simulate ABDM Import" / "Export FHIR (R4)" actions to `PatientDetail.tsx`.
+- **Person 4: Canonical Health Data Model, Interoperability, FHIR Export, and Mock ABDM Readiness:**
+  - Extended canonical health models (`Observation`, `Medication`, `ClinicalEvent`) with source document linkages (`document_id`), page numbers, confidence, review status (`extracted`, `reviewed`, `user_corrected`), and original extracted text preservation.
+  - Added `PatientHealthSummary` with bilingual support (`en`/`hi`), staleness flags (`is_stale`, `stale_reason`, `stale_at`), source references JSONB, tenant isolation, and automatic patient-wide invalidation upon clinical fact corrections.
+  - Added `MockAbdmImportRecord` with SHA-256 deterministic fingerprint deduplication, synthetic provenance tracking, and mapped canonical resource accounting.
+  - Added Alembic migration `p4m1o2c3k4a5_person4_health_models.py` cleanly chained from head `h5m2f3a4t6o7`.
+  - Added new REST API endpoints:
+    - `GET /api/v1/timeline/patient/{patient_id}` and `GET /api/v1/patients/{patient_id}/timeline`: patient-centric reverse chronological timeline aggregating exams, documents, lab observations, medications, and conditions with unknown date handling.
+    - `GET /api/v1/facts/document/{document_id}` and `GET /api/v1/documents/{document_id}/facts`: document facts extraction for observations, medications, and conditions.
+    - `POST /api/v1/facts/correct`: audited user corrections preserving raw text, updating normalized values, capturing audit trails, and automatically marking dependent summaries stale.
+    - `GET /api/v1/summaries/patient/{patient_id}`: retrieved generated patient health summaries with staleness indicators.
+    - `POST /api/v1/summaries/patient/{patient_id}`: creation of plain-language summaries in English and Hindi.
+    - `POST /api/v1/summaries/{summary_id}/invalidate`: manual summary invalidation.
+    - `GET /api/v1/export/fhir/patient/{patient_id}` and `GET /api/v1/patients/{patient_id}/fhir-export`: limited machine-readable FHIR R4-inspired Bundle export (`Patient`, `DocumentReference`, `Observation`, `MedicationStatement`/`MedicationRequest`, `Condition`).
+    - `POST /api/v1/mock-abdm/patient/{patient_id}/preview`: synthetic ABDM record preview with duplicate checks and checksum calculation.
+    - `POST /api/v1/mock-abdm/patient/{patient_id}/confirm`: simulated external health record import into canonical tables with deduplication and provenance.
+    - `GET /api/v1/mock-abdm/imports`: import history and audit logs.
+    - `GET /api/v1/mock-abdm/samples`: pre-packaged synthetic bilingual test bundles.
+  - Added comprehensive test suite `backend/tests/test_person4_backend.py` covering model extensions, checksum calculation, preview, duplicate rejection, facts aggregation, corrections audit, timeline ordering, and FHIR export.
 - **Boot-time warning on unknown/renamed env names (audit follow-up a):**
   `Settings` construction now emits warning-only telemetry when an env var
   matches a retired name (`APP_ENV` → `HA_APP_ENV`, `SECRET_KEY` → the

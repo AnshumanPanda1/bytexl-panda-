@@ -70,6 +70,10 @@ class KnownBiomarkerExtract(BaseModel):
     reference_range_min: float | None = None
     reference_range_max: float | None = None
     interpretation_flag: str | None = Field(None, description="e.g. High, Low, Normal, H, L")
+    page_number: int | None = Field(None, description="Source document page number")
+    confidence: float | None = Field(
+        None, description="Model extraction confidence score (0.0 - 1.0)"
+    )
 
     @model_validator(mode="after")
     def _exactly_one_value_path(self):
@@ -103,6 +107,10 @@ class UnknownBiomarkerExtract(BaseModel):
     reference_range_min: float | None = None
     reference_range_max: float | None = None
     interpretation_flag: str | None = None
+    page_number: int | None = Field(None, description="Source document page number")
+    confidence: float | None = Field(
+        None, description="Model extraction confidence score (0.0 - 1.0)"
+    )
 
 
 class PatientInfoExtract(BaseModel):
@@ -121,6 +129,10 @@ class KnownMedicationExtract(BaseModel):
     frequency: str | None = None
     status: str = "ACTIVE"
     reason: str | None = None
+    page_number: int | None = Field(None, description="Source document page number")
+    confidence: float | None = Field(
+        None, description="Model extraction confidence score (0.0 - 1.0)"
+    )
 
 
 class UnknownMedicationExtract(BaseModel):
@@ -129,6 +141,10 @@ class UnknownMedicationExtract(BaseModel):
     frequency: str | None = None
     status: str = "ACTIVE"
     reason: str | None = None
+    page_number: int | None = Field(None, description="Source document page number")
+    confidence: float | None = Field(
+        None, description="Model extraction confidence score (0.0 - 1.0)"
+    )
 
 
 class DocumentEntitiesExtract(BaseModel):

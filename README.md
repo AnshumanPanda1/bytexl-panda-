@@ -146,9 +146,17 @@ Health Assistant is self-hosted and privacy-first. But the foundation is the sam
 - **Hard multi-tenant isolation** — every query is tenant-scoped; cross-tenant access is impossible.
 - **Role-based access control** — four roles: System Admin, Admin, Manager, User.
 - **Export & import** — FHIR R4B Bundle + BagIt-style ZIP backups at patient/group/system scope, with SHA256 manifest verification and cross-tenant id remapping on restore.
+- **Patient FHIR R4-inspired export & simulated ABDM readiness** — Synchronous patient bundle exports tagged `limited-fhir-r4-inspired`, human-in-the-loop fact review and correction with audit trail, bilingual summaries in English and Hindi, and simulated ABHA/ABDM preview and import with SHA-256 deduplication for sandbox interop testing (strictly synthetic; no live government API connectivity).
 - **Audit provenance** — every clinical create/delete records who, what, and when.
 
 External terminology code sets (LOINC, SNOMED CT, ICD-10, ATC, CVX) are used in the seed catalogs under their respective licenses — see [NOTICE](NOTICE) for the per-system terms and the SNOMED country-availability note.
+
+### Canonical Health Record & Interoperability Quick Reference (Person 4)
+- **Patient Health Timeline**: Consolidated reverse-chronological view aggregating visits, lab observations, medications, conditions, and documents with unknown-date handling (`GET /api/v1/timeline/patient/{patient_id}`).
+- **Document Facts & Corrections**: View extracted facts with source document links, confidence, and review status (`GET /api/v1/facts/document/{doc_id}`). Correct facts with immutable original-text retention, clinician audit logging, and automatic summary invalidation (`POST /api/v1/facts/correct`).
+- **Bilingual Health Summaries**: Plain-language summaries in English (`en`) and Hindi (`hi`) grounded in patient clinical data with source provenance references and explicit staleness tracking (`/api/v1/summaries/patient/{patient_id}`).
+- **Patient FHIR Export**: Machine-readable JSON `Bundle` containing Patient, DocumentReference, Observation, MedicationStatement, and Condition resources (`GET /api/v1/export/patient/{patient_id}/fhir`).
+- **Simulated ABDM Import**: Preview and confirm synthetic health bundles using deterministic SHA-256 deduplication and mock provenance (`/api/v1/mock-abdm/*`). Strictly a simulation for sandbox validation.
 
 ## Visual tour
 

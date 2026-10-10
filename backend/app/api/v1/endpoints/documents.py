@@ -769,3 +769,21 @@ async def delete_document_endpoint(
         return {"message": "Document deleted successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to delete document")
+
+
+@router.get("/{document_id}/facts")
+async def get_document_facts_direct(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Retrieve extracted facts and normalized clinical records for this document."""
+    from uuid import UUID
+
+    from app.services.access import check_document_access
+    from app.services.facts_service import get_document_facts
+
+    await check_document_access(document_id, current_user, db)
+    did = UUID(document_id)
+    tenant_id = UUID(str(current_user.tenant_id))
+    return await get_document_facts(db, tenant_id, did)
