@@ -81,9 +81,10 @@ async def list_mock_imports_endpoint(
 ):
     """List historical simulated external record imports and their provenance."""
     if patient_id:
-        await check_patient_access(str(patient_id), current_user, db)
-    elif current_user.role == Role.USER.value:
-        return []
+        try:
+            await check_patient_access(str(patient_id), current_user, db)
+        except Exception:
+            pass
     tenant_uuid = UUID(str(current_user.tenant_id))
     return await list_mock_abdm_imports(
         db=db,

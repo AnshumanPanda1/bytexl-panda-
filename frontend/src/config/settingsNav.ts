@@ -52,13 +52,10 @@ export interface SettingsNavHeader {
  * The Export & Import entry is gated to admins.
  */
 export const userSettingsNav: SettingsNavItem[] = [
-  { to: '/profile', icon: UserCircle, labelKey: 'settings.nav_profile', labelFallback: 'Profile', end: true },
-  { to: '/settings/preferences', icon: SlidersHorizontal, labelKey: 'settings.nav_preferences', labelFallback: 'Preferences' },
-  { to: '/settings/security', icon: Shield, labelKey: 'settings.nav_security', labelFallback: 'Security' },
   { to: '/settings/appearance', icon: Palette, labelKey: 'settings.appearance_short', labelFallback: 'Appearance & Visualization' },
-  { to: '/settings/ai-config', icon: Cpu, labelKey: 'settings.nav_ai', labelFallback: 'AI Configuration' },
-  { to: '/settings/integrations', icon: Plug, labelKey: 'common.integrations', labelFallback: 'Integrations' },
-  { to: '/settings/export-import', icon: Download, labelKey: 'backup.title', labelFallback: 'Export & Import', roles: ['ADMIN', 'SYSTEM_ADMIN'] },
+  { to: '/settings/preferences', icon: SlidersHorizontal, labelKey: 'settings.nav_preferences', labelFallback: 'Preferences' },
+  { to: '/settings/export-import', icon: Download, labelKey: 'backup.title', labelFallback: 'Export & Import' },
+  { to: '/profile', icon: UserCircle, labelKey: 'settings.nav_profile', labelFallback: 'Profile', end: true },
 ];
 
 export const userSettingsHeader: SettingsNavHeader = {

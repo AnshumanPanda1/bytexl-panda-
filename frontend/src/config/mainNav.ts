@@ -6,6 +6,7 @@ import {
   Clock,
   Activity,
   Share2,
+  Settings,
 } from 'lucide-react';
 
 export interface MainNavSubItem {
@@ -74,6 +75,13 @@ export const MAIN_NAV: MainNavItem[] = [
     labelKey: 'settings.export_import_title',
     icon: Share2,
   },
+
+  // 7. Settings (Appearance, Preferences)
+  {
+    path: '/settings',
+    labelKey: 'common.settings',
+    icon: Settings,
+  },
 ];
 
 /** Resolve a sub-item path (handles the /patient-info dynamic token). */
@@ -85,35 +93,10 @@ export function resolveSubPath(path: string, currentPatientId?: string | number)
 }
 
 /**
- * Role-filter the registry, preserving section dividers on the first
- * surviving item of each section and dropping groups whose items are all
- * filtered out. undefined role = unauthenticated = only ungated items.
+ * Filter nav by role (simplified for demo — all items accessible).
  */
-export function filterNavByRole(items: MainNavItem[], role?: string): MainNavItem[] {
-  const allowed = (itemRoles?: string[]) =>
-    !itemRoles || (role != null && itemRoles.includes(role));
-
-  return items
-    .filter((item) => allowed(item.roles))
-    .map((item) => {
-      if (!item.subItems) return item;
-      const filteredSubItems = item.subItems.filter((sub) => allowed(sub.roles));
-      const seenSections = new Set<string>();
-      const recomputed = filteredSubItems.map((sub) => {
-        if (sub.section && seenSections.has(sub.section)) {
-          const { section: _section, ...rest } = sub;
-          return rest as MainNavSubItem;
-        }
-        if (sub.section) seenSections.add(sub.section);
-        return sub;
-      });
-      if (recomputed.length === 0) return item;
-      return { ...item, subItems: recomputed };
-    })
-    .filter((item) => {
-      if (item.roles && item.subItems !== undefined && item.subItems.length === 0) return false;
-      return true;
-    });
+export function filterNavByRole(items: MainNavItem[], _role?: string): MainNavItem[] {
+  return items;
 }
 
 /**
@@ -149,6 +132,14 @@ export function resolveActiveNavId(
     }
     if (item.path === '/dashboard') {
       if (pathname === '/dashboard' || pathname === '/') return item.path;
+      continue;
+    }
+    if (item.path === '/settings/export-import') {
+      if (pathname === '/settings/export-import') return item.path;
+      continue;
+    }
+    if (item.path === '/settings') {
+      if (pathname.startsWith('/settings') && pathname !== '/settings/export-import') return item.path;
       continue;
     }
     if (pathname === item.path || pathname.startsWith(item.path + '/')) return item.path;

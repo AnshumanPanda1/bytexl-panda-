@@ -530,6 +530,12 @@ class AIProviderService:
         from app.services.ai_summary_service import _load_secret_config
 
         secret_config = _load_secret_config()
+        gemini_key = (
+            secret_config.get("GEMINI_API_KEY")
+            or os.getenv("GEMINI_API_KEY")
+            or secret_config.get("GOOGLE_API_KEY")
+            or os.getenv("GOOGLE_API_KEY")
+        )
         groq_key = secret_config.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
         openrouter_key = (
             secret_config.get("OPENROUTER_API_KEY")
@@ -541,6 +547,7 @@ class AIProviderService:
 
         api_key = (
             secret_config.get("LLM_API_KEY")
+            or gemini_key
             or groq_key
             or openrouter_key
             or openai_key
@@ -550,6 +557,7 @@ class AIProviderService:
         base_url = (
             secret_config.get("LLM_BASE_URL")
             or os.getenv("LLM_BASE_URL")
+            or (("https://generativelanguage.googleapis.com/v1beta/openai") if (gemini_key and not openai_key and not secret_config.get("LLM_BASE_URL")) else None)
             or (("https://api.groq.com/openai/v1") if (groq_key and not openai_key and not secret_config.get("LLM_BASE_URL")) else None)
             or (("https://openrouter.ai/api/v1") if (openrouter_key and not openai_key) else None)
             or secret_config.get("OPENAI_API_BASE")
@@ -560,6 +568,7 @@ class AIProviderService:
         model_name = (
             secret_config.get("LLM_MODEL")
             or os.getenv("LLM_MODEL")
+            or (("gemini-2.5-flash") if gemini_key else None)
             or (("qwen/qwen3.8-27b") if groq_key else None)
             or secret_config.get("OPENAI_MODEL")
             or os.getenv("OPENAI_MODEL")
@@ -665,6 +674,28 @@ class AIProviderService:
                     temperature=model.temperature if model else 0.0,
                     llm=llm,
                 )
+
+        # Priority 1: Gemini Vision for OCR if key is configured
+        from app.services.ai_summary_service import _load_secret_config
+        sec_cfg = _load_secret_config()
+        gemini_key = sec_cfg.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY") or sec_cfg.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if gemini_key:
+            logger.info("AI Resolution [ocr]: Using Google Gemini Vision (gemini-2.5-flash) for OCR.")
+            llm = chat_models.build_openai(
+                api_key=gemini_key,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+                model_name="gemini-2.5-flash",
+                temperature=0.0,
+                max_tokens=8192,
+            )
+            return get_ocr_processor(
+                provider=ProviderType.OPENAI.value,
+                api_key=gemini_key,
+                api_base="https://generativelanguage.googleapis.com/v1beta/openai",
+                model="gemini-2.5-flash",
+                temperature=0.0,
+                llm=llm,
+            )
 
         # Fallback to secrets/settings
         api_key, base_url, model_name = self._resolve_fallback_credentials()

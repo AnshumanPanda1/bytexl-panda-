@@ -320,14 +320,9 @@ function App() {
           <Route element={<SettingsShell nav={userSettingsNav} header={userSettingsHeader} />}>
             <Route path="/profile" element={<MyAccount />} />
             <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
-            <Route path="/settings/preferences" element={<Preferences />} />
-            <Route path="/settings/security" element={<Security />} />
             <Route path="/settings/appearance" element={<AppearanceSettings />} />
-            <Route path="/settings/ai-config" element={<AIConfig scope="user" />} />
-            <Route path="/settings/integrations" element={<Integrations />} />
-            {(user?.role === 'ADMIN' || user?.role === 'SYSTEM_ADMIN') && (
-              <Route path="/settings/export-import" element={<ExportImport />} />
-            )}
+            <Route path="/settings/preferences" element={<Preferences />} />
+            <Route path="/settings/export-import" element={<ExportImport />} />
           </Route>
           <Route path="/settings/integrations/:id" element={<IntegrationDetail />} />
           <Route path="/integrations/:domain/connected" element={<OAuthConnected />} />

@@ -112,7 +112,7 @@ class AISummaryService:
         elif groq_key:
             self.model_name = "llama-3.3-70b-versatile"
         elif gemini_key:
-            self.model_name = "gemini-1.5-flash"
+            self.model_name = "gemini-2.5-flash"
         elif openrouter_key:
             # Valid active free model on OpenRouter (gemma-4 does not exist)
             self.model_name = "meta-llama/llama-3.3-70b-instruct:free"
