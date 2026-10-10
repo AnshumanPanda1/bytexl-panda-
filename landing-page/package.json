@@ -1,8 +1,8 @@
 {
-  "name": "automark-astro",
-  "version": "1.0.1",
-  "description": "Automark is a marketing and sales automation platform",
-  "author": "Themefisher",
+  "name": "medibot-portal",
+  "version": "1.0.0",
+  "description": "MediBot — AI-Powered Personal Health Copilot Portal",
+  "author": "MediBot Team",
   "license": "MIT",
   "packageManager": "pnpm@11.9.0",
   "type": "module",

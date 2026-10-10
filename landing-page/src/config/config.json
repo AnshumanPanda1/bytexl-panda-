@@ -1,14 +1,14 @@
 {
   "site": {
-    "title": "Automark",
-    "base_url": "https://automark-astro.vercel.app",
+    "title": "MediBot",
+    "base_url": "https://medibot.health",
     "base_path": "/",
     "trailing_slash": false,
     "favicon": "/images/favicon.png",
     "logo": "/images/logo.svg",
     "logo_width": "160",
     "logo_height": "45",
-    "logo_text": "Automark"
+    "logo_text": "MediBot"
   },
   "settings": {
     "sticky_header": true
@@ -17,23 +17,23 @@
     "contact_form_action": "#",
     "checklist_form_action": "#",
     "apply_form_action": "#",
-    "copyright": "Copyright &copy; 2026 <strong><a target=\"_blank\" href=\"https://themefisher.com/\">Themefisher</a></strong> All Rights Reserved &bull; Distributed by <strong><a target=\"_blank\" href=\"https://themewagon.com/\">ThemeWagon</a></strong>",
-    "footer_tagline": "Empowering Marketing businesses through intelligent automation.",
-    "footer_email": "contact@Automark.com",
-    "footer_phone": "(+1) 165-320-0102"
+    "copyright": "Copyright &copy; 2026 <strong>MediBot Team</strong>. All Rights Reserved.",
+    "footer_tagline": "AI-Powered Personal Health Copilot — Clinical Extraction, Bilingual Summaries & FHIR Interoperability.",
+    "footer_email": "team@medibot.health",
+    "footer_phone": "+91 98765 43210"
   },
   "navigation_button": {
     "enable": true,
-    "label": "Get This Template",
-    "link": "https://themefisher.com/products/automark-astro?aff=utm_source=themewagon&utm_medium=automark-template&utm_campaign=theme-download"
+    "label": "Launch Copilot",
+    "link": "http://localhost:5173"
   },
   "google_tag_manager": {
     "enable": false,
     "gtm_id": "GTM-XXXXXX"
   },
   "metadata": {
-    "meta_author": "Automark",
+    "meta_author": "MediBot Team",
     "meta_image": "/images/og-image.png",
-    "meta_description": "The all-in-one marketing and sales automation platform"
+    "meta_description": "AI-Powered Personal Health Copilot with document intelligence, grounded bilingual summaries, and FHIR interoperability."
   }
 }

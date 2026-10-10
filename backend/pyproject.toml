@@ -1,6 +1,6 @@
 [project]
-name = "healthassistant"
-description = "Health Assistant — FHIR-flavoured clinical records platform (Class S, server-first)"
+name = "medibot-backend"
+description = "MediBot — AI-Powered Personal Health Copilot (FastAPI, Groq LPU, FHIR R4)"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [

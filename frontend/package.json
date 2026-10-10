@@ -1,7 +1,7 @@
 {
-  "name": "health-assistant",
-  "version": "0.8.0",
-  "description": "Universal Health Data Platform",
+  "name": "medibot-frontend",
+  "version": "1.0.0",
+  "description": "MediBot - AI-Powered Personal Health Copilot",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

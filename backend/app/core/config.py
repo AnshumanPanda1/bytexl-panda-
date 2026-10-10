@@ -82,8 +82,8 @@ TOOLING_ENV_NAMES: frozenset[str] = frozenset(
 
 class Settings(BaseSettings):
     # Application
-    APP_NAME: str = "Health Assistant"
-    VERSION: str = "0.8.0"
+    APP_NAME: str = "MediBot"
+    VERSION: str = "1.0.0"
     HA_APP_ENV: str = "development"
     DEBUG: bool = False
 
@@ -158,9 +158,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = ""
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    # deployment.md / ADR-0022 naming: neuronection_<product>. Demo/test flavors use
-    # neuronection_health_demo / neuronection_health_test[_gwN] via env.
-    POSTGRES_DB: str = "neuronection_health"
+    POSTGRES_DB: str = "medibot"
     # Full URL override — wins over the POSTGRES_* parts above (audit item
     # e: renamed DATABASE_URL -> HA_DATABASE_URL, plan 20 D2 prefixed-only).
     HA_DATABASE_URL: str | None = None

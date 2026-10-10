@@ -301,7 +301,7 @@ _docs_enabled = settings.ENABLE_API_DOCS or settings.HA_APP_ENV in (
 )
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Universal Health Data Platform API - Restored",
+    description="MediBot — AI-Powered Personal Health Copilot API",
     version=settings.VERSION,
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,
