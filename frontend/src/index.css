@@ -1,0 +1,408 @@
+/* Library component CSS goes in its own cascade layer: the app's Tailwind
+   utilities must keep overriding library rules, but PREFLIGHT must not kill
+   them — `* { margin: 0 }` in @layer base otherwise beats the library's
+   `sm:mx-auto` etc. (layer order wins over specificity), which un-centers
+   every PanelModal dialog. The explicit statement pins the order:
+   preflight (base) < assistant-ui < app utilities. */
+@layer theme, base, assistant-ui, components, utilities;
+@import '@neuronection/assistant-ui/styles.css' layer(assistant-ui);
+
+@import 'react-grid-layout/css/styles.css' layer(base);
+@import 'react-resizable/css/styles.css' layer(base);
+
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --breakpoint-xs: 480px;
+
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-navy: #1a2b4b;
+  --color-brand-cyan: #0088cc;
+  --color-brand-cyanHover: #0077b3;
+
+  --color-dark-bg: #0f172a;
+  --color-dark-surface: #1e293b;
+  --color-dark-border: #334155;
+  --color-dark-text: #f8fafc;
+  --color-dark-muted: #94a3b8;
+  --color-dark-primary: #3b82f6;
+  --color-dark-hover: #1e293b;
+
+  --z-index-dropdown: 100;
+  --z-index-modal: 1000;
+  --z-index-popover: 1050;
+  --z-index-drawer: 1100;
+  --z-index-toast: 1200;
+
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-gradient-x: gradient-x 3s ease infinite;
+
+  @keyframes gradient-x {
+    0%,
+    100% {
+      background-size: 200% 200%;
+      background-position: left center;
+    }
+    50% {
+      background-size: 200% 200%;
+      background-position: right center;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+  }
+  .dark &::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
+  .dark &::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+@utility dark {
+  & .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+  }
+  & .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+@utility safe-top {
+  /* iOS safe-area insets for notched phones (requires viewport-fit=cover) */
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+@utility safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+@layer utilities {
+  /* Custom React Grid Layout Styles */
+  .react-grid-placeholder {
+    background: rgba(59, 130, 246, 0.08) !important;
+    border-radius: 1.25rem !important;
+    border: 2px dashed #3b82f6 !important;
+    opacity: 0.5 !important;
+    z-index: 2 !important;
+    transition-duration: 100ms;
+  }
+
+  .react-grid-item-resizing {
+    opacity: 0.6;
+    z-index: 3;
+  }
+
+  .react-grid-item-react-draggable-dragging {
+    opacity: 0.6;
+    z-index: 10;
+    cursor: grabbing !important;
+  }
+
+  .react-grid-item .react-resizable-handle::after {
+    border-right: 2px solid #cbd5e1 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    width: 10px !important;
+    height: 10px !important;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+  }
+
+  .dark {
+    /* Modern Slate-based Dark Theme (radix-ui inspired) */
+    --background: 222.2 84% 4.9%; /* Very dark slate for main bg */
+    --foreground: 210 40% 98%;    /* Off-white text */
+    
+    --card: 222.2 47.4% 11.2%;    /* Slightly lighter slate for cards */
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 222.2 47.4% 11.2%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 217.2 91.2% 59.8%; /* Vivid blue */
+    --primary-foreground: 222.2 47.4% 11.2%;
+    
+    --secondary: 217.2 32.6% 17.5%; /* Slate 800 */
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%; /* Slate 400 */
+    
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer utilities {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  /* Custom scrollbar for dark mode */
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .dark ::-webkit-scrollbar-track {
+    background: #0f172a;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  /* Global focus rings for dark mode inputs/buttons */
+  .dark *:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  /* Scrollbar Utilities */
+}
+
+/* HITL task card — responsive to its OWN width (the chat drawer is resizable,
+   so viewport breakpoints are unreliable). Inline-size containment lets the
+   card reflow based on the actual chat surface width: narrow = stacked
+   full-width actions + hidden hint; wider = inline right-aligned actions. */
+.hitl-card {
+  container-type: inline-size;
+}
+
+/* Header: default (narrow) is a COLUMN — title row gets the full card width and
+   the status pill sits on its own line beneath it, so the title can never be
+   squeezed by the pill. (Using flex-direction rather than wrap so the title's
+   flex-shrink can't crush it.) */
+.hitl-card .hitl-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.375rem;
+}
+.hitl-card .hitl-title-row {
+  min-width: 0;
+}
+.hitl-card .hitl-status {
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.hitl-card .hitl-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+.hitl-card .hitl-actions > * {
+  width: 100%;
+  justify-content: center;
+}
+.hitl-card .hitl-hint {
+  display: none;
+}
+
+@container (min-width: 380px) {
+  .hitl-card .hitl-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .hitl-card .hitl-actions > * {
+    width: auto;
+    justify-content: flex-start;
+  }
+  .hitl-card .hitl-hint {
+    display: block;
+  }
+}
+
+@container (min-width: 480px) {
+  /* Wide enough: header back to a single row, status pill on the right. */
+  .hitl-card .hitl-header {
+    flex-direction: row;
+    align-items: center;
+  }
+  .hitl-card .hitl-title-row {
+    flex: 1 1 auto;
+  }
+  .hitl-card .hitl-status {
+    align-self: auto;
+  }
+}
+
+/* ── ScaleSlider ─────────────────────────────────────────────────────────
+   A bounded number rendered as a green→red gradient slider + numeric input.
+   The track gradient is static (3-stop green/yellow/red); the thumb colour
+   tracks the current value via the --scale-thumb-color custom property set
+   inline by the component. Pseudo-elements can't be styled via Tailwind/inline
+   so they live here. */
+.scale-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, #22c55e 0%, #eab308 50%, #ef4444 100%);
+  outline: none;
+  cursor: pointer;
+}
+.scale-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* WebKit / Blink */
+.scale-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid var(--scale-thumb-color, #22c55e);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 80ms ease;
+}
+.scale-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+.scale-slider:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+/* Firefox */
+.scale-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid var(--scale-thumb-color, #22c55e);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.scale-slider::-moz-range-track {
+  background: transparent;
+}
+

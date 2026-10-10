@@ -1,0 +1,148 @@
+{
+  "metadata": {
+    "version": "3.1.0",
+    "source": "Health Assistant",
+    "last_updated": "2026-07-20",
+    "schema_note": "Field descriptors use the typed MetadataFieldType/CatalogType enums. See docs/DEVELOPMENT.md 'Extending Clinical Events'. schedule_kind values: state | range | recurring | point."
+  },
+  "items": [
+    {
+      "slug": "pregnancy",
+      "name": "Pregnancy",
+      "category_slug": "reproductive-health",
+      "description": "Monitor pregnancy milestones, LMP, and estimated due date.",
+      "icon": { "type": "lucide", "value": "Baby" },
+      "color": "#ec4899",
+      "schedule_kind": "state",
+      "metadata_schema": {
+        "fields": [
+          {"name": "lmp", "label": "LMP Date", "type": "date", "required": false},
+          {"name": "edd", "label": "EDD Date", "type": "date", "required": false},
+          {"name": "trimester", "label": "Current Trimester", "type": "number", "required": false}
+        ]
+      }
+    },
+    {
+      "slug": "pain-episode",
+      "name": "Pain Episode",
+      "category_slug": "acute-chronic",
+      "description": "Track ongoing or chronic pain with intensity and location.",
+      "icon": { "type": "lucide", "value": "Activity" },
+      "color": "#ef4444",
+      "schedule_kind": "state",
+      "metadata_schema": {
+        "fields": [
+          {"name": "intensity", "label": "Intensity (1-10)", "type": "number", "min": 1, "max": 10},
+          {"name": "body_location", "label": "Body Location", "type": "catalog-select", "catalogs": ["anatomy"], "multi": false, "relation": "primary_site"},
+          {"name": "trigger", "label": "Trigger", "type": "text", "placeholder": "e.g. stress, weather change, lack of sleep"}
+        ]
+      }
+    },
+    {
+      "slug": "flare-up",
+      "name": "Chronic Flare-up",
+      "category_slug": "acute-chronic",
+      "description": "Manage cyclic flare-ups for chronic conditions like Arthritis or Migraines.",
+      "icon": { "type": "lucide", "value": "Zap" },
+      "color": "#8b5cf6",
+      "schedule_kind": "range",
+      "metadata_schema": {
+        "fields": [
+          {"name": "severity", "label": "Severity", "type": "text"},
+          {"name": "body_location", "label": "Body Location", "type": "catalog-select", "catalogs": ["anatomy"], "multi": false, "relation": "primary_site"},
+          {"name": "duration", "label": "Duration (Hours)", "type": "number"}
+        ]
+      }
+    },
+    {
+      "slug": "accident",
+      "name": "Acute Accident",
+      "category_slug": "acute-chronic",
+      "description": "Record specific injuries or medical emergencies.",
+      "icon": { "type": "lucide", "value": "AlertTriangle" },
+      "color": "#f59e0b",
+      "schedule_kind": "point",
+      "metadata_schema": {
+        "fields": [
+          {"name": "mechanism", "label": "Mechanism of Injury", "type": "text"},
+          {"name": "body_location", "label": "Body Location", "type": "catalog-select", "catalogs": ["anatomy"], "multi": true, "relation": "primary_site"},
+          {"name": "emergency_flag", "label": "Emergency Visit?", "type": "boolean"}
+        ]
+      }
+    },
+    {
+      "slug": "surgical-recovery",
+      "name": "Surgical Recovery",
+      "category_slug": "specialized-care",
+      "description": "Monitor post-operative healing and milestones.",
+      "icon": { "type": "lucide", "value": "Scissors" },
+      "color": "#10b981",
+      "schedule_kind": "range",
+      "metadata_schema": {
+        "fields": [
+          {"name": "procedure_date", "label": "Procedure Date", "type": "date"},
+          {"name": "wound_status", "label": "Wound Status", "type": "text"}
+        ]
+      }
+    },
+    {
+      "slug": "dental",
+      "name": "Dental Journey",
+      "category_slug": "specialized-care",
+      "description": "Long-term dental treatments like braces or implants.",
+      "icon": { "type": "lucide", "value": "Smile" },
+      "color": "#3b82f6",
+      "schedule_kind": "state",
+      "metadata_schema": {
+        "fields": [
+          {"name": "area", "label": "Dental Area", "type": "text"},
+          {"name": "milestones", "label": "Milestones", "type": "text"}
+        ]
+      }
+    },
+    {
+      "slug": "vision",
+      "name": "Vision & Ophthalmology",
+      "category_slug": "specialized-care",
+      "description": "Tracking eye conditions and vision changes.",
+      "icon": { "type": "lucide", "value": "Eye" },
+      "color": "#6366f1",
+      "schedule_kind": "state",
+      "metadata_schema": {
+        "fields": [
+          {"name": "diopters", "label": "Diopters (OD/OS)", "type": "text"},
+          {"name": "procedure", "label": "Procedure Type", "type": "text"}
+        ]
+      }
+    },
+    {
+      "slug": "aesthetic",
+      "name": "Aesthetic & Skin",
+      "category_slug": "specialized-care",
+      "description": "Cosmetic procedures and skin health.",
+      "icon": { "type": "lucide", "value": "Sparkles" },
+      "color": "#8b5cf6",
+      "schedule_kind": "range",
+      "metadata_schema": {
+        "fields": [
+          {"name": "product", "label": "Product Used", "type": "text"},
+          {"name": "region", "label": "Target Region", "type": "text"}
+        ]
+      }
+    },
+    {
+      "slug": "maintenance",
+      "name": "Routine Maintenance",
+      "category_slug": "routine-wellness",
+      "description": "Regular checkups and wellness cycles.",
+      "icon": { "type": "lucide", "value": "CheckCircle" },
+      "color": "#22c55e",
+      "schedule_kind": "recurring",
+      "metadata_schema": {
+        "fields": [
+          {"name": "frequency", "label": "Frequency", "type": "text"}
+        ]
+      }
+    }
+  ]
+}

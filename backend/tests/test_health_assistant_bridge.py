@@ -1,0 +1,485 @@
+import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import pytest
+from integrations.health_assistant_bridge.provider import HealthAssistantBridgeProvider
+
+from app.ai.schemas.nlp import MappedMetric, MapResponsePayload
+from app.models.user_integration import UserIntegration
+
+
+@pytest.fixture
+def integration_mock():
+    integration = UserIntegration()
+    integration.id = uuid4()
+    integration.tenant_id = uuid4()
+    integration.user_id = uuid4()
+    integration.patient_id = uuid4()
+    integration.provider = "health_assistant_bridge"
+    integration.instance_name = "Test Bridge"
+    integration.user_config = {"_sync_state": {"last_timestamp": "2024-06-15T12:00:00Z"}}
+    integration.is_debug_enabled = False
+    integration.last_synced_at = datetime.datetime.now(datetime.UTC)
+    return integration
+
+
+@pytest.fixture
+def provider():
+    return HealthAssistantBridgeProvider()
+
+
+@pytest.mark.asyncio
+async def test_handle_api_request_status(provider, integration_mock):
+    # Mock the request
+    request_mock = MagicMock()
+
+    result = await provider.handle_api_request(
+        integration=integration_mock, path="status", method="GET", request=request_mock
+    )
+
+    assert result["status"] == "active"
+    assert result["integration_id"] == str(integration_mock.id)
+    assert result["cursor"] == "2024-06-15T12:00:00Z"
+    assert "last_synced_at" in result
+    # The frontend/PWA origin is advertised on /status so the mobile app can
+    # read it over its existing ktor connection (no second network stack).
+    assert "frontend_base_url" in result
+    assert result["frontend_base_url"]
+
+
+@pytest.mark.asyncio
+@patch(
+    "integrations.health_assistant_bridge.provider.HealthAssistantBridgeProvider._handle_map_request"
+)
+async def test_handle_api_request_map(mock_handle_map, provider, integration_mock):
+    request_mock = AsyncMock()
+    request_mock.json.return_value = {"unmapped_metrics": [{"name": "Test Metric"}]}
+
+    mock_handle_map.return_value = {"mappings": []}
+
+    result = await provider.handle_api_request(
+        integration=integration_mock, path="map", method="POST", request=request_mock
+    )
+
+    assert mock_handle_map.called
+    assert result == {"mappings": []}
+
+
+@pytest.mark.asyncio
+@patch(
+    "integrations.health_assistant_bridge.provider.HealthAssistantBridgeProvider._process_and_save_sync_data"
+)
+async def test_handle_api_request_sync(mock_save, provider, integration_mock):
+    request_mock = AsyncMock()
+    request_mock.json.return_value = {
+        "client_version": "1.0",
+        "source_system": "test",
+        "cursor": "2024-06-16T12:00:00Z",
+        "records": [
+            {"type": "quantitative", "name": "Test Metric", "value": 100.0, "unit": "mg/dL"}
+        ],
+    }
+
+    mock_save.return_value = 1
+
+    result = await provider.handle_api_request(
+        integration=integration_mock, path="sync", method="POST", request=request_mock
+    )
+
+    assert result["success"] is True
+    assert result["metrics_synced"] == 1
+    assert integration_mock.user_config["_sync_state"]["last_timestamp"] == "2024-06-16T12:00:00Z"
+    assert mock_save.called
+
+
+@pytest.mark.asyncio
+@patch(
+    "integrations.health_assistant_bridge.provider.HealthAssistantBridgeProvider._process_and_save_sync_data"
+)
+async def test_handle_api_request_sync_examinations(mock_save, provider, integration_mock):
+    request_mock = AsyncMock()
+    request_mock.json.return_value = {
+        "client_version": "1.2.0",
+        "source_system": "test",
+        "cursor": "2024-06-16T12:00:00Z",
+        "examinations": [
+            {
+                "id": "ext-exam-123",
+                "date": "2024-06-16T10:00:00Z",
+                "lab_name": "Test Lab",
+                "category": "Blood Test",
+                "records": [
+                    {
+                        "type": "quantitative",
+                        "name": "Test Metric 2",
+                        "value": 50.0,
+                        "unit": "mg/dL",
+                    }
+                ],
+            }
+        ],
+    }
+
+    mock_save.return_value = 1
+
+    result = await provider.handle_api_request(
+        integration=integration_mock, path="sync", method="POST", request=request_mock
+    )
+
+    assert result["success"] is True
+    assert result["metrics_synced"] == 1
+    assert integration_mock.user_config["_sync_state"]["last_timestamp"] == "2024-06-16T12:00:00Z"
+    assert mock_save.called
+
+
+@pytest.mark.asyncio
+async def test_parse_records(provider, integration_mock):
+    from integrations.health_assistant_bridge.provider import ClientRecord
+
+    builder = provider.create_observation_builder(integration_mock)
+
+    records = [
+        ClientRecord(
+            type="quantitative",
+            name="Sodium",
+            biomarker_id="123e4567-e89b-12d3-a456-426614174000",
+            code="2951-2",
+            coding_system="custom",
+            value=140.0,
+            unit="mmol/L",
+            performer="Test Lab",
+        )
+    ]
+
+    observations = provider._parse_records(
+        records, builder, str(integration_mock.id), integration_mock.instance_name
+    )
+    assert len(observations) == 1
+
+    obs = observations[0]
+    assert obs.raw_value == 140.0
+    assert obs.value_quantity["unit"] == "mmol/L"
+    assert obs.code["text"] == "Sodium"
+    assert str(obs.biomarker_id) == "123e4567-e89b-12d3-a456-426614174000"
+    assert obs.performer[0]["display"] == "Test Lab"
+    assert obs.performer[0]["reference"] == f"Integration/{integration_mock.id}"
+
+
+@pytest.mark.asyncio
+@patch("integrations.health_assistant_bridge.provider.HealthAssistantBridgeProvider")
+async def test_handle_map_request_internal(mock_provider, provider, integration_mock):
+    from integrations.health_assistant_bridge.provider import MapRequestPayload
+
+    from app.ai.schemas.nlp import MetricMappingRequest
+
+    # We will mock the DB call internally
+    with patch("app.core.database.AsyncSessionLocal") as mock_session_local:
+        mock_session = AsyncMock()
+        mock_session_local.return_value.__aenter__.return_value = mock_session
+        mock_db_execute = AsyncMock()
+        mock_session.execute = mock_db_execute
+
+        # Mock existing catalog
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = []
+        mock_db_execute.return_value.scalars = MagicMock(return_value=mock_scalars)
+
+        # Mock AI Service and NLP Extractor
+        with patch("app.ai.providers.service.AIProviderService") as mock_ai_service:
+            mock_ai_service_instance = MagicMock()
+            mock_ai_service.return_value = mock_ai_service_instance
+            mock_nlp_extractor = AsyncMock()
+            mock_ai_service_instance.get_nlp_extractor = AsyncMock(return_value=mock_nlp_extractor)
+
+            # Mock response from NLP extractor
+            mock_map_response = MapResponsePayload(
+                mappings=[
+                    MappedMetric(
+                        original_name="Test", action="create_new", new_biomarker_name="Test Metric"
+                    )
+                ]
+            )
+            mock_nlp_extractor.map_external_metrics.return_value = mock_map_response
+
+            # Run Method
+            map_request = MapRequestPayload(unmapped_metrics=[MetricMappingRequest(name="Test")])
+
+            # The provider imports AIProviderService locally inside the method,
+            # so we mock the global module attribute instead of the provider attribute.
+            with patch.dict(
+                "sys.modules",
+                {"app.ai.providers.service": MagicMock(AIProviderService=mock_ai_service)},
+            ):
+                result = await provider._handle_map_request(integration_mock, map_request)
+
+            assert mock_ai_service_instance.get_nlp_extractor.called
+            assert mock_nlp_extractor.map_external_metrics.called
+            assert result["mappings"][0]["new_biomarker_name"] == "Test Metric"
+
+
+# ---------------------------------------------------------------------------
+# Workstream E.2 (this stack): bridge routes examinations through the
+# canonical service instead of inlining dedup + direct ORM construction.
+# Source-level guards against a revert that re-introduces the stale
+# ``category_id`` field (the live model has ``category_concept_id``).
+# ---------------------------------------------------------------------------
+
+
+def test_bridge_routes_examinations_through_canonical_service():
+    """The bridge's ``_process_and_save_sync_data`` must delegate exam
+    creation to ``examination_service.create_examination`` instead of
+    constructing ``ExaminationModel`` rows directly.
+
+    Before E.2 the bridge inlined ~80 LOC of dedup + ORM construction
+    that had already gone stale: it set ``category_id=`` (a column that
+    no longer exists on the live model — categories moved into the
+    unified taxonomy as ``category_concept_id``), referenced the
+    deleted ``ExaminationCategory`` model, and pre-generated UUIDs
+    instead of using the ``gen_random_uuid()`` server default. Routing
+    through the service fixes all three and gets dedup + audit
+    provenance for free.
+    """
+    import inspect
+    import re
+
+    from integrations.health_assistant_bridge import provider as bridge_mod
+
+    src = inspect.getsource(bridge_mod.HealthAssistantBridgeProvider._process_and_save_sync_data)
+
+    # Positive: must delegate to the service.
+    assert "create_examination" in src, (
+        "bridge must call examination_service.create_examination for exam "
+        "writes (workstream E.2 migration)"
+    )
+    assert "resolve_integration_actor" in src, (
+        "bridge must resolve a service-context actor via workstream D "
+        "before calling create_examination"
+    )
+
+    # Negative: must not construct ExaminationModel directly, must not
+    # reference the deleted ExaminationCategory model, must not set the
+    # stale category_id field.
+    assert "ExaminationModel(" not in src, (
+        "bridge must not construct ExaminationModel directly — that's the service's job after E.2"
+    )
+    assert "ExaminationCategory" not in src, (
+        "bridge must not import ExaminationCategory — the model was deleted "
+        "when categories moved into the unified taxonomy"
+    )
+    # Use a negative lookbehind so ``category_concept_id=`` (the live
+    # field name) doesn't trip the check for the stale ``category_id=``.
+    stale_category_id = re.search(r"(?<!concept_)category_id=", src)
+    assert stale_category_id is None, (
+        "bridge must not set category_id — the live column is "
+        "category_concept_id; the old bridge silently dropped the category "
+        f"on every exam it created (found at offset {stale_category_id.start()})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.1 — stateful-builder leak regression
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_parse_records_does_not_leak_reference_range_across_records(
+    provider, integration_mock
+):
+    """The original bug: ``_parse_records`` reused one stateful
+    ``ObservationBuilder`` across loop iterations, so a record that set a
+    reference range leaked it into the following record (which intended to
+    have none). The fix resets the builder per iteration (SDK skill §10.4)."""
+    from integrations.health_assistant_bridge.provider import ClientRecord
+
+    builder = provider.create_observation_builder(integration_mock)
+    records = [
+        ClientRecord(
+            type="quantitative",
+            name="Heart rate",
+            code="8867-4",
+            value=72.0,
+            unit="bpm",
+            timestamp="2026-07-23T10:00:00Z",
+            reference_range={"low": 60.0, "high": 100.0},
+        ),
+        ClientRecord(
+            type="quantitative",
+            name="Glucose",
+            code="2345-7",
+            value=5.5,
+            unit="mmol/L",
+            timestamp="2026-07-23T10:05:00Z",
+            # NO reference_range on this record.
+        ),
+    ]
+    obs = provider._parse_records(records, builder, str(integration_mock.id), "Test Bridge")
+    assert len(obs) == 2
+    # Record 1 explicitly set a range.
+    assert obs[0].lab_reference_range == {"low": 60.0, "high": 100.0}
+    # Record 2 must NOT inherit record 1's range (the bug).
+    assert obs[1].lab_reference_range is None
+
+
+@pytest.mark.asyncio
+async def test_parse_records_does_not_leak_interpretation(provider, integration_mock):
+    """Same leak, for the interpretation field."""
+    from integrations.health_assistant_bridge.provider import ClientRecord
+
+    builder = provider.create_observation_builder(integration_mock)
+    records = [
+        ClientRecord(
+            type="quantitative",
+            name="A",
+            code="a",
+            value=1.0,
+            unit="u",
+            timestamp="2026-07-23T10:00:00Z",
+            interpretation="high",
+        ),
+        ClientRecord(
+            type="quantitative",
+            name="B",
+            code="b",
+            value=2.0,
+            unit="u",
+            timestamp="2026-07-23T10:01:00Z",
+            # NO interpretation on this record.
+        ),
+    ]
+    obs = provider._parse_records(records, builder, str(integration_mock.id), "Test Bridge")
+    assert obs[0].interpretation == "high"
+    assert obs[1].interpretation is None
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — read/management paths (patient-scoped to the bound instance).
+# Mobile-app plan §4. The mock-based tests prove the provider passes the bound
+# patient_id to the services (isolation wiring); DB-backed cross-patient
+# integration tests are the gold-standard follow-up.
+# ---------------------------------------------------------------------------
+
+
+def _mock_session_local():
+    """An AsyncSessionLocal mock usable as `async with AsyncSessionLocal() as db:`."""
+    mock_session_local = MagicMock()
+    mock_db = AsyncMock()
+    mock_session_local.return_value.__aenter__.return_value = mock_db
+    mock_session_local.return_value.__aexit__.return_value = None
+    return mock_session_local, mock_db
+
+
+@pytest.mark.asyncio
+async def test_read_observations_latest_scopes_to_bound_patient(provider, integration_mock):
+    """The provider MUST pass the bound patient_id + tenant_id to the merged
+    FHIR + telemetry reads so the read is patient-scoped (the resolved actor
+    carries the owner's role)."""
+    captured = {}
+
+    async def fake_list(**kwargs):
+        captured["fhir"] = kwargs
+        return {"items": [{"code": "8867-4", "value": 75.0}], "total": 1}
+
+    async def fake_telemetry(db, **kwargs):
+        captured["telemetry"] = kwargs
+        return []
+
+    request_mock = MagicMock()
+    request_mock.query_params = {}
+
+    mock_session_local, _ = _mock_session_local()
+    with (
+        patch("app.core.database.AsyncSessionLocal", mock_session_local),
+        patch(
+            "integrations.health_assistant_bridge.provider.list_observations_latest",
+            create=True,
+            side_effect=fake_list,
+        ),
+        patch("app.services.fhir_service.list_observations_latest", side_effect=fake_list),
+        patch(
+            "app.services.telemetry_service.get_patient_telemetry_latest",
+            side_effect=fake_telemetry,
+        ),
+    ):
+        result = await provider.handle_api_request(
+            integration=integration_mock,
+            path="observations/latest",
+            method="GET",
+            request=request_mock,
+        )
+
+    assert captured["fhir"]["patient_id"] == integration_mock.patient_id
+    assert captured["fhir"]["tenant_id"] == integration_mock.tenant_id
+    assert captured["telemetry"]["patient_id"] == integration_mock.patient_id
+    assert captured["telemetry"]["tenant_id"] == integration_mock.tenant_id
+    assert result["data"] == [{"code": "8867-4", "value": 75.0, "reference_range": None}]
+    assert "cached_at" in result
+
+
+@pytest.mark.asyncio
+async def test_read_paths_require_a_bound_patient(provider, integration_mock):
+    """No patient_id on the instance → ValueError (→ HTTP 400). Patient-scoped
+    by construction means the read refuses rather than falling back to tenant-wide."""
+    integration_mock.patient_id = None
+    request_mock = MagicMock()
+    request_mock.query_params = {}
+
+    with pytest.raises(ValueError):
+        await provider.handle_api_request(
+            integration=integration_mock,
+            path="observations/latest",
+            method="GET",
+            request=request_mock,
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_examination_passes_external_id_for_dedup(provider, integration_mock):
+    """POST /examinations routes through create_examination with the bound
+    patient_id + (source_integration_id, external_id=client id) so retries are
+    idempotent — the service dedups on that key (api-reference.md §Dedup)."""
+    request_mock = AsyncMock()
+    request_mock.json.return_value = {
+        "id": "ext-exam-1",
+        "date": "2026-08-08T00:00:00Z",
+        "category": "Blood Test",
+        "diagnoses": ["Hypertension"],
+    }
+    captured = {}
+
+    async def fake_create(db, actor, payload, *, source_integration_id=None, external_id=None):
+        captured["source"] = source_integration_id
+        captured["external"] = external_id
+        captured["patient_id"] = payload.patient_id
+        exam = MagicMock()
+        exam.id = uuid4()
+        return exam
+
+    mock_session_local, _ = _mock_session_local()
+    with (
+        patch("app.core.database.AsyncSessionLocal", mock_session_local),
+        patch("app.services.examination_service.create_examination", side_effect=fake_create),
+        patch("app.services.integration_actor.resolve_integration_actor", return_value=MagicMock()),
+    ):
+        result = await provider.handle_api_request(
+            integration=integration_mock,
+            path="examinations",
+            method="POST",
+            request=request_mock,
+        )
+
+    assert captured["source"] == integration_mock.id
+    assert captured["external"] == "ext-exam-1"
+    assert captured["patient_id"] == integration_mock.patient_id
+    assert result["external_id"] == "ext-exam-1"
+
+
+@pytest.mark.asyncio
+async def test_unknown_path_raises_not_implemented(provider, integration_mock):
+    with pytest.raises(NotImplementedError):
+        await provider.handle_api_request(
+            integration=integration_mock,
+            path="totally/unknown",
+            method="GET",
+            request=MagicMock(),
+        )

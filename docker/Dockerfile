@@ -1,0 +1,56 @@
+FROM python:3.12-slim AS base
+
+WORKDIR /app
+
+# Runtime system dependencies (OCR/PDF tooling; no compilers in the final image)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    tesseract-ocr \
+    libleptonica-dev \
+    poppler-utils \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM base AS deps
+# Build stage: compilers live here only, never in the runtime layer.
+RUN apt-get update && apt-get install -y --no-install-recommends gcc \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /usr/local/bin/uv
+# Workspace manifests first (cache-friendly); uv installs into /app/.venv.
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/pyproject.toml
+COPY backend/app backend/app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+FROM base AS runtime
+# Copy only the uv environment from the deps stage.
+ENV PATH="/app/.venv/bin:$PATH"
+COPY --from=deps /app/.venv /app/.venv
+
+# Application code — allowlisted paths only (.dockerignore guards the rest).
+# Consolidated multi-source COPY so new backend files (e.g. alembic.ini) can't
+# silently miss the image.
+COPY backend/app /app/backend/app
+COPY backend/alembic /app/backend/alembic
+COPY backend/alembic.ini /app/backend/alembic.ini
+COPY backend/scripts /app/backend/scripts
+# Seed JSONs + catalogs read at runtime (startup seed_all, the OMB picklist
+# behind GET /setup/extension-catalog, demo mode's sample PDF) — omitting
+# this dir shipped images whose wizard dropdowns and seed stages ran empty.
+COPY backend/data /app/backend/data
+COPY integrations /app/integrations
+
+# Non-root runtime user (audit 2026-08 CFG-M5).
+RUN useradd --create-home --uid 10001 ha \
+    && mkdir -p /app/uploads /data /var/healthassistant/uploads \
+    && chown -R ha:ha /app /data /var/healthassistant
+USER ha
+
+ENV PYTHONPATH=/app/backend:/app
+WORKDIR /app/backend
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

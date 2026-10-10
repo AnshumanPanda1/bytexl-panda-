@@ -1,0 +1,783 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "source": "Health Assistant",
+    "last_updated": "2026-07-07",
+    "description": "Anatomy graph nodes (AnatomyStructure rows): body systems, organs, regions, joints. Each node carries a lowercase 'class_concept_slug' (an anatomy_class concept: organ/region/system/joint/...) resolved to class_concept_id at import time."
+  },
+  "items": [
+    {
+      "slug": "whole-body",
+      "name": "Whole Body",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "38266002",
+      "description": "The entire human body"
+    },
+    {
+      "slug": "head",
+      "name": "Head",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "302553009",
+      "description": "The upper part of the human body containing the brain, eyes, ears, nose, and mouth"
+    },
+    {
+      "slug": "face",
+      "name": "Face",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "89545001",
+      "description": "The front part of the head"
+    },
+    {
+      "slug": "eyes",
+      "name": "Eyes",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "81745001",
+      "description": "The organ of sight",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0,
+              "nr": 0.08381
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "ears",
+      "name": "Ears",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "117590005",
+      "description": "The organ of hearing",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.84607,
+              "ny": 0,
+              "nr": 0.03492
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "nose",
+      "name": "Nose",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "45206002",
+      "description": "The organ of smell",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "mouth",
+      "name": "Mouth",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "123851003",
+      "description": "The opening through which food is taken in",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0,
+              "nr": 0.0419
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "brain",
+      "name": "Brain",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "12738006",
+      "description": "The central organ of the nervous system",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0,
+              "nr": 0.08381
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "neck",
+      "name": "Neck",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "45048000",
+      "description": "The part of the body connecting the head to the torso"
+    },
+    {
+      "slug": "throat",
+      "name": "Throat",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "54016002",
+      "description": "The passage from the mouth to the stomach or lungs",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0.03749,
+              "nr": 0.0419
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "thyroid",
+      "name": "Thyroid",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "69105007",
+      "description": "A butterfly-shaped endocrine gland in the neck",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0.06335,
+              "nr": 0.0419
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "chest",
+      "name": "Chest",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "51185008",
+      "description": "The upper part of the torso between the neck and abdomen"
+    },
+    {
+      "slug": "heart",
+      "name": "Heart",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "80248007",
+      "description": "The muscular organ that pumps blood through the circulatory system",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.55611,
+              "ny": 0.35823,
+              "nr": 0.06984
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "left-lung",
+      "name": "Left Lung",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "113276009",
+      "description": "The left organ of respiration",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.23762,
+              "ny": 0.35823,
+              "nr": 0.09777
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "right-lung",
+      "name": "Right Lung",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "113275008",
+      "description": "The right organ of respiration",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.9768,
+              "ny": 0.35823,
+              "nr": 0.09777
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "abdomen",
+      "name": "Abdomen",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "113345001",
+      "description": "The part of the body between the chest and pelvis"
+    },
+    {
+      "slug": "liver",
+      "name": "Liver",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "10200004",
+      "description": "The large gland that detoxifies blood and produces bile",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.39686,
+              "ny": 0.61688,
+              "nr": 0.08381
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "stomach",
+      "name": "Stomach",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "69695003",
+      "description": "The digestive organ that breaks down food",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.81993,
+              "ny": 0.65051,
+              "nr": 0.05587
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "pancreas",
+      "name": "Pancreas",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "15776009",
+      "description": "The gland producing insulin and digestive enzymes",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.6084,
+              "ny": 0.68672,
+              "nr": 0.04889
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "spleen",
+      "name": "Spleen",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "78961009",
+      "description": "The organ that filters blood and supports immune function",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 1,
+              "ny": 0.61688,
+              "nr": 0.0419
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "left-kidney",
+      "name": "Left Kidney",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "18633005",
+      "description": "The left organ that filters blood and produces urine",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.29229,
+              "ny": 0.72035,
+              "nr": 0.05587
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "right-kidney",
+      "name": "Right Kidney",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "125603004",
+      "description": "The right organ that filters blood and produces urine",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.92451,
+              "ny": 0.72035,
+              "nr": 0.05587
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "small-intestine",
+      "name": "Small Intestine",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "30315005",
+      "description": "The tube where most nutrient absorption occurs",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0.8264,
+              "nr": 0.08381
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "large-intestine",
+      "name": "Large Intestine",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "71854001",
+      "description": "The tube where water is absorbed and waste is formed",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0.75656,
+              "nr": 0.12571
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "bladder",
+      "name": "Bladder",
+      "class_concept_slug": "organ",
+      "standard_system": "snomed",
+      "standard_code": "89837001",
+      "description": "The organ that stores urine",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.63454,
+              "ny": 0.96607,
+              "nr": 0.0419
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "upper-back",
+      "name": "Upper Back",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "421060004",
+      "description": "The upper posterior region of the torso"
+    },
+    {
+      "slug": "lower-back",
+      "name": "Lower Back",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "442087000",
+      "description": "The lower posterior region of the torso"
+    },
+    {
+      "slug": "shoulder-left",
+      "name": "Shoulder (Left)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "91083009",
+      "description": "The left shoulder joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0,
+              "ny": 0.28839,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "shoulder-right",
+      "name": "Shoulder (Right)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "91083009",
+      "description": "The right shoulder joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 1,
+              "ny": 0.28839,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "arm-left",
+      "name": "Arm (Left)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "40983000",
+      "description": "The left upper limb"
+    },
+    {
+      "slug": "arm-right",
+      "name": "Arm (Right)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "40983000",
+      "description": "The right upper limb"
+    },
+    {
+      "slug": "elbow-left",
+      "name": "Elbow (Left)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "127949000",
+      "description": "The left elbow joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0,
+              "ny": 0.60137,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "elbow-right",
+      "name": "Elbow (Right)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "127949000",
+      "description": "The right elbow joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 1,
+              "ny": 0.60137,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "wrist-left",
+      "name": "Wrist (Left)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "8205005",
+      "description": "The left wrist joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0,
+              "ny": 0.8833,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "wrist-right",
+      "name": "Wrist (Right)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "8205005",
+      "description": "The right wrist joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 1,
+              "ny": 0.8833,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "hand-left",
+      "name": "Hand (Left)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "85537004",
+      "description": "The left hand"
+    },
+    {
+      "slug": "hand-right",
+      "name": "Hand (Right)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "85537004",
+      "description": "The right hand"
+    },
+    {
+      "slug": "hip-left",
+      "name": "Hip (Left)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "29836001",
+      "description": "The left hip joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.34457,
+              "ny": 0.90917,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "hip-right",
+      "name": "Hip (Right)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "29836001",
+      "description": "The right hip joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.9768,
+              "ny": 0.90917,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "leg-left",
+      "name": "Leg (Left)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "30021000",
+      "description": "The left lower limb"
+    },
+    {
+      "slug": "leg-right",
+      "name": "Leg (Right)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "30021000",
+      "description": "The right lower limb"
+    },
+    {
+      "slug": "knee-left",
+      "name": "Knee (Left)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "72696002",
+      "description": "The left knee joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.50144,
+              "ny": 1,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "knee-right",
+      "name": "Knee (Right)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "72696002",
+      "description": "The right knee joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.95065,
+              "ny": 1,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "ankle-left",
+      "name": "Ankle (Left)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "34202007",
+      "description": "The left ankle joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 0.55611,
+              "ny": 1,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "ankle-right",
+      "name": "Ankle (Right)",
+      "class_concept_slug": "joint",
+      "standard_system": "snomed",
+      "standard_code": "34202007",
+      "description": "The right ankle joint",
+      "display": {
+        "map": {
+          "markers": {
+            "man-front": {
+              "nx": 1,
+              "ny": 1,
+              "nr": 0.02794
+            }
+          }
+        }
+      }
+    },
+    {
+      "slug": "foot-left",
+      "name": "Foot (Left)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "56459004",
+      "description": "The left foot"
+    },
+    {
+      "slug": "foot-right",
+      "name": "Foot (Right)",
+      "class_concept_slug": "region",
+      "standard_system": "snomed",
+      "standard_code": "56459004",
+      "description": "The right foot"
+    },
+    {
+      "slug": "cardiovascular-system",
+      "name": "Cardiovascular System",
+      "class_concept_slug": "system",
+      "standard_system": "snomed",
+      "standard_code": "49801001",
+      "description": "The system that circulates blood through the body"
+    },
+    {
+      "slug": "respiratory-system",
+      "name": "Respiratory System",
+      "class_concept_slug": "system",
+      "standard_system": "snomed",
+      "standard_code": "422935000",
+      "description": "The system responsible for gas exchange"
+    },
+    {
+      "slug": "digestive-system",
+      "name": "Digestive System",
+      "class_concept_slug": "system",
+      "standard_system": "snomed",
+      "standard_code": "86317004",
+      "description": "The system that processes food"
+    },
+    {
+      "slug": "nervous-system",
+      "name": "Nervous System",
+      "class_concept_slug": "system",
+      "standard_system": "snomed",
+      "standard_code": "278819000",
+      "description": "The system that controls bodily functions via electrical signals"
+    },
+    {
+      "slug": "endocrine-system",
+      "name": "Endocrine System",
+      "class_concept_slug": "system",
+      "standard_system": "snomed",
+      "standard_code": "278820005",
+      "description": "The system of glands that produce hormones"
+    },
+    {
+      "slug": "urinary-system",
+      "name": "Urinary System",
+      "class_concept_slug": "system",
+      "standard_system": "snomed",
+      "standard_code": "278851008",
+      "description": "The system that produces and excretes urine"
+    },
+    {
+      "slug": "musculoskeletal-system",
+      "name": "Musculoskeletal System",
+      "class_concept_slug": "system",
+      "standard_system": "snomed",
+      "standard_code": "32849002",
+      "description": "The system of muscles and bones that provides structure and movement"
+    }
+  ]
+}

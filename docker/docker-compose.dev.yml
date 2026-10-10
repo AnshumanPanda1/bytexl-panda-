@@ -1,0 +1,329 @@
+# Health Assistant — all-in-one Docker Compose (dev / staging / single-host).
+#
+# For production use docker-compose.prod.yml instead — it has resource
+# limits, stricter defaults and the registry-image wiring.
+#
+# This file is kept for: local "docker compose up" testing of the full
+# stack, and small staging deployments where the prod hardening isn't
+# needed yet. It builds images from source (no registry needed). Flower
+# requires basic auth here too (audit H6): set FLOWER_USER / FLOWER_PASSWORD.
+
+# Explicit project name: volumes/networks get a deterministic
+# `health-assistant_*` prefix regardless of where `docker compose` runs
+# (was the compose file's dir — `docker_*`; see docker/README.md →
+# "Compose project name & volumes").
+name: health-assistant
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # PostgreSQL 16 with TimescaleDB (deployment.md datastore rule; health
+  # keeps its TimescaleDB-optional image).
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: health-assistant-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-neuronection_health}
+      # The bootstrap superuser IS the migration owner role (deployment.md:
+      # neuronection_health_owner runs migrations). init-roles.sh creates the
+      # least-privilege neuronection_health_app runtime role on first boot.
+      POSTGRES_USER: neuronection_health_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_APP_USER: neuronection_health_app
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./init-roles.sh:/docker-entrypoint-initdb.d/02-init-roles.sh:ro
+    ports:
+      # Loopback-only (audit 2026-08 CFG-M2): dev DB with a well-known password.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuronection_health_owner -d ${POSTGRES_DB:-neuronection_health}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    networks:
+      - health-assistant-network
+
+  # Redis for caching and task queue
+  redis:
+    image: redis:7-alpine
+    container_name: health-assistant-redis
+    restart: unless-stopped
+    ports:
+      # Loopback-only (audit 2026-08 CFG-M2): unauthenticated dev Redis.
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    networks:
+      - health-assistant-network
+
+  # Migrations (one-shot) — mirrors the prod/standalone `migrate` service:
+  # runs `alembic upgrade head` as the owner role (DDL) and exits; the app
+  # services below connect as the least-privilege neuronection_health_app role.
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: health-assistant-migrate
+    restart: "no"
+    environment:
+      - HA_APP_ENV=${HA_APP_ENV:-development}
+      - DEBUG=${DEBUG:-false}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-neuronection_health}
+      - POSTGRES_USER=neuronection_health_owner
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - HA_DATABASE_URL=postgresql+asyncpg://neuronection_health_owner:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-neuronection_health}
+      - REDIS_URL=redis://redis:6379
+      # Key family (identity-auth §8, plan 16 H4): unset in dev ⇒ the app
+      # generates per-process ephemeral keys (logins die on restart — pin
+      # them in .env for a stable dev stack).
+      - HA_SESSION_KEY=${HA_SESSION_KEY:-}
+      - HA_REFRESH_KEY=${HA_REFRESH_KEY:-}
+      - HA_DATA_KEY=${HA_DATA_KEY:-}
+      - HA_DATA_KEY_PREVIOUS=${HA_DATA_KEY_PREVIOUS:-}
+      - PYTHONPATH=/app/backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+    logging: *default-logging
+    networks:
+      - health-assistant-network
+
+  # Backend API
+  #
+  # Does NOT run migrations (handled by the `migrate` service above).
+  # Connects as the DML-only neuronection_health_app role.
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: health-assistant-backend
+    restart: unless-stopped
+    init: true
+    environment:
+      - HA_APP_ENV=${HA_APP_ENV:-development}
+      - DEBUG=${DEBUG:-false}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-neuronection_health}
+      - POSTGRES_USER=neuronection_health_app
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - HA_DATABASE_URL=postgresql+asyncpg://neuronection_health_app:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-neuronection_health}
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-}
+      # Key family (identity-auth §8, plan 16 H4): unset in dev ⇒ the app
+      # generates per-process ephemeral keys (logins die on restart — pin
+      # them in .env for a stable dev stack).
+      - HA_SESSION_KEY=${HA_SESSION_KEY:-}
+      - HA_REFRESH_KEY=${HA_REFRESH_KEY:-}
+      - HA_DATA_KEY=${HA_DATA_KEY:-}
+      - HA_DATA_KEY_PREVIOUS=${HA_DATA_KEY_PREVIOUS:-}
+      - OCR_PROVIDER=${OCR_PROVIDER:-openai}
+      - HA_AUTH_ACCESS_TTL_MINUTES=${HA_AUTH_ACCESS_TTL_MINUTES:-60}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@healthassistant.local}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_ADMIN_EMAIL=${VAPID_ADMIN_EMAIL:-admin@healthassistant.local}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - HA_UPLOAD_DIR=/app/uploads
+      - AI_AGENT_MAX_ITERATIONS=${AI_AGENT_MAX_ITERATIONS:-20}
+      - MCP_STDIO_ALLOWED_COMMANDS=${MCP_STDIO_ALLOWED_COMMANDS:-npx,uvx,python,python3,node}
+      - MCP_MAX_SERVERS_PER_USER=${MCP_MAX_SERVERS_PER_USER:-5}
+      - MCP_MAX_TOTAL_STDIO=${MCP_MAX_TOTAL_STDIO:-20}
+      - MCP_REQUEST_TIMEOUT=${MCP_REQUEST_TIMEOUT:-30}
+      - MCP_TOOL_RESULT_MAX_BYTES=${MCP_TOOL_RESULT_MAX_BYTES:-65536}
+      - INTEGRATION_MAX_TOOLS_PER_SESSION=${INTEGRATION_MAX_TOOLS_PER_SESSION:-20}
+      - MCP_CONNECTION_IDLE_TIMEOUT=${MCP_CONNECTION_IDLE_TIMEOUT:-900}
+      - MCP_PER_INSTANCE_CONCURRENCY=${MCP_PER_INSTANCE_CONCURRENCY:-4}
+      - MCP_ALLOW_INSECURE_HTTP=${MCP_ALLOW_INSECURE_HTTP:-false}
+      - PYTHONPATH=/app/backend:/app
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ../backend:/app/backend
+      - ../integrations:/app/integrations
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
+    command: sh -c "python scripts/create_system_admin.py --email admin@healthassistant.local --password admin123 && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    networks:
+      - health-assistant-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: health-assistant-frontend
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - VITE_BACKEND_URL=http://backend:8000
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging: *default-logging
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+    networks:
+      - health-assistant-network
+
+  # Worker (Celery) — processes background jobs (OCR, NLP, notifications, syncs)
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    container_name: health-assistant-worker
+    restart: unless-stopped
+    init: true
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-neuronection_health}
+      - POSTGRES_USER=neuronection_health_app
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - HA_DATABASE_URL=postgresql+asyncpg://neuronection_health_app:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-neuronection_health}
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-}
+      # Key family (identity-auth §8, plan 16 H4)
+      - HA_SESSION_KEY=${HA_SESSION_KEY:-}
+      - HA_REFRESH_KEY=${HA_REFRESH_KEY:-}
+      - HA_DATA_KEY=${HA_DATA_KEY:-}
+      - HA_DATA_KEY_PREVIOUS=${HA_DATA_KEY_PREVIOUS:-}
+      - OCR_PROVIDER=${OCR_PROVIDER:-openai}
+      - HA_UPLOAD_DIR=/app/uploads
+      - AI_AGENT_MAX_ITERATIONS=${AI_AGENT_MAX_ITERATIONS:-20}
+      - MCP_STDIO_ALLOWED_COMMANDS=${MCP_STDIO_ALLOWED_COMMANDS:-npx,uvx,python,python3,node}
+      - MCP_MAX_SERVERS_PER_USER=${MCP_MAX_SERVERS_PER_USER:-5}
+      - MCP_MAX_TOTAL_STDIO=${MCP_MAX_TOTAL_STDIO:-20}
+      - MCP_REQUEST_TIMEOUT=${MCP_REQUEST_TIMEOUT:-30}
+      - MCP_TOOL_RESULT_MAX_BYTES=${MCP_TOOL_RESULT_MAX_BYTES:-65536}
+      - INTEGRATION_MAX_TOOLS_PER_SESSION=${INTEGRATION_MAX_TOOLS_PER_SESSION:-20}
+      - MCP_CONNECTION_IDLE_TIMEOUT=${MCP_CONNECTION_IDLE_TIMEOUT:-900}
+      - MCP_PER_INSTANCE_CONCURRENCY=${MCP_PER_INSTANCE_CONCURRENCY:-4}
+      - MCP_ALLOW_INSECURE_HTTP=${MCP_ALLOW_INSECURE_HTTP:-false}
+      - PYTHONPATH=/app/backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -t 5 || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    networks:
+      - health-assistant-network
+
+  # Beat (Celery) — fires periodic tasks (cleanup, notifications, syncs).
+  # Without this, scheduled tasks (medication reminders, stuck-exam cleanup,
+  # auto-sync) never fire. Single instance only — do not scale.
+  beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    container_name: health-assistant-beat
+    restart: unless-stopped
+    init: true
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-neuronection_health}
+      - POSTGRES_USER=neuronection_health_app
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - HA_DATABASE_URL=postgresql+asyncpg://neuronection_health_app:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-neuronection_health}
+      - PYTHONPATH=/app/backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    logging: *default-logging
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    networks:
+      - health-assistant-network
+
+  # Flower (Celery monitoring)
+  #
+  # Auth REQUIRED here too (audit H6): Flower exposes task payloads/arguments.
+  # FLOWER_USER / FLOWER_PASSWORD come from the root .env (see .env.example).
+  flower:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    container_name: health-assistant-flower
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - PYTHONPATH=/app/backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u ${FLOWER_USER:-admin}:${FLOWER_PASSWORD} http://localhost:5555/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
+    command: >
+      celery -A app.workers.celery_app flower
+      --port=5555
+      --basic-auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:?Set FLOWER_PASSWORD in .env (see .env.example)}
+    networks:
+      - health-assistant-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:
+
+networks:
+  health-assistant-network:
+    driver: bridge

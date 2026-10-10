@@ -1,0 +1,46 @@
+import os
+
+from celery import Celery
+
+from app.core.config import settings
+from app.core.logging_setup import setup_logging
+
+# Configure logging for worker. HA_LOG_NAME lets each celery process (worker /
+# beat / flower) write to its own file via Procfile.dev; falls back to "celery".
+setup_logging(log_name=os.getenv("HA_LOG_NAME", "celery"), debug=settings.DEBUG)
+
+celery_app = Celery(
+    "health_assistant_workers",
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+    include=["app.workers.tasks", "app.workers.ai_tasks"],
+)
+
+celery_app.conf.update(
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
+    timezone="UTC",
+    enable_utc=True,
+    task_track_started=True,
+    task_time_limit=900,  # 15 minutes max per task
+    task_soft_time_limit=840,  # Warning at 14 minutes
+    beat_schedule={
+        "cleanup-stuck-extractions-every-5-minutes": {
+            "task": "app.workers.ai_tasks.cleanup_stuck_extractions",
+            "schedule": 300.0,  # 5 minutes
+        },
+        "check-notification-triggers-every-minute": {
+            "task": "app.workers.tasks.check_notification_triggers",
+            "schedule": 60.0,  # 1 minute
+        },
+        "sync-active-integrations-every-minute": {
+            "task": "app.workers.tasks.sync_active_integrations",
+            "schedule": 60.0,  # 1 minute
+        },
+        "prune-checkpoints-daily": {
+            "task": "app.workers.ai_tasks.prune_checkpoint_threads",
+            "schedule": 86400.0,  # daily — checkpoint rows grow unboundedly
+        },
+    },
+)

@@ -1,0 +1,124 @@
+dev
+mypy_report.txt
+
+# MCP / browser-debug artifacts
+.playwright-mcp/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+build/
+.gradle/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+!scripts/lib/
+!scripts/lib/**
+!frontend/src/lib/
+!frontend/src/lib/**
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.log
+
+# Environment variables
+.env
+.env.test
+.env.local
+.env.*.local
+.env.*.example
+.env.backup*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.opencode
+
+# Logs
+logs/
+logging/
+*.log
+
+# Uploads
+uploads/
+*.upload
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+
+# Docker
+
+# Celery
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat-schedule.bak
+celerybeat-schedule.dir
+celerybeat-schedule.dat
+
+# Backend
+# backend/alembic/versions/*
+
+# Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Build artifacts
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.patch
+
+# Security sensitive files
+*.pem
+*.key
+*.crt
+*.p12
+credentials.json
+secrets.json
+
+# assistant-ui dev-link state (never commit)
+.assistant-ui-dev-link.json

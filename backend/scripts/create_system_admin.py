@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""
+Create a System Administrator user for Health Assistant
+"""
+
+import asyncio
+import os
+import sys
+
+# Ensure the backend directory is in the path
+# This script is located in backend/scripts/
+current_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.dirname(current_dir)
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.exc import IntegrityError  # noqa: E402
+
+from app.core.database import DATABASE_AVAILABLE, AsyncSessionLocal, engine  # noqa: E402
+from app.core.security import get_password_hash  # noqa: E402
+from app.models.enums import Role  # noqa: E402
+from app.models.tenant_model import TenantModel  # noqa: E402
+from app.models.user_model import UserModel  # noqa: E402
+from app.utils.slug import slugify  # noqa: E402
+
+
+async def create_system_admin(
+    email: str, password: str, tenant_name: str = "System Tenant"
+) -> bool:
+    """Create system admin user and associated tenant if needed"""
+
+    if not DATABASE_AVAILABLE:
+        print("❌ Error: Database is not available")
+        print("Please check your HA_DATABASE_URL in the root .env file")
+        return False
+
+    try:
+        async with AsyncSessionLocal() as session:
+            try:
+                # 0. Init-only instance facts (identity-auth §4): an empty DB
+                # consumes HA_AUTH_MODE / HA_DEMO_MODE here (same rule as app
+                # boot / the setup wizard); post-init it is a no-op.
+                from app.core import instance_state
+
+                await instance_state.initialize()
+
+                # 1. Check if user already exists (§5: emails are lowercased
+                # on write — match the normalized form).
+                result = await session.execute(
+                    select(UserModel).where(UserModel.email == email.strip().lower())
+                )
+                existing_user = result.scalar_one_or_none()
+
+                if existing_user:
+                    if existing_user.role == Role.SYSTEM_ADMIN:
+                        print(f"⚠️  System Admin user already exists: {email}")
+                        return True
+                    else:
+                        print(f"🔄 Updating existing user {email} to SYSTEM_ADMIN role...")
+                        existing_user.role = Role.SYSTEM_ADMIN
+                        await session.commit()
+                        print(f"✅ User {email} promoted to SYSTEM_ADMIN.")
+                        return True
+
+                # 2. Check if we have any tenant, otherwise create one
+                # System admins usually belong to a top-level tenant
+                result = await session.execute(select(TenantModel).limit(1))
+                tenant = result.scalar_one_or_none()
+
+                if not tenant:
+                    print(f"🏢 Creating {tenant_name}...")
+                    slug = slugify(tenant_name, fallback="system-tenant")
+                    tenant = TenantModel(name=tenant_name, slug=slug, settings={"is_system": True})
+                    session.add(tenant)
+                    await session.flush()
+                else:
+                    print(f"🏢 Using existing tenant: {tenant.name}")
+
+                # 3. Create system admin user
+                hashed_password = get_password_hash(password)
+
+                admin_user = UserModel(
+                    email=email,
+                    password_hash=hashed_password,
+                    role=Role.SYSTEM_ADMIN,
+                    tenant_id=tenant.id,
+                    settings={"is_initial_admin": True},
+                )
+                session.add(admin_user)
+                await session.commit()
+
+                print("✅ System Admin user created successfully!")
+                print()
+                print("=" * 60)
+                print("System Admin Credentials:")
+                print("=" * 60)
+                print(f"Email:    {email}")
+                print(f"Password: {password}")
+                print("Role:     SYSTEM_ADMIN")
+                print(f"Tenant:   {tenant.name}")
+                print("=" * 60)
+                return True
+            except IntegrityError as e:
+                await session.rollback()
+                print(f"❌ Database integrity error: {e.orig}")
+                return False
+            except Exception as e:
+                await session.rollback()
+                print(f"❌ Error creating system admin: {e}")
+                import traceback
+
+                traceback.print_exc()
+                return False
+    finally:
+        if engine:
+            await engine.dispose()
+
+
+async def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Create a Health Assistant System Administrator")
+    parser.add_argument(
+        "--email", type=str, default="sysadmin@health-assistant.local", help="Admin email"
+    )
+    parser.add_argument(
+        "--password",
+        type=str,
+        default=None,
+        help="Admin password (required — no insecure default)",
+    )
+    parser.add_argument(
+        "--tenant", type=str, default="System Management", help="Tenant name if creation needed"
+    )
+
+    args = parser.parse_args()
+
+    if not args.password or len(args.password) < 10:
+        parser.error(
+            "--password is required and must be at least 10 characters "
+            "(family password policy — identity-auth §7)."
+        )
+
+    print("Health Assistant - Creating System Admin")
+    print("-" * 40)
+
+    success = await create_system_admin(args.email, args.password, args.tenant)
+    if not success:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

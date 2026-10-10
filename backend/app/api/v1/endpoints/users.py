@@ -1,0 +1,269 @@
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.security import RoleChecker, get_current_user, get_password_hash
+from app.models.enums import Role
+from app.models.user_model import UserModel
+from app.schemas.user import TokenData, UserCreate, UserResponse
+from app.services.audit_service import log_audit_action
+from app.services.user_service import (
+    create_user,
+    delete_user,
+    get_user_by_email,
+    get_user_by_id,
+    update_user,
+)
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("", response_model=list[UserResponse])
+async def list_tenant_users(
+    current_user: TokenData = Depends(RoleChecker([Role.ADMIN, Role.MANAGER])),  # noqa: B008 -- framework default idiom (FastAPI/Pydantic)
+    db: AsyncSession = Depends(get_db),
+):
+    """List all users in the current tenant"""
+    # System admins see everyone? Or just their own tenant?
+    # Let's start with tenant isolation even for admins.
+    query = select(UserModel).where(UserModel.tenant_id == current_user.tenant_id)
+
+    # If they are SYSTEM_ADMIN, maybe they want to see everyone?
+    # For now, let's keep it per-tenant as requested for "Tenant Admins".
+
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+def _user_snapshot(user) -> dict[str, Any] | None:
+    """The audit-relevant fields of a user row (§17 admin-action diffs)."""
+    if user is None:
+        return None
+    role = getattr(user, "role", None)
+    return {
+        "email": getattr(user, "email", None),
+        "role": getattr(role, "value", role),
+        "is_active": bool(getattr(user, "is_active", True)),
+        "tenant_id": str(user.tenant_id) if user.tenant_id else None,
+    }
+
+
+@router.post("", response_model=UserResponse)
+async def create_user_endpoint(
+    user_in: UserCreate,
+    current_user: TokenData = Depends(RoleChecker([Role.ADMIN, Role.SYSTEM_ADMIN])),  # noqa: B008 -- framework default idiom (FastAPI/Pydantic)
+):
+    """Create a new user within a tenant"""
+    # SYSTEM_ADMIN is bootstrap-only: a tenant ADMIN must never be able to
+    # mint a platform operator (audit 2026-08 C-2). Only an existing
+    # SYSTEM_ADMIN may create another one.
+    if user_in.role == Role.SYSTEM_ADMIN.value and (
+        current_user.role != Role.SYSTEM_ADMIN.value or user_in.tenant_id is not None
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="SYSTEM_ADMIN accounts can only be created by a SYSTEM_ADMIN.",
+        )
+
+    # Verify email doesn't exist
+    existing_user = await get_user_by_email(user_in.email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Enforce tenant isolation
+    tenant_id = user_in.tenant_id
+    if current_user.role != Role.SYSTEM_ADMIN.value or tenant_id is None:
+        # Non-system admins or system admins not providing a tenant_id
+        # default to the current user's tenant.
+        tenant_id = current_user.tenant_id
+
+    hashed_password = get_password_hash(user_in.password)
+
+    new_user = await create_user(
+        email=user_in.email,
+        password_hash=hashed_password,
+        tenant_id=tenant_id,
+        role=user_in.role,
+        full_name=user_in.full_name,
+    )
+
+    # §17: user creation is an admin action — audit it.
+    await log_audit_action(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        action="user.create",
+        resource_type="user",
+        resource_id=getattr(new_user, "id", None),
+        new_value=_user_snapshot(new_user),
+    )
+
+    return new_user
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_endpoint(
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Get current user information.
+
+    For a switched SYSTEM_ADMIN the JWT's ``tenant_id`` is the target
+    tenant, but the user row lives in the admin's original tenant. We
+    therefore look up by ``original_tenant_id`` when switched, and skip
+    the tenant filter entirely for non-switched SYSTEM_ADMIN (whose user
+    row is in their own tenant).
+    """
+    if current_user.role == Role.SYSTEM_ADMIN.value:
+        lookup_tenant = (
+            current_user.original_tenant_id if getattr(current_user, "switched", False) else None
+        )
+    else:
+        lookup_tenant = current_user.tenant_id
+
+    user = await get_user_by_id(current_user.user_id, tenant_id=lookup_tenant)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found in database")
+
+    return user
+
+
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user_endpoint(user_id: str, current_user: TokenData = Depends(get_current_user)):
+    """Get user information"""
+    # Check permissions: Either you are the user, or you are an admin/manager in the same tenant
+    # or you are a SYSTEM_ADMIN.
+
+    is_self = str(current_user.user_id) == user_id
+    is_admin = current_user.role in [
+        Role.ADMIN.value,
+        Role.MANAGER.value,
+        Role.SYSTEM_ADMIN.value,
+    ]
+
+    # Enforce tenant isolation for non-system admins
+    tenant_id = None if current_user.role == Role.SYSTEM_ADMIN.value else current_user.tenant_id
+
+    user = await get_user_by_id(user_id, tenant_id=tenant_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not is_self and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to view this user")
+
+    return user
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+async def update_user_endpoint(
+    user_id: str,
+    email: str | None = None,
+    role: str | None = None,
+    settings: dict[str, Any] | None = None,
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Update user information"""
+    from app.core import token_store
+
+    is_self = str(current_user.user_id) == user_id
+    is_admin = current_user.role in [
+        Role.ADMIN.value,
+        Role.MANAGER.value,
+        Role.SYSTEM_ADMIN.value,
+    ]
+
+    if not is_self and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to update this user")
+
+    # Enforce tenant isolation for non-system admins
+    tenant_id = None if current_user.role == Role.SYSTEM_ADMIN.value else current_user.tenant_id
+
+    # If updating role, must be a real admin (MANAGERs manage content, not
+    # accounts), and SYSTEM_ADMIN grants require a SYSTEM_ADMIN caller
+    # (audit 2026-08 C-2 — tenant ADMIN/MANAGER must not escalate).
+    if role:
+        if current_user.role not in (Role.ADMIN.value, Role.SYSTEM_ADMIN.value):
+            raise HTTPException(status_code=403, detail="Only admins can change roles")
+        if role == Role.SYSTEM_ADMIN.value and current_user.role != Role.SYSTEM_ADMIN.value:
+            raise HTTPException(
+                status_code=403,
+                detail="SYSTEM_ADMIN can only be granted by a SYSTEM_ADMIN.",
+            )
+
+    # Snapshot the pre-update state for the §17 audit diff (also gives
+    # the 404 for a missing row before any mutation is attempted).
+    before = await get_user_by_id(user_id, tenant_id=tenant_id)
+    if not before:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user = await update_user(
+        user_id,
+        email,
+        role,
+        settings,
+        tenant_id=tenant_id,
+        allow_system_admin=current_user.role == Role.SYSTEM_ADMIN.value,
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # §17: user updates are admin actions (role changes get their own
+    # action so the trail answers "who changed privileges?" directly).
+    old_snapshot = _user_snapshot(before)
+    new_snapshot = _user_snapshot(user)
+    role_changed = old_snapshot.get("role") != new_snapshot.get("role")
+    await log_audit_action(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        action="user.role_change" if role_changed else "user.update",
+        resource_type="user",
+        resource_id=user.id,
+        old_value=old_snapshot,
+        new_value=new_snapshot,
+    )
+
+    # A role change must take effect immediately: bump ``token_version``
+    # (every outstanding token fails its ``ver`` check — §8) and kill the
+    # Redis hot layer so stale privileged claims cannot outlive the change
+    # (audit 2026-08 H2). The demoted user simply re-logs-in.
+    if role and str(user.id) != str(current_user.user_id):
+        from app.services.user_service import bump_token_version
+
+        await bump_token_version(str(user.id))
+        await token_store.revoke_everything(str(user.id))
+
+    return user
+
+
+@router.delete("/{user_id}")
+async def delete_user_endpoint(
+    user_id: str,
+    current_user: TokenData = Depends(RoleChecker([Role.ADMIN, Role.SYSTEM_ADMIN])),  # noqa: B008 -- framework default idiom (FastAPI/Pydantic)
+):
+    """Delete user"""
+    from app.core import token_store
+
+    # Enforce tenant isolation for non-system admins
+    tenant_id = None if current_user.role == Role.SYSTEM_ADMIN.value else current_user.tenant_id
+
+    # Snapshot for the §17 audit trail before the row disappears.
+    before = await get_user_by_id(user_id, tenant_id=tenant_id)
+
+    success = await delete_user(user_id, tenant_id=tenant_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await log_audit_action(
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.user_id,
+        action="user.delete",
+        resource_type="user",
+        resource_id=user_id,
+        old_value=_user_snapshot(before),
+    )
+
+    # Deleted users must lose access at once — not when their tokens
+    # happen to expire (audit 2026-08 H2).
+    await token_store.revoke_everything(user_id)
+    return {"message": "User deleted successfully"}

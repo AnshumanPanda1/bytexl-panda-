@@ -1,0 +1,477 @@
+import api from './axios';
+
+export interface AIProvider {
+  id: string;
+  name: string;
+  scope: 'SYSTEM' | 'TENANT' | 'USER';
+  provider_type: string;
+  api_base: string;
+  /** Masked form (***<last4>) in every API response; never the real key. */
+  api_key?: string;
+  /** True when a key is configured (the stored key itself is write-only). */
+  has_api_key?: boolean;
+  is_active: boolean;
+  settings?: Record<string, any>;
+  is_local?: boolean;
+  company_name?: string | null;
+  company_website?: string | null;
+  company_country?: string | null;
+  /** §15 stamp: the preset this row was created/re-setup from (null = manual). */
+  preset_key?: string | null;
+  tenant_id?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Modalities a model supports (its "features"). Mirrors the backend
+ *  AIModelCapability enum (§15 family vocabulary). ``text`` is the
+ *  baseline (every model). */
+export type AIModelCapability =
+  | 'text'
+  | 'vision'
+  | 'tools'
+  | 'stt'
+  | 'tts'
+  | 'embeddings';
+
+export const ALL_MODEL_CAPABILITIES: AIModelCapability[] = [
+  'text',
+  'vision',
+  'tools',
+  'stt',
+  'tts',
+  'embeddings',
+];
+
+export interface AIModel {
+  id: string;
+  provider_id: string;
+  provider_name?: string;
+  name: string;
+  model_name: string;
+  description?: string | null;
+  /** Capability set this model advertises (§15 family vocabulary). */
+  capabilities?: AIModelCapability[];
+  is_active: boolean;
+  /** Null = cleared in settings; the runtime then uses the LLM's default. */
+  max_tokens: number | null;
+  temperature: number | null;
+  is_local?: boolean;
+  settings?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AITaskAssignment {
+  id: string;
+  task_type: string;
+  scope: 'SYSTEM' | 'TENANT' | 'USER';
+  provider_id?: string;
+  provider_name?: string;
+  model_id?: string;
+  model_name?: string;
+  is_active: boolean;
+  priority: number;
+  tenant_id?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AIProviderCreate {
+  name: string;
+  scope?: 'SYSTEM' | 'TENANT' | 'USER';
+  provider_type: string;
+  api_base: string;
+  api_key?: string;
+  is_active?: boolean;
+  is_local?: boolean;
+  company_name?: string | null;
+  company_website?: string | null;
+  company_country?: string | null;
+  settings?: Record<string, any>;
+  tenant_id?: string;
+  user_id?: string;
+}
+
+export interface AIModelCreate {
+  provider_id: string;
+  name: string;
+  model_name: string;
+  description?: string | null;
+  capabilities?: AIModelCapability[];
+  is_active?: boolean;
+  max_tokens?: number | null;
+  temperature?: number | null;
+  is_local?: boolean;
+  settings?: Record<string, any>;
+}
+
+export interface AITaskAssignmentCreate {
+  task_type: string;
+  scope?: 'SYSTEM' | 'TENANT' | 'USER';
+  provider_id?: string;
+  model_id?: string;
+  is_active?: boolean;
+  priority?: number;
+  tenant_id?: string;
+  user_id?: string;
+}
+
+/** A resolved task-type → provider+model assignment (config summary entry). */
+export interface TaskAssignment {
+  task_type: string;
+  provider?: AIProvider;
+  model?: AIModel;
+  assignment_id?: string;
+}
+
+// ---------------------------------------------------------------------------
+// BYOK one-click setup (§15)
+// ---------------------------------------------------------------------------
+
+/** One enabled setup preset (§15 canonical data, health overlay applied). */
+export interface ProviderPreset {
+  key: string;
+  name: string;
+  provider_type: string;
+  wire_type: string;
+  base_url: string;
+  fixed_base: boolean;
+  local: boolean;
+  key_url?: string | null;
+  preferred_model?: { id: string; name: string; caps: string[] } | null;
+  curated_models?: string[] | null;
+  stt_model?: string | null;
+  steps?: string[] | null;
+  free_tier_note?: string | null;
+}
+
+export interface ProviderPresets {
+  order: string[];
+  presets: Record<string, ProviderPreset>;
+  /** Registry-native presets health does not offer yet, with reasons. */
+  disabled: Record<string, string>;
+}
+
+export interface ProviderSetupOptionsBody {
+  curated_ids?: string[];
+  bind_chat?: boolean;
+  bind_vision?: boolean;
+  bind_stt?: boolean;
+}
+
+export interface ProviderSetupResult {
+  provider: AIProvider;
+  catalog_count: number;
+  curated_missed: boolean;
+  assigned_chat_model?: string | null;
+  assigned_vision_model?: string | null;
+  assigned_stt_model?: string | null;
+}
+
+/** §15 error enum + mis-paste hint, served by the setup endpoint on 422. */
+export interface ProviderSetupErrorDetail {
+  code: string;
+  suspected_vendor?: string | null;
+  message?: string;
+}
+
+export interface AIConfigSummary {
+  providers: AIProvider[];
+  models: AIModel[];
+  task_assignments: AITaskAssignment[];
+  default?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  ocr?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  nlp?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  medication_interaction?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  anomaly_detection?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  fill_biomarker_form?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  fill_medication_form?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  magic_fill_examination?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  define_biomarker?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  define_medication?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  suggest_category_icon?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  generate_category_icon?: {
+    task_type: string;
+    provider?: AIProvider;
+    model?: AIModel;
+    assignment_id?: string;
+  };
+  chat?: TaskAssignment;
+  transcription?: TaskAssignment;
+  workflows?: Record<string, TaskAssignment[]>;
+  ai_agent_max_iterations: number;
+}
+
+// Provider endpoints
+export const aiConfigApi = {
+  // Settings
+  updateAISettings: async (
+    data: { ai_agent_max_iterations?: number },
+    tenant_id?: string,
+    user_id?: string,
+    scope: string = 'TENANT'
+  ): Promise<void> => {
+    const params = new URLSearchParams();
+    if (tenant_id) params.append('tenant_id', tenant_id);
+    if (user_id) params.append('user_id', user_id);
+    params.append('scope', scope);
+    
+    await api.put(`/ai-config/settings?${params}`, data);
+  },
+
+  // Providers
+  createProvider: async (data: AIProviderCreate): Promise<AIProvider> => {
+    const response = await api.post('/ai-config/providers', data);
+    return response.data;
+  },
+
+  getProviders: async (
+    tenant_id?: string,
+    user_id?: string,
+    is_active?: boolean,
+    include_models?: boolean,
+    scope?: string
+  ): Promise<AIProvider[]> => {
+    const params = new URLSearchParams();
+    if (tenant_id) params.append('tenant_id', tenant_id);
+    if (user_id) params.append('user_id', user_id);
+    if (is_active !== undefined) params.append('is_active', String(is_active));
+    if (include_models) params.append('include_models', String(include_models));
+    if (scope) params.append('scope', scope);
+    
+    const response = await api.get(`/ai-config/providers?${params}`);
+    return response.data;
+  },
+
+  getProvider: async (provider_id: string): Promise<AIProvider> => {
+    const response = await api.get(`/ai-config/providers/${provider_id}`);
+    return response.data;
+  },
+
+  getProviderWithModels: async (provider_id: string): Promise<AIProvider & { models: AIModel[] }> => {
+    const response = await api.get(`/ai-config/providers/${provider_id}/with-models`);
+    return response.data;
+  },
+
+  updateProvider: async (provider_id: string, data: Partial<AIProviderCreate>): Promise<AIProvider> => {
+    const response = await api.put(`/ai-config/providers/${provider_id}`, data);
+    return response.data;
+  },
+
+  deleteProvider: async (provider_id: string): Promise<void> => {
+    await api.delete(`/ai-config/providers/${provider_id}`);
+  },
+
+  fetchExternalModels: async (provider_id: string): Promise<any[]> => {
+    const response = await api.get(`/ai-config/providers/${provider_id}/fetch-external-models`);
+    return response.data;
+  },
+
+  // Models
+  createModel: async (provider_id: string, data: AIModelCreate): Promise<AIModel> => {
+    const response = await api.post(`/ai-config/providers/${provider_id}/models`, data);
+    return response.data;
+  },
+
+  getModelsForProvider: async (provider_id: string, is_active?: boolean): Promise<AIModel[]> => {
+    const params = new URLSearchParams();
+    if (is_active !== undefined) params.append('is_active', String(is_active));
+    
+    const response = await api.get(`/ai-config/providers/${provider_id}/models?${params}`);
+    return response.data;
+  },
+
+  getModel: async (model_id: string): Promise<AIModel> => {
+    const response = await api.get(`/ai-config/models/${model_id}`);
+    return response.data;
+  },
+
+  updateModel: async (model_id: string, data: Partial<AIModelCreate>): Promise<AIModel> => {
+    const response = await api.put(`/ai-config/models/${model_id}`, data);
+    return response.data;
+  },
+
+  deleteModel: async (model_id: string): Promise<void> => {
+    await api.delete(`/ai-config/models/${model_id}`);
+  },
+
+  // Task Assignments
+  createTaskAssignment: async (data: AITaskAssignmentCreate): Promise<AITaskAssignment> => {
+    const response = await api.post('/ai-config/task-assignments', data);
+    return response.data;
+  },
+
+  getTaskAssignments: async (
+    tenant_id?: string,
+    user_id?: string,
+    task_type?: string,
+    is_active?: boolean,
+    scope?: string
+  ): Promise<AITaskAssignment[]> => {
+    const params = new URLSearchParams();
+    if (tenant_id) params.append('tenant_id', tenant_id);
+    if (user_id) params.append('user_id', user_id);
+    if (task_type) params.append('task_type', task_type);
+    if (is_active !== undefined) params.append('is_active', String(is_active));
+    if (scope) params.append('scope', scope);
+    
+    const response = await api.get(`/ai-config/task-assignments?${params}`);
+    return response.data;
+  },
+
+  getTaskAssignment: async (assignment_id: string): Promise<AITaskAssignment> => {
+    const response = await api.get(`/ai-config/task-assignments/${assignment_id}`);
+    return response.data;
+  },
+
+  updateTaskAssignment: async (
+    assignment_id: string,
+    data: Partial<AITaskAssignmentCreate>
+  ): Promise<AITaskAssignment> => {
+    const response = await api.put(`/ai-config/task-assignments/${assignment_id}`, data);
+    return response.data;
+  },
+
+  deleteTaskAssignment: async (assignment_id: string): Promise<void> => {
+    await api.delete(`/ai-config/task-assignments/${assignment_id}`);
+  },
+
+  getActiveTaskAssignment: async (task_type: string, tenant_id?: string, user_id?: string): Promise<AITaskAssignment> => {
+    const params = new URLSearchParams();
+    if (tenant_id) params.append('tenant_id', tenant_id);
+    if (user_id) params.append('user_id', user_id);
+    
+    const response = await api.get(`/ai-config/task-assignments/active/${task_type}?${params}`);
+    return response.data;
+  },
+
+  // Summary
+  getConfigSummary: async (tenant_id?: string, user_id?: string, scope?: string): Promise<AIConfigSummary> => {
+    const params = new URLSearchParams();
+    if (tenant_id) params.append('tenant_id', tenant_id);
+    if (user_id) params.append('user_id', user_id);
+    if (scope) params.append('scope', scope);
+    
+    const response = await api.get(`/ai-config/summary?${params}`);
+    return response.data;
+  },
+
+  getDefaultForTask: async (task_type: string, tenant_id?: string, user_id?: string): Promise<{
+    provider: AIProvider;
+    model?: AIModel;
+  }> => {
+    const params = new URLSearchParams();
+    if (tenant_id) params.append('tenant_id', tenant_id);
+    if (user_id) params.append('user_id', user_id);
+
+    const response = await api.get(`/ai-config/default-for-task/${task_type}?${params}`);
+    return response.data;
+  },
+
+  // BYOK one-click setup (§15)
+  listProviderPresets: async (): Promise<ProviderPresets> => {
+    const response = await api.get('/ai-config/provider-presets');
+    return response.data;
+  },
+
+  setupProviderPreset: async (
+    preset_key: string,
+    body: {
+      api_key?: string | null;
+      name?: string | null;
+      scope?: 'SYSTEM' | 'TENANT' | 'USER';
+      options?: ProviderSetupOptionsBody;
+    }
+  ): Promise<ProviderSetupResult> => {
+    const response = await api.post(`/ai-config/providers/${preset_key}/setup`, body);
+    return response.data;
+  },
+
+  setProviderDefault: async (
+    provider_id: string,
+    body: { model_name: string; task?: string }
+  ): Promise<{ task: string; model: AIModel }> => {
+    const response = await api.put(`/ai-config/providers/${provider_id}/set-default`, body);
+    return response.data;
+  },
+};
+
+/** Extract the §15 error detail from an axios error (null = not a classified
+ *  setup failure — surface err.message instead). */
+export function setupErrorDetail(err: unknown): ProviderSetupErrorDetail | null {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data
+    ?.detail;
+  if (
+    detail !== null &&
+    typeof detail === 'object' &&
+    !Array.isArray(detail) &&
+    typeof (detail as { code?: unknown }).code === 'string'
+  ) {
+    const record = detail as ProviderSetupErrorDetail;
+    return {
+      code: record.code,
+      suspected_vendor:
+        typeof record.suspected_vendor === 'string' ? record.suspected_vendor : null,
+      message: typeof record.message === 'string' ? record.message : '',
+    };
+  }
+  return null;
+}

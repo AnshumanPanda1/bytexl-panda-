@@ -1,0 +1,120 @@
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from app.ai.processors.nlp.langchain_structured import LangChainStructuredExtractor
+from app.ai.schemas.nlp import (
+    DocumentEntitiesExtract,
+    NewBiomarkerDefinitions,
+    NewMedicationDefinitions,
+)
+
+
+@pytest.fixture
+def mock_llm():
+    # The extractor receives its chat model injected (ADR-0008) — tests hand
+    # it a mock instead of patching a chat-class constructor.
+    return MagicMock()
+
+
+@pytest.mark.asyncio
+async def test_parse_document_pass_1(mock_llm):
+    extractor = LangChainStructuredExtractor(llm=mock_llm)
+
+    # Mock the response from LLM
+    mock_parsed_response = MagicMock(spec=DocumentEntitiesExtract)
+    mock_parsed_response.document_category = "Laboratory Tests"
+    mock_parsed_response.patient_info = MagicMock(name="John Doe")
+    mock_parsed_response.known_biomarkers = []
+    mock_parsed_response.unknown_biomarkers = []
+    mock_parsed_response.known_medications = []
+    mock_parsed_response.unknown_medications = []
+    mock_parsed_response.diagnoses = []
+    mock_parsed_response.impressions = ""
+
+    # Mock the chain execution
+    mock_ainvoke = AsyncMock(return_value=mock_parsed_response)
+    mock_llm.with_structured_output.return_value = mock_ainvoke
+
+    result = await extractor.parse_document_pass_1(
+        "Test doc",
+        [{"slug": "glucose", "name": "Glucose"}],
+        [{"id": "aspirin", "name": "Aspirin"}],
+    )
+
+    assert result == mock_parsed_response
+
+
+@pytest.mark.asyncio
+async def test_parse_document_pass_2_biomarkers(mock_llm):
+    extractor = LangChainStructuredExtractor(llm=mock_llm)
+
+    # Mock the response from LLM
+    mock_parsed_response = MagicMock(spec=NewBiomarkerDefinitions)
+    mock_parsed_response.definitions = []
+
+    # Mock the chain execution
+    mock_ainvoke = AsyncMock(return_value=mock_parsed_response)
+    mock_llm.with_structured_output.return_value = mock_ainvoke
+
+    # Mock an unknown biomarker
+    unknown_bio = MagicMock()
+    unknown_bio.raw_name = "New Test"
+    unknown_bio.unit_symbol = "mg/L"
+    unknown_bio.reference_range_min = None
+    unknown_bio.reference_range_max = None
+
+    result = await extractor.parse_document_pass_2_biomarkers([unknown_bio])
+
+    assert result == mock_parsed_response
+
+
+@pytest.mark.asyncio
+async def test_parse_document_pass_2_medications(mock_llm):
+    extractor = LangChainStructuredExtractor(llm=mock_llm)
+
+    # Mock the response from LLM
+    mock_parsed_response = MagicMock(spec=NewMedicationDefinitions)
+    mock_parsed_response.definitions = []
+
+    # Mock the chain execution
+    mock_ainvoke = AsyncMock(return_value=mock_parsed_response)
+    mock_llm.with_structured_output.return_value = mock_ainvoke
+
+    # Mock an unknown medication
+    unknown_med = MagicMock()
+    unknown_med.raw_name = "New Med"
+
+    result = await extractor.parse_document_pass_2_medications([unknown_med])
+
+    assert result == mock_parsed_response
+
+
+@pytest.mark.asyncio
+async def test_map_external_metrics(mock_llm):
+    from app.ai.schemas.nlp import (
+        MappedMetric,
+        MapResponsePayload,
+        MetricMappingRequest,
+    )
+
+    extractor = LangChainStructuredExtractor(llm=mock_llm)
+
+    mock_parsed_response = MagicMock(spec=MapResponsePayload)
+    mock_parsed_response.mappings = [
+        MappedMetric(
+            original_name="Νάτριο",
+            action="map_to_existing",
+            existing_biomarker_id="123e4567-e89b-12d3-a456-426614174000",
+            new_biomarker_coding_system="loinc",
+        )
+    ]
+
+    # Mock the chain execution
+    mock_ainvoke = AsyncMock(return_value=mock_parsed_response)
+    mock_llm.with_structured_output.return_value = mock_ainvoke
+
+    metrics = [MetricMappingRequest(name="Νάτριο", code="")]
+    result = await extractor.map_external_metrics(metrics, "existing_catalog_str")
+
+    assert result == mock_parsed_response

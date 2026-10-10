@@ -1,0 +1,238 @@
+"""Tests for the consolidated schema baseline + its follow-up chain.
+
+Verifies:
+- There is exactly ONE root baseline migration (``down_revision is None``);
+  additional incremental follow-up migrations are allowed on top of it.
+- The baseline creates the full expected table set (derived from the ORM
+  metadata so it cannot drift).
+- Installs the required extensions.
+- Leaves the post-consolidation invariants: unified concept tables present,
+  the legacy scattered category tables gone.
+"""
+
+import glob
+import importlib.util
+import re
+from pathlib import Path
+
+import pytest
+from sqlalchemy import create_engine, text
+
+import app.models  # noqa: F401  (registers every model on Base.metadata)
+from app.core.config import settings
+from app.models.base import Base
+
+VERSIONS_DIR = Path(__file__).resolve().parents[1] / "alembic" / "versions"
+
+
+def _migration_files():
+    return sorted(p for p in glob.glob(str(VERSIONS_DIR / "*.py")) if not p.endswith("__init__.py"))
+
+
+def _load_migration_module(revision_attr: str = "down_revision", want=None):
+    """Load a migration module by an attribute value. By default loads the
+    baseline (the unique migration whose ``down_revision is None``)."""
+    files = _migration_files()
+    baseline = None
+    for path in files:
+        spec = importlib.util.spec_from_file_location(Path(path).stem, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if getattr(mod, revision_attr, object()) is want:
+            baseline = (mod, Path(path))
+            break
+    assert baseline is not None, f"no baseline migration (down_revision is None) found in {files}"
+    return baseline
+
+
+def test_there_is_exactly_one_root_baseline():
+    """The chain must have exactly one root baseline (down_revision is None).
+    Incremental follow-up migrations on top of it are fine."""
+    roots = []
+    for path in _migration_files():
+        spec = importlib.util.spec_from_file_location(Path(path).stem, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if mod.down_revision is None:
+            roots.append(path)
+    assert len(roots) == 1, f"expected exactly one root baseline migration, found {roots}"
+
+
+def test_revision_identifiers():
+    mod, _ = _load_migration_module()
+    assert mod.down_revision is None, (
+        "the consolidated baseline must be the root (down_revision=None)"
+    )
+
+
+#: Tables registered on the ORM metadata today that are intentionally NOT in
+#: the consolidated baseline — they were added by a follow-up migration after
+#: the squash. Each entry documents the migration that introduced the table so
+#: the exception is auditable.
+POST_BASELINE_TABLES: dict[str, str] = {
+    # Workstream G.1 of the integrations follow-ups pass
+    # (plan: dev/plans/integrations-sdk-followups-2026-07-21.md).
+    "integration_proposals": "g1h2i3t4l5pr_add_integration_proposals",
+    # OAuth2 client registry for the FHIR facade (api access layers plan).
+    # (plan: dev/plans/api-access-layers-2026-07-23.md).
+    "oauth_clients": "o1a2u3t4h5n6_create_oauth_clients",
+    # Native (mobile) push target registry — Phase 8 of the bridge SDK
+    # enhancement plan. Created with raw SQL (``CREATE TABLE IF NOT EXISTS``)
+    # rather than ``op.create_table``.
+    # (plan: dev/plans/bridge-sdk-integrations-enhancement-2026-08-12.md).
+    "mobile_push_targets": "m1o2b3i4l5e6_add_mobile_push_targets",
+    # Family identity contract alignment (identity-auth §5; plan 16 H1).
+    "auth_sessions": "h1c2o3n4t5r6_identity_contract_alignment",
+    "instance_settings": "h1c2o3n4t5r6_identity_contract_alignment",
+    # Audit-stream rename to the family contract name (identity-auth
+    # §5/§17; plan 16 H2) — created by the baseline as ``audit_logs``,
+    # renamed (plus the ``outcome`` column) by this follow-up.
+    "audit_events": "a1u2d3i4t5e6_rename_audit_logs_to_audit_events",
+}
+
+
+@pytest.mark.parametrize("table", sorted(Base.metadata.tables))
+def test_every_model_table_is_created_by_the_baseline(table):
+    """The baseline must define every table registered on the ORM metadata,
+    unless the table is in :data:`POST_BASELINE_TABLES` (added by a named
+    follow-up migration)."""
+    if table in POST_BASELINE_TABLES:
+        migration = POST_BASELINE_TABLES[table]
+        # Sanity-check: the named migration actually exists + creates the
+        # table. Catches the allowlist getting out of sync with reality.
+        migration_path = VERSIONS_DIR / f"{migration}.py"
+        assert migration_path.exists(), (
+            f"POST_BASELINE_TABLES lists {table!r} as added by "
+            f"{migration!r}, but {migration_path.name} doesn't exist"
+        )
+        migration_src = migration_path.read_text()
+        # Most follow-up migrations use ``op.create_table``; a few create the
+        # table via raw SQL (``CREATE TABLE IF NOT EXISTS``); a rename
+        # migration brings the table under its current name via
+        # ``op.rename_table`` (e.g. audit_logs → audit_events, H2). Accept
+        # any of the three. The table name may be single- or double-quoted
+        # and may sit on the line after the opening paren
+        # (black-formatted migrations).
+        created = (
+            bool(
+                re.search(
+                    rf"op\.create_table\(\s*['\"]{re.escape(table)}['\"]",
+                    migration_src,
+                )
+            )
+            or f"CREATE TABLE IF NOT EXISTS {table}" in migration_src
+            or bool(
+                re.search(
+                    rf"op\.rename_table\(\s*['\"][^'\"]+['\"]\s*,\s*['\"]{re.escape(table)}['\"]",
+                    migration_src,
+                )
+            )
+        )
+        assert created, (
+            f"POST_BASELINE_TABLES lists {table!r} as added by "
+            f"{migration_path.name}, but that migration doesn't create it"
+        )
+        return  # exception honored
+
+    _mod, path = _load_migration_module()
+    src = path.read_text()
+    assert re.search(rf"op\.create_table\(\s*['\"]{re.escape(table)}['\"]", src), (
+        f"Table '{table}' is missing from the consolidated baseline"
+    )
+
+
+def test_concept_tables_exist():
+    """The unified concept tables exist after migration."""
+    sync_url = settings.HA_DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    engine = create_engine(sync_url)
+    try:
+        with engine.connect() as conn:
+            for table in ("concepts", "concept_edges", "concept_kind_tags"):
+                result = conn.execute(
+                    text("SELECT count(*) FROM information_schema.tables WHERE table_name = :t"),
+                    {"t": table},
+                ).scalar()
+                assert result == 1, f"Table '{table}' does not exist"
+    finally:
+        engine.dispose()
+
+
+def test_old_category_tables_dropped():
+    """The legacy scattered category tables must not exist."""
+    sync_url = settings.HA_DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    engine = create_engine(sync_url)
+    try:
+        with engine.connect() as conn:
+            for table in (
+                "examination_categories",
+                "clinical_event_categories",
+                "biomarker_groups",
+                "biomarker_group_members",
+                "biomarker_relationships",
+                "biomarker_event_correlations",
+                "body_parts",
+            ):
+                result = conn.execute(
+                    text("SELECT count(*) FROM information_schema.tables WHERE table_name = :t"),
+                    {"t": table},
+                ).scalar()
+                assert result == 0, f"Old table '{table}' should not exist"
+    finally:
+        engine.dispose()
+
+
+def test_extensions_installed():
+    """pgcrypto, pg_trgm, and timescaledb must be installed."""
+    sync_url = settings.HA_DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    engine = create_engine(sync_url)
+    try:
+        with engine.connect() as conn:
+            for ext in ("pgcrypto", "pg_trgm", "timescaledb"):
+                result = conn.execute(
+                    text("SELECT 1 FROM pg_extension WHERE extname = :ext"),
+                    {"ext": ext},
+                ).scalar()
+                assert result == 1, f"extension {ext} not installed"
+    finally:
+        engine.dispose()
+
+
+def test_pg_enum_types_carry_every_python_enum_value():
+    """Every value of every PG-backed Python enum must exist as a label on the
+    matching Postgres enum type (the consolidated baseline creates them inline
+    via ``sa.Enum(...)`` during table creation)."""
+    from app.models import enums
+
+    sync_url = settings.HA_DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    engine = create_engine(sync_url)
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    "SELECT t.typname, e.enumlabel "
+                    "FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid"
+                )
+            ).all()
+            pg_values: dict[str, set[str]] = {}
+            for typname, label in rows:
+                pg_values.setdefault(typname, set()).add(label)
+    finally:
+        engine.dispose()
+
+    # (pg_type_name, python_enum_class). Comparison is case-insensitive: some
+    # enums (e.g. CodingSystem) deliberately store uppercase labels in Postgres
+    # while their Python .value is lowercase -- a pre-existing quirk unrelated
+    # to whether the baseline created the type.
+    checks = [
+        ("medicationstatus", enums.MedicationStatus),
+        ("gender", enums.Gender),
+        ("role", enums.Role),
+        ("codingsystem", enums.CodingSystem),
+        ("quantitytype", enums.QuantityType),
+    ]
+    for pg_name, py_enum in checks:
+        python_values = {v.value.lower() for v in py_enum}
+        pg_labels = {lab.lower() for lab in pg_values.get(pg_name, set())}
+        assert python_values <= pg_labels, (
+            f"{pg_name}: PG missing values {python_values - pg_labels}"
+        )

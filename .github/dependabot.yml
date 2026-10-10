@@ -1,0 +1,142 @@
+version: 2
+updates:
+  # Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+    groups:
+      # Families (langchain*, pydantic*, langgraph*) must bump together in one
+      # resolved PR — separate PRs produced two ResolutionImpossible CI breaks
+      python-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # uuid-utils 1.0 violates langchain-core/langsmith pins (<1.0); revisit when they relax
+      - dependency-name: "uuid-utils"
+        versions: [">=1"]
+      # langchain-openai caps openai<3.0.0 (ADR-0008: LangChain-only model access)
+      - dependency-name: "openai"
+        versions: [">=3"]
+      # langgraph-sdk caps websockets<17; pinned to max-compatible 16.x
+      - dependency-name: "websockets"
+        versions: [">=17"]
+      # transformers 5 is a major; the embeddings path needs a dedicated validation pass first
+      - dependency-name: "transformers"
+        versions: [">=5"]
+      # torch is versioned deliberately (CUDA/CPU pipeline handling)
+      - dependency-name: "torch"
+        versions: [">=2.2"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      # Keep @types/node on the Node 24 LTS line (matches runtime; see Dockerfile/CI)
+      - dependency-name: "@types/node"
+        versions: [">=25"]
+      # Hold TypeScript on 5.x: @typescript-eslint crashes on TS 7 ("reading 'Intrinsic'")
+      - dependency-name: "typescript"
+        versions: [">=6"]
+      # React 19 is a deliberate migration (react + react-dom + @types together,
+      # coordinated with @neuronection/assistant-ui peers) — not a Dependabot bump
+      - dependency-name: "react"
+        versions: [">=19"]
+      - dependency-name: "react-dom"
+        versions: [">=19"]
+      - dependency-name: "@types/react"
+        versions: [">=19"]
+      - dependency-name: "@types/react-dom"
+        versions: [">=19"]
+      # eslint 9+ requires flat-config migration (.eslintrc.json in use)
+      - dependency-name: "eslint"
+        versions: [">=9"]
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+
+  # Integrations TS SDK npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/integrations/health_assistant_bridge/ts-sdk"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      # Keep @types/node on the Node 24 LTS line (matches runtime; see Dockerfile/CI)
+      - dependency-name: "@types/node"
+        versions: [">=25"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"

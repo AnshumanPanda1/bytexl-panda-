@@ -1,0 +1,1801 @@
+# ruff: noqa: B008,B904,E501,SIM102 -- long immutable strings; reflow when touched
+import contextlib
+import datetime
+import hashlib
+import logging
+import os
+import secrets as _py_secrets
+from typing import Any
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
+from integrations.sdk.auth import OAuthStateStore
+from integrations.sdk.exceptions import IntegrationAuthError, IntegrationDataError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.integration_registry import integration_registry
+from app.core.rate_limit import rate_limit, rate_limit_integration
+from app.core.redis import redis_client
+from app.core.security import get_current_user
+from app.models.enums import IntegrationStatus
+from app.models.fhir.patient import Patient
+from app.models.user_integration import UserIntegration
+from app.schemas.user import TokenData
+from app.services.system_integration_service import (
+    get_disabled_domains,
+    is_domain_disabled,
+)
+
+logger = logging.getLogger(__name__)
+
+# Machine-route request body cap (audit 2026-08 M4). The tokenless webhook +
+# api-proxy routes previously read unbounded bodies into RAM; 25 MiB matches
+# the bridge's post-decode document cap (its base64 inflates ~1.37x, so the
+# JSON body of a max document is ~34 MiB — allow headroom).
+_MACHINE_BODY_CAP_BYTES = 40 * 1024 * 1024
+
+
+def _provider_overrides(provider: Any, hook: str) -> bool:
+    """True when the provider class actually implements ``hook`` (vs the
+    SDK base's safe default)."""
+    from integrations.base import BaseHealthProvider as _CoreBase
+    from integrations.sdk.base import BaseHealthProvider as _SdkBase
+
+    fn = getattr(type(provider), hook, None)
+    if fn is None:
+        return False
+    return fn is not getattr(_SdkBase, hook, None) and fn is not getattr(_CoreBase, hook, None)
+
+
+def _generate_integration_secret() -> str:
+    """A high-entropy per-instance machine secret (audit 2026-08 H1/H2)."""
+    return _py_secrets.token_urlsafe(32)
+
+
+async def _check_machine_body_cap(request: Request) -> bytes:
+    """Read the request body with a hard cap (413 beyond it)."""
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit():
+        if int(content_length) > _MACHINE_BODY_CAP_BYTES:
+            raise HTTPException(status_code=413, detail="Request body too large")
+    raw = await request.body()
+    if len(raw) > _MACHINE_BODY_CAP_BYTES:
+        raise HTTPException(status_code=413, detail="Request body too large")
+    return raw
+
+
+async def _is_recent_replay(scope: str, key_material: bytes) -> bool:
+    """Redis GETDEL-style replay guard for bare-MAC webhook deliveries.
+
+    Records a fingerprint of (signature, body) for 10 minutes; a second
+    identical delivery within the window is rejected. Best-effort: a Redis
+    outage degrades to accept (availability) — the canonical timestamped
+    scheme remains the strong protection.
+    """
+    fingerprint = hashlib.sha256(key_material).hexdigest()
+    key = f"replay:{scope}:{fingerprint}"
+    try:
+        acquired = await redis_client.set(key, "1", nx=True, ex=600)
+        return acquired is None or acquired is False
+    except Exception as e:
+        logger.warning("Replay guard unavailable (allowing): %s", e)
+        return False
+
+
+router = APIRouter()
+
+
+def _frontend_origin() -> str:
+    """The SPA origin for OAuth callback redirects. Defaults to dev port 3000."""
+    return os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+
+
+@router.get("/available", response_model=list[dict[str, Any]])
+async def list_available_integrations(
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    List all available integrations discovered in the system.
+
+    Integrations are enabled by default; only domains a SYSTEM_ADMIN has
+    explicitly disabled are hidden. Requires an authenticated user (any role).
+    """
+    manifests = integration_registry.get_all_manifests()
+    disabled_domains = await get_disabled_domains(db)
+
+    return [m for m in manifests if m.get("domain") not in disabled_domains]
+
+
+@router.get("/active", response_model=list[dict[str, Any]])
+async def list_active_integrations(
+    patient_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    List active integrations for the current patient context.
+    """
+    stmt = select(UserIntegration).where(
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+    )
+    result = await db.execute(stmt)
+    integrations = result.scalars().all()
+
+    return [
+        {
+            "id": str(i.id),
+            "domain": i.provider,
+            "instance_name": i.instance_name,
+            "status": i.status.value,
+            "last_synced_at": i.last_synced_at,
+        }
+        for i in integrations
+    ]
+
+
+@router.get("/{domain}/documentation")
+async def get_integration_documentation(
+    domain: str,
+    file: str | None = None,
+    current_user: TokenData = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Get the markdown documentation for an integration if it exists.
+
+    Requires an authenticated user (any role). Path traversal is mitigated
+    via ``os.path.basename``.
+    """
+    import json
+    import os
+
+    from app.core.integration_registry import integration_registry
+
+    # We don't check if it's enabled here, so users can read docs before enabling.
+    # We do check if the domain is known to the registry (discovered).
+    manifests = integration_registry.get_all_manifests()
+    if not any(m.get("domain") == domain for m in manifests):
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    base_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "integrations",
+            domain,
+        )
+    )
+
+    # 1. Check for structured docs (docs-tree.json)
+    docs_tree_path = os.path.join(base_path, "docs", "docs-tree.json")
+    if os.path.exists(docs_tree_path):
+        try:
+            with open(docs_tree_path) as f:
+                tree = json.load(f)
+
+            target_file = file
+            if not target_file:
+                for category in tree:
+                    if category.get("items") and len(category["items"]) > 0:
+                        target_file = category["items"][0].get("file")
+                        break
+
+            markdown_content = ""
+            if target_file:
+                # Prevent directory traversal attacks
+                target_file = os.path.basename(target_file)
+                target_file_path = os.path.join(base_path, "docs", target_file)
+                if os.path.exists(target_file_path):
+                    with open(target_file_path) as f:
+                        markdown_content = f.read()
+                else:
+                    markdown_content = (
+                        f"# Error\n\nCould not find file {target_file} in docs folder."
+                    )
+
+            return {"markdown": markdown_content, "tree": tree}
+        except Exception as e:
+            logger.error(f"Failed to parse docs-tree.json for {domain}: {e}")
+
+    # 2. Check for legacy single-file docs
+    doc_paths = [
+        os.path.join(base_path, "README.md"),
+        os.path.join(base_path, "DOCS.md"),
+    ]
+
+    for path in doc_paths:
+        if os.path.exists(path):
+            with open(path) as f:
+                return {"markdown": f.read()}
+
+    # 3. If no file exists, return an empty string or a default message
+    return {
+        "markdown": f"# {domain.capitalize()} Integration\n\nNo documentation provided for this integration."
+    }
+
+
+@router.get("/{domain}/config-flow", response_model=dict[str, Any])
+async def get_config_flow(
+    domain: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Get the configuration UI schema for an integration.
+    """
+    # Integrations are enabled by default — only an explicit admin disable blocks this.
+    if await is_domain_disabled(db, domain):
+        raise HTTPException(status_code=400, detail="Integration is not enabled by system admin.")
+
+    config_flow = integration_registry.get_config_flow(domain)
+    if not config_flow:
+        raise HTTPException(status_code=404, detail="Integration config flow not found")
+
+    return await config_flow.get_schema()
+
+
+@router.post("/{domain}/config-flow", response_model=dict[str, Any])
+async def submit_config_flow(
+    domain: str,
+    patient_id: str,
+    payload: dict[str, Any],
+    integration_id: str | None = None,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Submit configuration data and setup the integration.
+    """
+    # Integrations are enabled by default — only an explicit admin disable blocks this.
+    if await is_domain_disabled(db, domain):
+        raise HTTPException(status_code=400, detail="Integration is not enabled by system admin.")
+
+    config_flow = integration_registry.get_config_flow(domain)
+    if not config_flow:
+        raise HTTPException(status_code=404, detail="Integration config flow not found")
+
+    try:
+        validated_config = await config_flow.validate_input(payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Extract instance_name if provided, otherwise default to domain
+    instance_name = validated_config.pop("instance_name", domain.capitalize())
+
+    # Generic: let the config flow encrypt any secret fields it declared.
+    # No-op for integrations with no secret fields (no key required).
+    try:
+        validated_config = await config_flow.prepare_for_storage(validated_config)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Generic: enforce per-user instance cap if the config flow declared one.
+    if not integration_id and config_flow.max_instances_per_user is not None:
+        from sqlalchemy import func as _func
+
+        count_stmt = (
+            select(_func.count())
+            .select_from(UserIntegration)
+            .where(
+                UserIntegration.user_id == current_user.user_id,
+                UserIntegration.provider == domain,
+            )
+        )
+        count_res = await db.execute(count_stmt)
+        existing_count = int(count_res.scalar() or 0)
+        cap = config_flow.max_instances_per_user
+        if existing_count >= cap:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"You already have {existing_count} instance(s) of "
+                    f"{domain} configured. The per-user limit is {cap}."
+                ),
+            )
+
+    # Check if this is an update to an existing instance
+    if integration_id:
+        try:
+            integration_uuid = UUID(integration_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid integration ID format")
+
+        stmt = select(UserIntegration).where(
+            UserIntegration.id == integration_uuid,
+            UserIntegration.user_id == current_user.user_id,
+            UserIntegration.patient_id == patient_id,
+        )
+        result = await db.execute(stmt)
+        existing = result.scalar_one_or_none()
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Integration instance not found")
+
+        existing.user_config = validated_config
+        existing.instance_name = instance_name
+    else:
+        # Create new integration since we allow multiples
+        # Verify the patient belongs to the user or their tenant
+        stmt_patient = (
+            select(Patient)
+            .where(Patient.id == patient_id, Patient.tenant_id == current_user.tenant_id)
+            .limit(1)
+        )
+        res_patient = await db.execute(stmt_patient)
+        patient = res_patient.scalar_one_or_none()
+
+        if not patient:
+            raise HTTPException(status_code=400, detail="Invalid Patient record.")
+
+        # OAuth integrations start PENDING only when THIS instance actually
+        # needs the OAuth round-trip (auth_mode == "smart"). Tokenless instances
+        # (auth_mode == "none", e.g. a local HAPI FHIR) go straight to ACTIVE.
+        needs_oauth = config_flow.is_oauth and validated_config.get("auth_mode", "smart") == "smart"
+
+        # Audit 2026-08 H1/H2: every webhook- or API-capable instance is
+        # provisioned with a machine secret (HMAC) — the integration UUID is
+        # an identifier, never a credential. The plaintext is returned ONCE
+        # here (like OAuth client secrets) and stored Fernet-encrypted with
+        # the instance id as context binding. The machine routes below
+        # reject instances without a configured secret.
+        provider = integration_registry.get_provider(domain)
+        generated: dict[str, str] = {}
+        instance_uuid = uuid4()
+        wants_webhook = provider is not None and _provider_overrides(provider, "handle_webhook")
+        wants_api = provider is not None and _provider_overrides(provider, "handle_api_request")
+        try:
+            from integrations.sdk.secrets import SecretCipher
+
+            cipher = SecretCipher.from_settings()
+            if wants_webhook and not validated_config.get("webhook_secret"):
+                generated["webhook_secret"] = _generate_integration_secret()
+                validated_config["webhook_secret"] = cipher.encrypt_value(
+                    generated["webhook_secret"], context=str(instance_uuid)
+                )
+            if wants_api and not validated_config.get("api_secret"):
+                generated["api_secret"] = _generate_integration_secret()
+                validated_config["api_secret"] = cipher.encrypt_value(
+                    generated["api_secret"], context=str(instance_uuid)
+                )
+        except RuntimeError:
+            # No Fernet key configured — the machine routes will 503 rather
+            # than accept UUID-only traffic (fail-closed).
+            logger.warning(
+                "HA_DATA_KEY unset; cannot provision machine secret "
+                "for %s instance. Webhook/API routes will refuse this instance.",
+                domain,
+            )
+
+        new_integration = UserIntegration(
+            id=instance_uuid,
+            user_id=current_user.user_id,
+            patient_id=patient.id,
+            provider=domain,
+            instance_name=instance_name,
+            status=IntegrationStatus.PENDING if needs_oauth else IntegrationStatus.ACTIVE,
+            user_config=validated_config,
+            tenant_id=current_user.tenant_id,
+        )
+        db.add(new_integration)
+
+    await db.commit()
+    response_payload: dict[str, Any] = {"message": "Integration configured successfully."}
+    if generated:
+        # Show-once machine secrets (mirrors OAuth client-secret UX).
+        response_payload.update(generated)
+        response_payload["secret_notice"] = (
+            "Store these secrets now — they are shown only once and are "
+            "required to sign webhook/API requests (HMAC-SHA256)."
+        )
+    return response_payload
+
+
+# ---------------- OAuth round-trip (opt-in via config_flow.is_oauth) ----------------
+
+
+async def _load_enabled_oauth(domain: str, db: AsyncSession):
+    """Resolve the enabled system integration + provider + config_flow for an OAuth domain."""
+    # Integrations are enabled by default — only an explicit admin disable blocks this.
+    if await is_domain_disabled(db, domain):
+        raise HTTPException(status_code=400, detail="Integration is not enabled by system admin.")
+    provider = integration_registry.get_provider(domain)
+    config_flow = integration_registry.get_config_flow(domain)
+    if not provider or not config_flow:
+        raise HTTPException(status_code=404, detail="Integration not loaded.")
+    if not getattr(config_flow, "is_oauth", False):
+        raise HTTPException(status_code=400, detail=f"{domain} is not an OAuth integration.")
+    return provider, config_flow
+
+
+@router.post("/{domain}/oauth/start")
+async def oauth_start(
+    domain: str,
+    integration_id: str,
+    patient_id: str,
+    request: Request,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Begin the OAuth Authorization Code flow: discover + DCR + authorize URL.
+
+    The caller (frontend) redirects the user's browser to the returned
+    ``authorize_url``. The PKCE verifier + SMART endpoints + ``integration_id``/
+    ``user_id`` are stored under an opaque ``state`` in Redis (short TTL).
+    """
+    provider, _ = await _load_enabled_oauth(domain, db)
+
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID format")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+    )
+    existing = (await db.execute(stmt)).scalar_one_or_none()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Integration instance not found")
+
+    # INT-M4 (audit 2026-08): pin the redirect URI to the configured
+    # public APP_URL — never the client-supplied Host header (DCR
+    # registration poisoning).
+    from app.core.config import get_settings as _gs
+
+    app_url = (_gs().APP_URL or str(request.base_url).rstrip("/")).rstrip("/")
+    redirect_uri = f"{app_url}/api/v1/integrations/{domain}/oauth/callback"
+    try:
+        authorize_url, state = await provider.begin_oauth(
+            existing,
+            redirect_uri,
+            extra_state={
+                "integration_id": str(existing.id),
+                "user_id": str(current_user.user_id),
+                "tenant_id": str(current_user.tenant_id),
+            },
+        )
+    except (IntegrationAuthError, IntegrationDataError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"authorize_url": authorize_url, "state": state}
+
+
+@router.get("/{domain}/oauth/callback")
+async def oauth_callback(
+    domain: str,
+    state: str,
+    code: str,
+    db: AsyncSession = Depends(get_db),
+    _rl=Depends(rate_limit("integration_oauth_callback", max_requests=30, window=60)),
+):
+    """OAuth callback (browser redirect, unauthenticated — secured by `state`).
+
+    Consumes the one-shot ``state`` (which carries ``integration_id``), exchanges
+    the code for tokens via the provider, persists them encrypted, flips the
+    instance to ACTIVE, then 302-redirects to the SPA ``/connected`` landing.
+    """
+    provider, _ = await _load_enabled_oauth(domain, db)
+
+    pending = await OAuthStateStore().consume(state)
+    if not pending:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state.")
+
+    integration_id = pending.get("integration_id")
+    user_id = pending.get("user_id")
+    if not integration_id or not user_id:
+        raise HTTPException(status_code=400, detail="Malformed OAuth state payload.")
+
+    try:
+        integration_uuid = UUID(integration_id)
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Malformed identifiers in OAuth state.")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid, UserIntegration.user_id == user_uuid
+    )
+    integration = (await db.execute(stmt)).scalar_one_or_none()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration instance not found.")
+
+    try:
+        await provider.complete_oauth(integration, pending, code)
+    except (IntegrationAuthError, IntegrationDataError):
+        redirect = (
+            f"{_frontend_origin()}/integrations/{domain}/connected"
+            f"?integration_id={integration_id}&status=error"
+        )
+        return Response(status_code=302, headers={"Location": redirect})
+
+    integration.status = IntegrationStatus.ACTIVE
+    await db.commit()
+
+    redirect = (
+        f"{_frontend_origin()}/integrations/{domain}/connected"
+        f"?integration_id={integration_id}&status=connected"
+    )
+    return Response(status_code=302, headers={"Location": redirect})
+
+
+@router.get("/instance/{integration_id}/details")
+async def get_integration_details(
+    integration_id: str,
+    patient_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get detailed information about an active integration."""
+    from sqlalchemy import desc, func
+
+    from app.models.biomarker_model import BiomarkerDefinition
+    from app.models.examination_model import ExaminationModel
+    from app.models.fhir.patient import Observation
+    from app.models.user_integration import IntegrationSyncLog, UserIntegration
+
+    try:
+        integration_uuid = UUID(integration_id)
+        patient_uuid = UUID(patient_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format for user or patient")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_uuid,
+    )
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found or not active")
+
+    domain = integration.provider
+
+    # Fetch sync logs
+    logs_stmt = (
+        select(IntegrationSyncLog)
+        .where(IntegrationSyncLog.integration_id == integration.id)
+        .order_by(desc(IntegrationSyncLog.started_at))
+        .limit(20)
+    )
+    logs_result = await db.execute(logs_stmt)
+    sync_logs = logs_result.scalars().all()
+
+    from sqlalchemy import or_
+
+    # Fetch exposed items (distinct biomarkers synced by this integration)
+    # Match on modern Integration UUID reference OR legacy domain display name
+    obs_stmt = (
+        select(
+            Observation.biomarker_id,
+            func.max(Observation.effective_datetime).label("last_seen"),
+        )
+        .where(
+            Observation.tenant_id == integration.tenant_id,
+            Observation.subject["reference"].astext == f"Patient/{patient_id}",
+            or_(
+                Observation.performer[0]["reference"].astext == f"Integration/{integration.id}",
+                Observation.performer[0]["display"].astext == domain,
+            ),
+            Observation.biomarker_id.isnot(None),
+        )
+        .group_by(Observation.biomarker_id)
+    )
+
+    obs_res = await db.execute(obs_stmt)
+    exposed_rows = obs_res.all()
+
+    exposed_items = []
+    b_defs = {}
+    if exposed_rows:
+        b_ids = [row[0] for row in exposed_rows]
+        b_stmt = select(BiomarkerDefinition).where(BiomarkerDefinition.id.in_(b_ids))
+        b_res = await db.execute(b_stmt)
+        b_defs = {b.id: b for b in b_res.scalars().all()}
+
+        for row in exposed_rows:
+            b_id = row[0]
+            last_seen = row[1]
+            if b_id in b_defs:
+                b = b_defs[b_id]
+                exposed_items.append(
+                    {
+                        "id": str(b.id),
+                        "name": b.name,
+                        "slug": b.slug,
+                        "category": b.category,
+                        "last_seen": last_seen.isoformat() if last_seen else None,
+                    }
+                )
+
+    # Fetch recent actual measurements
+    recent_obs_stmt = (
+        select(Observation)
+        .where(
+            Observation.tenant_id == integration.tenant_id,
+            Observation.subject["reference"].astext == f"Patient/{patient_id}",
+            or_(
+                Observation.performer[0]["reference"].astext == f"Integration/{integration.id}",
+                Observation.performer[0]["display"].astext == domain,
+            ),
+            Observation.biomarker_id.isnot(None),
+        )
+        .order_by(desc(Observation.effective_datetime))
+        .limit(30)
+    )
+
+    recent_obs_res = await db.execute(recent_obs_stmt)
+    recent_obs = recent_obs_res.scalars().all()
+
+    recent_data = []
+    for obs in recent_obs:
+        b_name = (
+            b_defs.get(obs.biomarker_id).name
+            if obs.biomarker_id in b_defs
+            else obs.code.get("text", "Unknown Metric")
+        )
+        b_slug = b_defs.get(obs.biomarker_id).slug if obs.biomarker_id in b_defs else None
+        unit = obs.value_quantity.get("unit", "") if obs.value_quantity else ""
+        recent_data.append(
+            {
+                "id": str(obs.id),
+                "date": obs.effective_datetime.isoformat() if obs.effective_datetime else None,
+                "sync_time": obs.created_at.isoformat()
+                if hasattr(obs, "created_at") and obs.created_at
+                else None,
+                "metric": b_name,
+                "slug": b_slug,
+                "biomarker_id": str(obs.biomarker_id) if obs.biomarker_id else None,
+                "value": obs.raw_value,
+                "unit": unit,
+                "examination_id": str(obs.examination_id) if obs.examination_id else None,
+            }
+        )
+
+    # Fetch synced examinations
+    exam_stmt = (
+        select(ExaminationModel)
+        .where(
+            ExaminationModel.tenant_id == integration.tenant_id,
+            ExaminationModel.patient_id == patient_uuid,
+            ExaminationModel.source_integration_id == integration.id,
+        )
+        .order_by(desc(ExaminationModel.examination_date))
+    )
+
+    exam_res = await db.execute(exam_stmt)
+    synced_examinations = [exam.to_dict() for exam in exam_res.scalars().all()]
+
+    provider = integration_registry.get_provider(domain)
+    custom_actions = []
+    if provider and hasattr(provider, "get_custom_actions"):
+        custom_actions = provider.get_custom_actions()
+
+    # Generic: let the config flow mask secret fields before returning to UI.
+    config_flow = integration_registry.get_config_flow(domain)
+    if config_flow:
+        returned_config = config_flow.prepare_for_read(integration.user_config or {})
+    else:
+        returned_config = integration.user_config
+
+    # Surface the last push result + sync direction for the FHIR server (and any
+    # other integration that writes them). Lives under _sync_state cursors.
+    sync_state = (integration.user_config or {}).get("_sync_state") or {}
+
+    return {
+        "id": str(integration.id),
+        "domain": integration.provider,
+        "instance_name": integration.instance_name,
+        "status": integration.status.value,
+        "user_config": returned_config,
+        "is_debug_enabled": integration.is_debug_enabled,
+        "last_synced_at": integration.last_synced_at.isoformat()
+        if integration.last_synced_at
+        else None,
+        "sync_direction": (integration.user_config or {}).get("sync_direction"),
+        "push_status": sync_state.get("last_push_result"),
+        "sync_history": [
+            {
+                "id": str(log.id),
+                "status": log.status,
+                "records_synced": log.records_synced,
+                "started_at": log.started_at.isoformat(),
+                "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+                "error_message": log.error_message,
+            }
+            for log in sync_logs
+        ],
+        "exposed_items": exposed_items,
+        "recent_data": recent_data,
+        "synced_examinations": synced_examinations,
+        "custom_actions": custom_actions,
+    }
+
+
+@router.get("/instance/{integration_id}/debug-logs")
+async def get_integration_debug_logs(
+    integration_id: str,
+    patient_id: str,
+    limit: int = 200,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch debug logs for a specific integration instance."""
+    from sqlalchemy import desc
+
+    from app.models.user_integration import IntegrationDebugLog, UserIntegration
+
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    # Verify ownership
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+    )
+    result = await db.execute(stmt)
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    logs_stmt = (
+        select(IntegrationDebugLog)
+        .where(IntegrationDebugLog.integration_id == integration_uuid)
+        .order_by(desc(IntegrationDebugLog.timestamp))
+        .limit(limit)
+    )
+
+    logs_result = await db.execute(logs_stmt)
+    debug_logs = logs_result.scalars().all()
+
+    return [
+        {
+            "id": str(log.id),
+            "timestamp": log.timestamp.isoformat(),
+            "level": log.level,
+            "title": log.title,
+            "payload": log.payload,
+        }
+        for log in debug_logs
+    ]
+
+
+@router.post("/instance/{integration_id}/toggle-debug")
+async def toggle_integration_debug(
+    integration_id: str,
+    patient_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Toggle debug mode for a specific integration instance."""
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+    )
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    integration.is_debug_enabled = not integration.is_debug_enabled
+    await db.commit()
+    return {
+        "message": f"Debug mode {'enabled' if integration.is_debug_enabled else 'disabled'}.",
+        "is_debug_enabled": integration.is_debug_enabled,
+    }
+
+
+@router.delete("/instance/{integration_id}")
+async def remove_integration(
+    integration_id: str,
+    patient_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Remove an active integration instance.
+    """
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+    )
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    # Best-effort token revocation on disconnect (RFC 7009) — prevents stale
+    # tokens from lingering on the remote server. Wrapped in try/except so a
+    # revocation failure never blocks the delete.
+    provider = integration_registry.get_provider(existing.provider)
+    if provider and hasattr(provider, "revoke"):
+        try:
+            await provider.revoke(existing)
+        except Exception:
+            logger.warning("Token revocation failed for %s — deleting anyway", integration_id)
+
+    await db.delete(existing)
+    await db.commit()
+    return {"message": "Integration removed successfully."}
+
+
+@router.post("/instance/{integration_id}/action/{action_id}")
+async def execute_custom_action(
+    integration_id: str,
+    action_id: str,
+    patient_id: str,
+    payload: dict[str, Any] | None = Body(default=None),
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Execute a custom action defined by the integration provider.
+
+    ``payload`` is an optional JSON body of action inputs (e.g.
+    ``{"query": "Smith"}`` for a patient-search action). It is spread as
+    keyword arguments into ``provider.execute_custom_action``. Actions
+    that take no input (the historical behaviour) are sent with no body
+    and receive no kwargs — fully backward compatible.
+    """
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+    )
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    domain = integration.provider
+    provider = integration_registry.get_provider(domain)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Integration provider not loaded")
+
+    if not hasattr(provider, "execute_custom_action"):
+        raise HTTPException(status_code=400, detail="Provider does not support custom actions")
+
+    try:
+        response = await provider.execute_custom_action(integration, action_id, **(payload or {}))
+        # Commit any changes to user_config (like cursors) made by the action
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(integration, "user_config")
+        await db.commit()
+        return response
+    except NotImplementedError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Custom action {action_id} failed for {domain}: {e}")
+        raise HTTPException(status_code=500, detail=f"Action failed: {e!s}")
+
+
+@router.post("/{domain}/notification-action/{integration_id}/{action_id}")
+async def execute_notification_action(
+    domain: str,
+    integration_id: str,
+    action_id: str,
+    payload: dict[str, Any] | None = None,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Dispatch a clicked notification action button to the provider.
+
+    Triggered by the notification detail modal when a user clicks an action
+    of ``type="post"`` (the endpoint path is the action's ``endpoint`` URL).
+    Routes to ``provider.handle_notification_action(integration, action_id,
+    payload)`` — providers return an ActionResult dict that the frontend
+    renders as a follow-up modal.
+
+    Tenant-scoped to the caller (must own the integration).
+    """
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+    )
+    integration = (await db.execute(stmt)).scalar_one_or_none()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    if integration.provider != domain:
+        raise HTTPException(status_code=400, detail="Integration domain mismatch")
+
+    provider = integration_registry.get_provider(domain)
+    if provider is None:
+        raise HTTPException(status_code=404, detail="Integration provider not loaded")
+    if not getattr(provider, "supports_notifications", lambda: False)():
+        raise HTTPException(
+            status_code=400,
+            detail="Provider does not support notification actions",
+        )
+
+    try:
+        response = await provider.handle_notification_action(integration, action_id, payload or {})
+        # Persist any provider-side state changes (cursor bumps, ack flags, etc.)
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(integration, "user_config")
+        await db.commit()
+        return response
+    except NotImplementedError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Notification action %s failed for %s: %s", action_id, domain, e)
+        raise HTTPException(status_code=500, detail=f"Action failed: {e!s}")
+
+
+# ---------------------------------------------------------------------------
+# Integration proposals (HITL — workstream G)
+# ---------------------------------------------------------------------------
+
+
+async def _load_owned_integration(
+    integration_id: str,
+    *,
+    current_user: TokenData,
+    db: AsyncSession,
+    require_active: bool = False,
+) -> UserIntegration:
+    """Load a ``UserIntegration`` row scoped to the requesting user.
+
+    The triple ``(id, user_id, tenant_id)`` is the de-facto ownership
+    check used across this endpoint. Raises ``HTTPException(404)`` if the
+    row doesn't exist or doesn't belong to the caller.
+
+    Set ``require_active=True`` to additionally require
+    ``status=IntegrationStatus.ACTIVE`` (e.g. the manual-sync endpoint
+    needs an active instance; the proposal endpoints accept any owned
+    integration so a paused instance's pending proposals are still
+    reviewable).
+    """
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.tenant_id == current_user.tenant_id,
+    )
+    if require_active:
+        stmt = stmt.where(UserIntegration.status == IntegrationStatus.ACTIVE)
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+    if integration is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Integration instance not found for this user.",
+        )
+    return integration
+
+
+@router.get(
+    "/instance/{integration_id}/proposals",
+    response_model=list[dict[str, Any]],
+)
+async def list_integration_proposals(
+    integration_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> Any:
+    """List HITL proposals for an integration instance.
+
+    Optional ``status`` filter accepts a ``HitlTaskStatus`` value
+    (``proposed`` / ``confirmed`` / ``dismissed`` / ``failed``). The
+    endpoint returns proposals regardless of integration state so a
+    paused integration's pending queue is still reviewable.
+    """
+    from app.models.enums import HitlTaskStatus
+    from app.schemas.integration_proposal import IntegrationProposalResponse
+    from app.services import integration_proposal_service as proposal_svc
+
+    integration = await _load_owned_integration(integration_id, current_user=current_user, db=db)
+
+    status_filter: HitlTaskStatus | None = None
+    if status is not None:
+        try:
+            status_filter = HitlTaskStatus(status.lower())
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=(f"Unknown status {status!r}. Valid: {[s.value for s in HitlTaskStatus]}"),
+            )
+
+    proposals = await proposal_svc.list_proposals(
+        db,
+        integration_id=integration.id,
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+    return [
+        IntegrationProposalResponse.model_validate(p).model_dump(mode="json") for p in proposals
+    ]
+
+
+@router.get(
+    "/instance/{integration_id}/proposals/{proposal_id}",
+    response_model=dict[str, Any],
+)
+async def get_integration_proposal(
+    integration_id: str,
+    proposal_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Fetch one HITL proposal by id (scoped to the owned integration)."""
+    from app.schemas.integration_proposal import IntegrationProposalResponse
+    from app.services import integration_proposal_service as proposal_svc
+
+    integration = await _load_owned_integration(integration_id, current_user=current_user, db=db)
+    try:
+        proposal_uuid = UUID(proposal_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid proposal ID")
+
+    proposal = await proposal_svc.get_proposal(
+        db, integration_id=integration.id, proposal_id=proposal_uuid
+    )
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return IntegrationProposalResponse.model_validate(proposal).model_dump(mode="json")
+
+
+@router.post(
+    "/instance/{integration_id}/proposals/{proposal_id}/resolve",
+    response_model=dict[str, Any],
+)
+async def resolve_integration_proposal(
+    integration_id: str,
+    proposal_id: str,
+    body: dict[str, Any],
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Resolve a pending HITL proposal.
+
+    Body shape (``IntegrationProposalResolveRequest``):
+
+    .. code-block:: json
+
+        {
+          "action": "approve" | "reject" | "cancel",
+          "payload": {"...": "..."},   // optional override on approve
+          "note": "free-text reason"   // optional audit note
+        }
+
+    - ``approve`` → apply the (possibly-edited) payload through
+      :func:`catalog_proposal_service.apply_proposal`. Status transitions
+      to ``confirmed`` on success, ``failed`` on apply error.
+    - ``reject`` / ``cancel`` → status ``dismissed``, no apply.
+
+    Re-resolve from a terminal state returns 409 (idempotent contract).
+    """
+    from app.models.enums import Role
+    from app.schemas.integration_proposal import (
+        IntegrationProposalResolveRequest,
+        IntegrationProposalResponse,
+    )
+    from app.services import integration_proposal_service as proposal_svc
+
+    integration = await _load_owned_integration(integration_id, current_user=current_user, db=db)
+    try:
+        proposal_uuid = UUID(proposal_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid proposal ID")
+
+    try:
+        req = IntegrationProposalResolveRequest(**body)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid resolve body: {exc}")
+
+    # Catalog writes (biomarker / medication / concept / edge) require
+    # ADMIN+ under the catalog policy. USER-role callers can list + view
+    # but not resolve — surface as 403 so the UI can hide the buttons.
+    if req.action == "approve" and current_user.role == Role.USER.value:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Approving catalog proposals requires ADMIN or higher. "
+                "Ask a tenant admin to review."
+            ),
+        )
+
+    provider = integration_registry.get_provider(integration.provider)
+
+    try:
+        result = await proposal_svc.resolve_proposal(
+            db,
+            integration=integration,
+            proposal_id=proposal_uuid,
+            action=req.action,
+            actor=current_user,
+            payload_override=req.payload,
+            note=req.note,
+            provider=provider,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    except ValueError as exc:
+        # Terminal-state re-resolve → 409 (caller already decided).
+        if "terminal state" in str(exc):
+            raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    response = IntegrationProposalResponse.model_validate(result.proposal).model_dump(mode="json")
+    response["applied_entity_id"] = (
+        str(result.applied_entity_id) if result.applied_entity_id else None
+    )
+    response["error"] = result.error
+    return response
+
+
+@router.post("/instance/{integration_id}/rotate-secret")
+async def rotate_instance_secret(
+    integration_id: str,
+    patient_id: str,
+    field: str = "api_secret",
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Rotate a machine (HMAC) secret for an integration instance.
+
+    Audit 2026-08 H1/H2 pairing follow-up: the stored plaintext can never be
+    re-displayed (Fernet-encrypted, row-bound), so the recovery path for
+    instances created before mandatory secrets — or whose creation-time
+    plaintext was lost — is rotation. Mints a fresh secret, stores it
+    encrypted with the instance id as context, and returns the plaintext
+    EXACTLY ONCE. The previous secret stops working immediately.
+
+    ``field``: ``api_secret`` (default; bridge/API-proxy clients) or
+    ``webhook_secret`` (inbound webhook senders).
+    """
+    if field not in ("api_secret", "webhook_secret"):
+        raise HTTPException(status_code=400, detail="field must be api_secret or webhook_secret")
+
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+    )
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration instance not found")
+
+    try:
+        from integrations.sdk.secrets import SecretCipher
+
+        cipher = SecretCipher.from_settings()
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=str(e),
+        )
+
+    new_secret = _generate_integration_secret()
+    cfg = dict(getattr(integration, "user_config", None) or {})
+    cfg[field] = cipher.encrypt_value(new_secret, context=str(integration.id))
+    integration.user_config = cfg
+
+    from sqlalchemy.orm.attributes import flag_modified
+
+    flag_modified(integration, "user_config")
+    await db.commit()
+
+    return {
+        field: new_secret,
+        "secret_notice": (
+            "Store this secret now — it is shown only once and the previous "
+            "secret stopped working the moment this was generated."
+        ),
+    }
+
+
+@router.post("/instance/{integration_id}/sync")
+async def sync_integration(
+    integration_id: str,
+    patient_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Manually trigger a sync for an active integration instance.
+    """
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.user_id == current_user.user_id,
+        UserIntegration.patient_id == patient_id,
+        UserIntegration.status == IntegrationStatus.ACTIVE,
+    )
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise HTTPException(status_code=404, detail="Active integration not found")
+
+    domain = integration.provider
+    provider = integration_registry.get_provider(domain)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Integration provider not loaded")
+
+    from app.services.integration_sync_service import run_sync
+
+    result = await run_sync(db, integration, provider, source="manual")
+
+    if result.status == "skipped":
+        raise HTTPException(
+            status_code=409,
+            detail="A sync is already in progress for this integration. Try again in a moment.",
+        )
+    if result.status == "failed":
+        if result.error_type == "auth":
+            raise HTTPException(
+                status_code=401,
+                detail="Integration authentication failed. Please re-authenticate.",
+            )
+        if result.error_type == "rate_limit":
+            raise HTTPException(
+                status_code=429,
+                detail="Third-party API rate limit exceeded. Try again later.",
+            )
+        raise HTTPException(status_code=500, detail=f"Sync failed: {result.error}")
+
+    message = (
+        "Sync completed successfully"
+        if result.dropped_invalid == 0
+        else f"Sync completed with {result.dropped_invalid} invalid observation(s) dropped"
+    )
+    return {
+        "message": message,
+        "metrics_synced": result.fhir_persisted + result.telemetry_persisted,
+        "pulled": result.pulled,
+        "dropped_invalid": result.dropped_invalid,
+        "status": result.status,
+        "last_synced_at": integration.last_synced_at,
+    }
+
+
+def _resolve_secret_field(
+    domain: str,
+    config: dict[str, Any],
+    field_name: str,
+    context: str | None = None,
+) -> str | None:
+    """Return the plaintext value of a secret config field, decrypting if needed.
+
+    Integration config flows declare secret fields via ``get_secret_fields()``
+    and the platform Fernet-encrypts them at rest (stored as
+    ``{"_encrypted": "<token>", "_kid": "<tag>"}``). The HMAC verifiers below
+    need the **plaintext** secret to recompute the MAC — passing the encrypted
+    wrapper verbatim would raise ``AttributeError`` on ``.encode()`` (a dict
+    has no ``encode``) and the request would 500 instead of authenticating.
+
+    This helper resolves the config flow for ``domain`` via the registry and
+    delegates to its ``decrypt_for_use`` when ``field_name`` is declared
+    secret; otherwise the raw value is returned (non-secret fields need no
+    decryption). Returns ``None`` when the field is absent, empty, masked
+    (``"***"``), or decryption fails (key rotation mismatch) — callers treat
+    ``None`` as "no secret configured".
+    """
+    if not isinstance(config, dict):
+        return None
+    raw = config.get(field_name)
+    if raw is None or raw == "" or raw == "***":
+        return None
+    flow = integration_registry.get_config_flow(domain)
+    secret_fields = flow.get_secret_fields() if flow else []
+    if field_name not in secret_fields and isinstance(raw, dict) and "_encrypted" in raw:
+        # Platform-provisioned machine secret (audit 2026-08 H1/H2): stored
+        # as a context-bound encrypted wrapper even though the config flow
+        # doesn't declare the field. Decrypt directly with the instance id
+        # as context.
+        try:
+            from integrations.sdk.secrets import SecretCipher
+
+            decrypted = SecretCipher.from_settings().decrypt_value(raw, context=context)
+            return decrypted if isinstance(decrypted, str) and decrypted else None
+        except Exception:
+            return None
+    if field_name not in secret_fields:
+        # Not declared secret — return as-is (already plaintext).
+        return raw if isinstance(raw, str) else None
+    try:
+        decrypted = flow.decrypt_for_use(config)
+        val = decrypted.get(field_name)
+        if val == "***" or not val:
+            return None
+        return val
+    except Exception as e:
+        logger.warning(
+            "Failed to decrypt %s for integration domain=%s: %s "
+            "(key rotation mismatch? set HA_DATA_KEY_PREVIOUS).",
+            field_name,
+            domain,
+            e,
+        )
+        return None
+
+
+def _verify_webhook_signature(secret: str, raw_body: bytes, provided_signature: str) -> bool:
+    """Constant-time HMAC-SHA256 verification of a webhook payload.
+
+    Used to authenticate inbound webhook deliveries when an integration has
+    configured a ``webhook_secret``. The route verifies an HMAC-SHA256
+    signature over the raw body before processing the payload.
+
+    Supported header formats (case-insensitive lookup by caller):
+      - ``X-Webhook-Signature``: ``<hex digest>``
+      - ``X-Webhook-Signature-256``: ``<hex digest>``
+      - ``X-Hub-Signature-256`` (GitHub): ``sha256=<hex digest>``
+
+    Returns True iff the computed HMAC matches the provided signature.
+
+    Thin wrapper around :func:`integrations.sdk.webhook_security.verify_hmac_signature`
+    — the canonical implementation lives in the SDK so providers can
+    reuse it without re-implementing the algorithm.
+    """
+    from integrations.sdk.webhook_security import verify_hmac_signature
+
+    return verify_hmac_signature(secret, raw_body, provided_signature)
+
+
+def _verify_api_signature(
+    secret: str,
+    method: str,
+    path: str,
+    raw_body: bytes,
+    provided_signature: str,
+    provided_timestamp: str | None = None,
+    max_skew_seconds: int = 300,
+) -> bool:
+    """Constant-time HMAC-SHA256 verification of an inbound two-way API call.
+
+    Audit item B8: the generic API proxy at
+    ``/{domain}/api/{integration_id}/{path}`` historically used the
+    integration UUID itself as the only credential. UUIDs leak via logs,
+    browser history, JSON responses — anyone who has seen one had full
+    bidirectional API access for the lifetime of the integration.
+
+    When an integration configures ``api_secret`` in its ``user_config``,
+    the proxy now requires a valid HMAC-SHA256 signature over a canonical
+    request string:
+
+        <METHOD>\n<path>\n<raw_body>
+
+    Supported header:
+      - ``X-Api-Signature``: ``<hex digest>`` (required when api_secret set)
+      - ``X-Api-Timestamp``: ``<epoch_seconds>`` (optional but recommended;
+        if present, request is rejected when skew > ``max_skew_seconds``
+        and the timestamp is folded into the signed payload to prevent
+        replay)
+
+    Returns True iff the computed HMAC matches the provided signature
+    AND (when timestamp is supplied) the timestamp is within the allowed
+    skew window. Returns False when ``secret`` or ``provided_signature``
+    is empty.
+
+    Thin wrapper around
+    :func:`integrations.sdk.webhook_security.verify_canonical_signature`.
+    """
+    from integrations.sdk.webhook_security import verify_canonical_signature
+
+    return verify_canonical_signature(
+        secret,
+        method,
+        path,
+        raw_body,
+        provided_signature,
+        provided_timestamp=provided_timestamp,
+        max_skew_seconds=max_skew_seconds,
+    )
+
+
+@router.post("/{domain}/webhook/{integration_id}")
+async def integration_webhook(
+    domain: str,
+    integration_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _rl_ip=Depends(rate_limit("integration_webhook", max_requests=120, window=60)),
+    _rl_int=Depends(rate_limit_integration("integration_webhook", max_requests=60, window=60)),
+) -> Any:
+    """
+    Handle incoming webhooks for a specific integration.
+
+    Audit 2026-08 H1/M1: a webhook secret is REQUIRED — the integration
+    UUID is an identifier, not a credential (it leaks via logs/history and
+    cannot be rotated). Every request must carry a valid HMAC-SHA256
+    signature over the raw body. When ``X-Webhook-Timestamp`` is present,
+    the canonical timestamped scheme applies (replay-proof within the skew
+    window); otherwise the bare body-MAC is accepted with a Redis-backed
+    replay guard against identical deliveries.
+    """
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID format")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.provider == domain,
+        UserIntegration.status == IntegrationStatus.ACTIVE,
+    )
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise HTTPException(status_code=404, detail="Active integration not found")
+
+    provider = integration_registry.get_provider(domain)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Integration provider not loaded")
+
+    if not hasattr(provider, "handle_webhook"):
+        raise HTTPException(status_code=400, detail="Provider does not support webhooks")
+
+    # Read the raw body ONCE (capped — audit M4) so the signature check and
+    # the downstream JSON parse share the exact bytes.
+    raw_body = await _check_machine_body_cap(request)
+
+    cfg = getattr(integration, "user_config", None) or {}
+    webhook_secret = _resolve_secret_field(
+        domain, cfg, "webhook_secret", context=str(integration.id)
+    )
+    if not webhook_secret:
+        # Fail closed: no secret configured → no unauthenticated writes
+        # into the health record (audit 2026-08 H1).
+        raise HTTPException(
+            status_code=401,
+            detail="Webhook secret not configured for this integration.",
+        )
+
+    provided_sig = (
+        request.headers.get("X-Webhook-Signature")
+        or request.headers.get("X-Webhook-Signature-256")
+        or request.headers.get("X-Hub-Signature-256")
+    )
+    provided_ts = request.headers.get("X-Webhook-Timestamp")
+
+    sig_ok = False
+    if provided_sig and provided_ts:
+        sig_ok = _verify_api_signature(
+            webhook_secret,
+            method="POST",
+            path="",
+            raw_body=raw_body,
+            provided_signature=provided_sig,
+            provided_timestamp=provided_ts,
+        )
+    elif provided_sig:
+        sig_ok = _verify_webhook_signature(webhook_secret, raw_body, provided_sig)
+        if sig_ok and await _is_recent_replay(
+            f"wh:{integration.id}", provided_sig.encode("utf-8") + b"\n" + raw_body
+        ):
+            logger.warning("Webhook replay rejected for integration %s", integration_id)
+            raise HTTPException(status_code=401, detail="Webhook signature verification failed")
+    if not sig_ok:
+        logger.warning(
+            "Webhook signature verification failed for %s (Integration: %s)",
+            domain,
+            integration_id,
+        )
+        raise HTTPException(status_code=401, detail="Webhook signature verification failed")
+
+    from app.models.user_integration import IntegrationSyncLog
+
+    try:
+        payload = raw_body.decode("utf-8") if raw_body else ""
+        import json as _json
+
+        payload = _json.loads(payload) if payload else {}
+    except Exception:
+        payload = {}  # Maybe it's a form or empty body, let the provider handle it
+
+    try:
+        start_time = datetime.datetime.now(datetime.UTC)
+        observations_data = await provider.handle_webhook(integration, payload, request)
+        count = 0
+        # Initialized here so the post-sync notification dispatch below has
+        # real per-channel counts regardless of whether the provider returned
+        # any observations.
+        telemetry_records: list = []
+        fhir_records: list = []
+        if observations_data:
+            from app.models.fhir import Observation
+
+            # Convert to ORM models BEFORE passing to mapping
+            observations = []
+            for obs_data in observations_data:
+                obs_dict = (
+                    obs_data.model_dump(exclude_unset=True)
+                    if hasattr(obs_data, "model_dump")
+                    else obs_data.dict(exclude_unset=True)
+                    if hasattr(obs_data, "dict")
+                    else obs_data
+                )
+                obs = Observation(**obs_dict)
+                # audit B3: sync relational patient_id with the FHIR subject ref
+                # (the SDK ObservationCreate carries only ``subject``).
+                from app.services.fhir_helpers import coerce_patient_id
+
+                obs.patient_id = coerce_patient_id(obs.patient_id, obs.subject)
+                observations.append(obs)
+
+            from app.services.fhir_service import map_observations_to_biomarkers
+
+            await map_observations_to_biomarkers(db, observations)
+
+            # Deduped split: the manual-sync and background-sync paths both
+            # route through ``apply_telemetry_split`` (audit A4); the webhook
+            # path used to inline a copy that had already diverged (subtle
+            # slug-match differences, missing performer.reference, and
+            # post_sync_notifications was always called with
+            # telemetry_persisted=0). Routing through the shared helper keeps
+            # all three entry points identical.
+            from app.services.integration_sync_service import apply_telemetry_split
+
+            telemetry_records, fhir_records = await apply_telemetry_split(
+                db,
+                observations,
+                tenant_id=integration.tenant_id,
+                instance_name=integration.instance_name,
+                provider_name=integration.provider,
+                integration_id=integration.id,
+            )
+            count += len(telemetry_records) + len(fhir_records)
+
+        integration.last_synced_at = datetime.datetime.now(datetime.UTC)
+
+        # Log the sync
+        sync_log = IntegrationSyncLog(
+            integration_id=integration.id,
+            tenant_id=integration.tenant_id,
+            status="success",
+            records_synced=count,
+            started_at=start_time,
+            completed_at=integration.last_synced_at,
+        )
+        db.add(sync_log)
+
+        await db.commit()
+        # Best-effort notification dispatch (baseline + provider-authored).
+        # Closes the webhook→notification gap: previously webhooks bypassed
+        # run_sync entirely, so neither the "synced N records" baseline nor
+        # any provider-authored threshold/HITL notifications fired for
+        # webhook-driven integrations.
+        try:
+            from app.services.integration_sync_service import post_sync_notifications
+
+            await post_sync_notifications(
+                provider,
+                integration,
+                pulled=count,
+                fhir_persisted=len(fhir_records),
+                telemetry_persisted=len(telemetry_records),
+                status="success",
+                started_at=start_time,
+                completed_at=integration.last_synced_at,
+                observations=observations_data or [],
+            )
+        except Exception as webhook_notif_err:
+            logger.warning(
+                "Webhook post-sync notification dispatch failed for %s: %s",
+                domain,
+                webhook_notif_err,
+            )
+        return {"message": "Webhook processed successfully", "metrics_synced": count}
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Webhook failed for {domain} (Integration: {integration_id}): {e}")
+
+        if integration.is_debug_enabled and hasattr(provider, "log_debug_payload"):
+            with contextlib.suppress(Exception):
+                await provider.log_debug_payload(
+                    integration, "Webhook Error", {"error": str(e)}, level="error"
+                )
+
+        # Log failure
+        failure_completed = datetime.datetime.now(datetime.UTC)
+        sync_log = IntegrationSyncLog(
+            integration_id=integration.id,
+            tenant_id=integration.tenant_id,
+            status="failed",
+            records_synced=0,
+            started_at=start_time,
+            completed_at=failure_completed,
+            error_message=str(e),
+        )
+        db.add(sync_log)
+        await db.commit()
+        # Best-effort failure notification — webhooks previously failed silently
+        # from the user's POV (no row in the inbox, no admin escalation).
+        try:
+            from app.services.integration_sync_service import post_sync_notifications
+
+            await post_sync_notifications(
+                provider,
+                integration,
+                pulled=0,
+                fhir_persisted=0,
+                telemetry_persisted=0,
+                status="failed",
+                started_at=start_time,
+                completed_at=failure_completed,
+                error=str(e),
+                error_type="data",
+                observations=[],
+            )
+        except Exception as webhook_notif_err:
+            logger.warning(
+                "Webhook failure-notification dispatch failed for %s: %s",
+                domain,
+                webhook_notif_err,
+            )
+        raise HTTPException(status_code=500, detail=f"Webhook processing failed: {e!s}")
+
+
+@router.api_route(
+    "/{domain}/api/{integration_id}/{path:path}",
+    methods=["GET", "POST", "PUT", "DELETE"],
+)
+async def integration_api_proxy(
+    domain: str,
+    integration_id: str,
+    path: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _rl_ip=Depends(rate_limit("integration_api_proxy", max_requests=120, window=60)),
+    _rl_int=Depends(rate_limit_integration("integration_api_proxy", max_requests=60, window=60)),
+) -> Any:
+    """
+    Handle generic two-way API requests for a specific integration.
+
+    Audit 2026-08 H1/H2/M2/M3: an ``api_secret`` is REQUIRED — instances
+    are provisioned with one automatically at creation. Requests must carry
+    ``X-Api-Signature`` (HMAC-SHA256 of ``METHOD\\n<path>[?query]\\n<timestamp>\\n<raw_body>``)
+    AND ``X-Api-Timestamp`` (mandatory — kills the unlimited-replay hole).
+    The MAC covers the query string, so query parameters cannot be tampered
+    with on a captured request. ``GET /status`` remains the unsigned
+    pairing/connectivity probe but returns only minimal fields.
+
+    See ``_verify_api_signature`` for the canonical signing scheme.
+    """
+    try:
+        integration_uuid = UUID(integration_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid integration ID format")
+
+    stmt = select(UserIntegration).where(
+        UserIntegration.id == integration_uuid,
+        UserIntegration.provider == domain,
+        UserIntegration.status == IntegrationStatus.ACTIVE,
+    )
+    result = await db.execute(stmt)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise HTTPException(status_code=404, detail="Active integration not found")
+
+    provider = integration_registry.get_provider(domain)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Integration provider not loaded")
+
+    if not hasattr(provider, "handle_api_request"):
+        raise HTTPException(status_code=400, detail="Provider does not support API requests")
+
+    # Body cap (audit M4) — read once; signature + JSON parse share bytes.
+    raw_body = await _check_machine_body_cap(request)
+    cfg = getattr(integration, "user_config", None) or {}
+    api_secret = _resolve_secret_field(domain, cfg, "api_secret", context=str(integration.id))
+
+    # GET /status without a signature stays the pre-pairing connectivity
+    # probe (QR flow) but leaks nothing beyond liveness + server time
+    # (audit M3; server_time also lets SDKs resync skewed clocks). A SIGNED
+    # status probe falls through to the provider and returns the full
+    # payload (SDK versions, cursor, frontend URL).
+    is_status_probe = path == "status" and request.method == "GET"
+    provided_sig = request.headers.get("X-Api-Signature")
+    provided_ts = request.headers.get("X-Api-Timestamp")
+    if is_status_probe and not provided_sig:
+        return {
+            "status": "active",
+            "server_time": int(datetime.datetime.now(datetime.UTC).timestamp()),
+        }
+
+    if not api_secret:
+        # Fail closed — no secret, no machine API (audit H1/H2).
+        raise HTTPException(
+            status_code=401,
+            detail="API secret not configured for this integration.",
+        )
+
+    if not provided_ts:
+        # Mandatory timestamp (audit M2) — without it a captured signature
+        # was replayable forever.
+        raise HTTPException(
+            status_code=401,
+            detail="Missing X-Api-Timestamp header.",
+        )
+    query = request.url.query
+    signed_path = path + (f"?{query}" if isinstance(query, str) and query else "")
+    if not provided_sig or not _verify_api_signature(
+        api_secret,
+        method=request.method,
+        path=signed_path,
+        raw_body=raw_body,
+        provided_signature=provided_sig,
+        provided_timestamp=provided_ts,
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing X-Api-Signature.",
+        )
+
+    try:
+        response_data = await provider.handle_api_request(
+            integration=integration, path=path, method=request.method, request=request
+        )
+        # Commit any configuration changes the provider made (e.g., sync cursor update)
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(integration, "user_config")
+        await db.commit()
+        return response_data
+    except NotImplementedError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        # Pass ValueErrors (like validation or user errors) as 400 Bad Request
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(
+            f"API request failed for {domain} (Integration: {integration_id}): {e}",
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=f"API request failed: {e!s}")

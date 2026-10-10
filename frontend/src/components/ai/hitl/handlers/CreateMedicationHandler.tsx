@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertTriangle, Pill, Calendar, Tag } from 'lucide-react';
+import { TaskInfo } from '../../../../types/ai';
+import { HitlHandlerProps } from '../registry';
+import { HitlOutcomeDetail, buildLinkOutcomeChips } from '../outcome';
+import {
+  MedicationForm,
+  MedicationFormPrefill,
+  MedicationFormPayload,
+} from '../../../patients/MedicationForm';
+import { addPatientMedication } from '../../../../services/medicationService';
+import { createCatalogItem } from '../../../../services/catalogService';
+import { resolveHitlTask } from '../../../../services/aiAssistanceService';
+import {
+  createLinksFor,
+  selectionsToLinkInputs,
+  type LinkCreateResult,
+} from '../../../../services/conceptEdges';
+import { LinksSection } from '../LinksSection';
+import type { CatalogSelection } from '../../../../types/catalog';
+
+/** Convert the backend's link-snapshot shape to CatalogSelection[]. */
+function proposalLinksToSelections(raw: unknown): CatalogSelection[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CatalogSelection[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const dst = (entry as any).dst;
+    const relation = (entry as any).relation;
+    if (!dst || !dst.type || !dst.id) continue;
+    out.push({
+      type: String(dst.type),
+      id: String(dst.id),
+      label: String(dst.label ?? ''),
+      ...(relation ? { relation: String(relation) } : {}),
+    });
+  }
+  return out;
+}
+
+function proposalToPrefill(proposed: Record<string, any> | undefined): MedicationFormPrefill {
+  if (!proposed) return {};
+  return {
+    name: proposed.name,
+    catalog_id: proposed.catalog_id,
+    matched: proposed.matched,
+    is_new: proposed.is_new,
+    indications: proposed.indications,
+    side_effects: proposed.side_effects,
+    contraindications: proposed.contraindications,
+    dosage_info: proposed.dosage_info,
+    dosage: proposed.dosage,
+    frequency_label: proposed.frequency_label,
+    reason: proposed.reason,
+    note: proposed.note,
+    start_date: proposed.start_date,
+    end_date: proposed.end_date,
+    status: proposed.status,
+    links: proposalLinksToSelections(proposed.links),
+  };
+}
+
+export function renderMedicationSummary(task: TaskInfo): React.ReactNode {
+  const p = task.proposed_payload || {};
+  const chips: { icon: React.ComponentType<{ className?: string }>; label: string }[] = [];
+  
+  if (p.name) chips.push({ icon: Pill, label: p.name });
+  if (p.dosage) chips.push({ icon: Tag, label: p.dosage });
+  if (p.frequency_label) chips.push({ icon: Calendar, label: p.frequency_label });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {chips.length === 0 ? null : (
+          chips.map((c, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border text-[10px] font-bold text-gray-600 dark:text-dark-text"
+            >
+              <c.icon className="w-2.5 h-2.5 text-amber-500 dark:text-amber-400" />
+              <span className="truncate max-w-[160px]">{c.label}</span>
+            </span>
+          ))
+        )}
+      </div>
+      {Array.isArray(p.links) && p.links.length > 0 && (
+        <LinksSection
+          srcType="medication"
+          value={proposalLinksToSelections(p.links)}
+          onChange={() => {}}
+          mode="summary"
+        />
+      )}
+    </div>
+  );
+}
+
+export function renderMedicationOutcome(task: TaskInfo): React.ReactNode | null {
+  const chips = buildLinkOutcomeChips(
+    task.resolved?.result as { links?: unknown; links_failed?: number } | undefined,
+  );
+  return chips.length ? <HitlOutcomeDetail chips={chips} /> : null;
+}
+
+export const CreateMedicationHandler: React.FC<HitlHandlerProps> = ({ task, sessionId, onResolved, onCancel }) => {
+  const { t } = useTranslation();
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const patientId = task.context?.patient_id as string | undefined;
+
+  const handleConfirm = async (payload: MedicationFormPayload) => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      let catalogId = payload.code.catalog_id;
+      let drugName = payload.code.text;
+
+      if (payload.is_new_catalog_entry) {
+        const created = await createCatalogItem('medication', {
+          name: payload.code.text,
+          indications: payload.indications,
+          side_effects: payload.side_effects || [],
+          dosage_info: payload.dosage || undefined,
+        });
+        catalogId = String(created.id);
+        drugName = String(created.name ?? created.id);
+      }
+
+      const commitPayload: any = {
+        status: payload.status,
+        dosage: payload.dosage,
+        frequency: payload.frequency,
+        start_date: payload.start_date,
+        end_date: payload.end_date,
+        reason: payload.reason,
+        note: payload.note,
+        code: {
+          text: drugName,
+          catalog_id: catalogId
+        }
+      };
+
+      const created = await addPatientMedication(patientId!, commitPayload);
+
+      // Persist graph links to the medication CATALOG entry (best-effort).
+      // The links describe the drug (e.g. TREATS disease) — they belong on the
+      // catalog row, not the patient prescription.
+      let linkResults: LinkCreateResult[] = [];
+      if (payload.links.length > 0 && catalogId) {
+        linkResults = await createLinksFor(
+          'medication',
+          catalogId,
+          selectionsToLinkInputs(payload.links),
+        );
+      }
+      const failedLinks = linkResults.filter(r => !r.ok).length;
+
+      if (sessionId) {
+        try {
+          await resolveHitlTask(sessionId, task.proposal_id, {
+            status: 'confirmed',
+            final_payload: commitPayload as unknown as Record<string, any>,
+            result: {
+              id: created.id,
+              catalog_id: catalogId,
+              links: linkResults,
+              links_failed: failedLinks,
+            },
+          });
+        } catch (resolveErr) {
+          console.error('HITL resolve recording failed (write already committed)', resolveErr);
+        }
+      }
+
+      onResolved({
+        ...task,
+        status: 'confirmed',
+        resolved: {
+          final_payload: commitPayload as unknown as Record<string, any>,
+          result: {
+            id: created.id,
+            catalog_id: catalogId,
+            links: linkResults,
+            links_failed: failedLinks,
+          },
+          at: new Date().toISOString(),
+        },
+      });
+    } catch (e: any) {
+      console.error('HITL add_medication confirm failed', e);
+      const msg =
+        e?.response?.data?.detail ||
+        e?.message ||
+        String(t('ai_chat.hitl.error_generic', 'Failed to save. Please review and try again.'));
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = () => {
+    if (submitting) return;
+    if (sessionId) {
+      resolveHitlTask(sessionId, task.proposal_id, { status: 'dismissed' }).catch(err =>
+        console.error('HITL reject record failed', err)
+      );
+    }
+    onResolved({ ...task, status: 'dismissed', resolved: { at: new Date().toISOString() } });
+  };
+
+  if (!patientId) {
+    return (
+      <div className="p-4 text-xs text-amber-700 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-900/10">
+        {t('ai_chat.hitl.add_medication.error_no_patient', 'A patient context is required to add a medication.')}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      {error && (
+        <div className="mx-4 mt-4 flex items-start gap-2 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-900/10 p-3 text-[11px] text-rose-700 dark:text-rose-300">
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span className="wrap-break-word">{error}</span>
+        </div>
+      )}
+      <MedicationForm
+        patientId={patientId}
+        prefill={proposalToPrefill(task.proposed_payload)}
+        showHeader={false}
+        showActions
+        submitLabel={t('ai_chat.hitl.add_medication.confirm', 'Confirm & Add Medication')}
+        onSubmit={handleConfirm}
+        onCancel={onCancel}
+        onReject={handleReject}
+      />
+    </div>
+  );
+};

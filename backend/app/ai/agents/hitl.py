@@ -1,0 +1,530 @@
+"""Human-in-the-loop (HITL) helpers + the resume continuation turn.
+
+Extracted from ``AIAssistanceService`` (Phase 2). The five module-level helpers
+are pure functions (no service/DB state) and are re-exported from
+``app.ai.assistance.service`` for backward compatibility with tests.
+
+``resume_after_hitl`` is the continuation turn driven after a user resolves
+one or more HITL task cards. It performs the resume-specific setup (session
+verification, resolution-summary build, summary persistence) then delegates
+the LangGraph chat engine.
+
+The ``chat_agent`` import is lazy (inside ``resume_after_hitl``) to avoid a
+top-level cycle: ``chat_agent`` imports the two simple helpers below at module
+load, while this module needs ``chat_engine_iter`` only at call time.
+"""
+
+import json
+import logging
+from typing import Any
+from uuid import UUID
+
+from langchain_core.messages import AIMessage, ToolMessage
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.enums import HitlTaskStatus
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_hitl_proposal(observation: Any) -> dict[str, Any] | None:
+    """Inspect a chatbot tool result for a human-in-the-loop proposal.
+
+    Proposal tools return a JSON string (or dict) shaped like:
+        {"__hitl__": True, "task": { ...full task payload... }}
+    Returns the task dict when a proposal is detected, otherwise None.
+    Never raises — malformed observations are treated as non-HITL.
+    """
+    parsed = observation
+    if isinstance(parsed, str):
+        try:
+            parsed = json.loads(parsed)
+        except (ValueError, TypeError):
+            return None
+    if not isinstance(parsed, dict):
+        return None
+    if not parsed.get("__hitl__"):
+        return None
+    task = parsed.get("task") or parsed.get("proposal")
+    if not isinstance(task, dict):
+        return None
+    return task
+
+
+def _hitl_proposal_note(observation: Any) -> str | None:
+    """Extract the optional LLM-facing ``note`` a propose_* tool attaches to its
+    ``__hitl__`` result (sibling to ``task``). Used by tools that do pre-flight
+    work worth telling the LLM about (e.g. ``propose_anatomy_graph_generation``
+    reports how much of the target already exists so the LLM can inform the
+    user). Returns ``None`` when no note is present."""
+    parsed = observation
+    if isinstance(parsed, str):
+        try:
+            parsed = json.loads(parsed)
+        except (ValueError, TypeError):
+            return None
+    if not isinstance(parsed, dict) or not parsed.get("__hitl__"):
+        return None
+    note = parsed.get("note")
+    return note if isinstance(note, str) and note.strip() else None
+
+
+def _hitl_llm_feedback(task: dict[str, Any], note: str | None = None) -> str:
+    """Concise note appended to the LLM history so the agent knows a proposal
+    was emitted and that it must wait for human confirmation (no auto-retry).
+
+    ``note`` is an optional tool-supplied pre-flight summary (e.g. "Found 8
+    existing structures for 'Heart'") prepended to the standard wait-message."""
+    parts: list[str] = []
+    if note:
+        parts.append(note)
+    parts.append(
+        f"[HITL] A {task.get('task_type', 'action')} proposal has been rendered "
+        f"as a review card for the user ({task.get('title', '')}). "
+        f"The user must explicitly confirm or edit it before it takes effect. "
+        f"Do NOT call the same proposal tool again for this request; continue "
+        f"your explanation and wait for the user's response."
+    )
+    return "\n".join(parts)
+
+
+def _hitl_resolution_summary(tasks: list[dict[str, Any]]) -> str:
+    """Build the structured outcomes message fed back to the agent when a HITL
+    continuation turn is triggered. Reads status + final_payload + result +
+    error from each resolved task. Returned text becomes the body of a synthetic
+    user message that drives the continuation turn.
+
+    Handles three cases per task:
+      - CONFIRMED: surfaces trimmed draft + result ids
+      - DISMISSED: notes the user rejected it
+      - FAILED: surfaces the error
+      - still PROPOSED: the user chose to continue WITHOUT answering (partial
+        resume via the Continue button). Clearly labeled so the LLM knows the
+        user hasn't acted on it yet.
+
+    For ``task_type == "ask_user"`` confirmed tasks, the per-question answers
+    are formatted as ``q_id: value`` pairs (with freetext trimmed to 200 chars)
+    so the agent receives structured input rather than free-form prose.
+    """
+    lines = []
+    confirmed = 0
+    dismissed = 0
+    failed = 0
+    unanswered = 0
+    for t in tasks:
+        # Status may arrive as a HitlTaskStatus enum (fresh from a propose_*
+        # tool) or as a plain string (loaded from JSONB). The comparisons
+        # below use the enum form (status_raw); the plain-string form is only
+        # needed in _hitl_resolved_brief, not here.
+        status_raw = t.get("status", HitlTaskStatus.PROPOSED)
+        resolved = t.get("resolved") or {}
+        title = t.get("title") or t.get("task_type", "action")
+        task_type = t.get("task_type", "action")
+        proposal_id = t.get("proposal_id", "?")
+        if status_raw == HitlTaskStatus.CONFIRMED:
+            confirmed += 1
+            parts = ["CONFIRMED"]
+
+            # ask_user: surface structured answers keyed by question id.
+            if task_type == "ask_user":
+                answers_blob = _format_ask_user_answers(resolved)
+                if answers_blob:
+                    parts.append(answers_blob)
+            else:
+                final = resolved.get("final_payload")
+                if isinstance(final, dict) and final:
+                    # Trim large payloads — surface only short identifying fields.
+                    keys = ("name", "title", "slug", "coding_system", "code")
+                    trimmed = {k: final[k] for k in keys if k in final}
+                    if trimmed:
+                        parts.append(f"draft={json.dumps(trimmed, ensure_ascii=False)}")
+                result = resolved.get("result")
+                if isinstance(result, dict) and result:
+                    keys = ("id", "biomarker_id", "catalog_id", "event_id", "slug")
+                    trimmed = {k: result[k] for k in keys if k in result}
+                    if trimmed:
+                        parts.append(f"result={json.dumps(trimmed, ensure_ascii=False)}")
+            err = resolved.get("error")
+            if err:
+                parts.append(f"error={err}")
+            lines.append(f"- [{task_type}] {title} ({proposal_id[:8]}): " + ", ".join(parts) + ".")
+        elif status_raw == HitlTaskStatus.DISMISSED:
+            dismissed += 1
+            lines.append(f"- [{task_type}] {title} ({proposal_id[:8]}): DISMISSED by the user.")
+        elif status_raw == HitlTaskStatus.FAILED:
+            failed += 1
+            err = resolved.get("error", "unknown error")
+            lines.append(f"- [{task_type}] {title} ({proposal_id[:8]}): FAILED ({err}).")
+        else:
+            unanswered += 1
+            lines.append(
+                f"- [{task_type}] {title} ({proposal_id[:8]}): NOT YET ANSWERED "
+                f"(the user continued without resolving this item)."
+            )
+
+    # Build header with counts.
+    counts = []
+    if confirmed:
+        counts.append(f"{confirmed} confirmed")
+    if dismissed:
+        counts.append(f"{dismissed} dismissed")
+    if failed:
+        counts.append(f"{failed} failed")
+    if unanswered:
+        counts.append(f"{unanswered} left unanswered")
+    counts_str = ", ".join(counts) if counts else "no items"
+
+    header = (
+        f"[HITL RESOLUTION FEEDBACK] The user has finished acting on your proposals ({counts_str})."
+    )
+
+    # Guidance varies based on whether there are unanswered items.
+    if unanswered:
+        guidance = (
+            "Continue the conversation based on these outcomes. For confirmed "
+            "items, briefly acknowledge what was saved. For dismissed/failed "
+            "items, ask how the user wants to proceed. For items left "
+            "UNANSWERED, do NOT re-propose them automatically — the user chose "
+            "to skip them. You may ask if they want to address them now, or "
+            "simply move on. Do not parrot payload data back verbatim."
+        )
+    else:
+        guidance = (
+            "Continue the conversation based on these outcomes: "
+            "(a) if all confirmed, briefly acknowledge what was saved and offer "
+            "any natural follow-up; (b) if any were dismissed, ask the user how "
+            "they'd like to proceed instead; (c) do NOT re-propose the same "
+            "actions. Do not repeat the payload details back to the user verbatim."
+        )
+    return f"{header}\n" + "\n".join(lines) + f"\n{guidance}"
+
+
+def _format_ask_user_answers(resolved: dict[str, Any]) -> str | None:
+    """Format the answers of a confirmed ``ask_user`` task for the LLM.
+
+    Emits ONE BULLET PER QUESTION on its own line, with the answer as a flat
+    JSON object/value — not nested inside an outer ``answers={"questions":[...]}``
+    blob. Earlier revisions wrapped the answers in triple-nested JSON which
+    the LLM struggled to parse (it would ack the confirmation but ignore the
+    actual values). Flat + per-line = trivial extraction.
+
+    Shapes (see ``app/ai/tools/ask_user.py``):
+      - freetext       → ``q_id: "text"``
+      - single_choice  → ``q_id: "value"``
+      - multi_choice   → ``q_id: ["v1","v2"]``
+      - catalog_ref /
+        instance_ref   → ``q_id: {id, name, type, ...rich fields}``
+                         (or list when ``multi``).
+      - skipped        → ``q_id: <no answer>``
+    """
+    from app.ai.tools.ask_user import FREETEXT_ANSWER_TRIM_CHARS
+
+    final = resolved.get("final_payload")
+    if not isinstance(final, dict):
+        return None
+    answers = final.get("answers")
+    if not isinstance(answers, dict) or not answers:
+        return None
+
+    lines: list[str] = []
+    for q_id, raw in answers.items():
+        lines.append(f"  - {q_id}: {_stringify_answer(raw, FREETEXT_ANSWER_TRIM_CHARS)}")
+    return "answers:\n" + "\n".join(lines)
+
+
+def _stringify_answer(value: Any, freetext_cap: int) -> str:
+    """Compact, single-line stringification of one ask_user answer value.
+
+    For ``catalog_ref`` / ``instance_ref`` answers (dict or list-of-dict),
+    ALL fields the candidate carries are surfaced so the LLM can act on the
+    picked item WITHOUT a follow-up ``get_*_details`` call. Field values are
+    individually capped (see ``_CANDIDATE_FIELD_CAPS``) to keep the resume
+    prompt within a sane token budget; the order is identity-first for
+    readability.
+    """
+    if value is None:
+        return "<no answer>"
+    if isinstance(value, str):
+        v = value.strip()
+        if len(v) > freetext_cap:
+            v = v[:freetext_cap].rstrip() + "…"
+        return v
+    if isinstance(value, list):
+        # Multi-choice answer (list of values) OR multi-ref (list of dicts).
+        if all(isinstance(x, str) for x in value):
+            return ", ".join(value) if value else "<no answer>"
+        # list of dicts (ref multi): keep the per-dict rich fields.
+        compact = [_compact_candidate(x) for x in value if isinstance(x, dict)]
+        return json.dumps(compact, ensure_ascii=False) if compact else "<no answer>"
+    if isinstance(value, dict):
+        compact = _compact_candidate(value)
+        return json.dumps(compact, ensure_ascii=False) if compact else "<no answer>"
+    return str(value)
+
+
+#: Order in which candidate fields surface in the LLM-facing summary, with
+#: per-field length caps. Identity first (id/name/type), then coding, then
+#: classification, then instance-specific, then the long description last so
+#: it truncates first if the budget is tight. Mirrors the rich CandidateRef
+#: schema in ``app/ai/tools/ask_user.py``.
+_CANDIDATE_FIELD_ORDER: tuple = (
+    "id",
+    "name",
+    "type",
+    "slug",
+    "code",
+    "coding_system",
+    "category",
+    "kind",
+    "is_telemetry",
+    "unit",
+    "status",
+    "date",
+    "description",
+)
+_CANDIDATE_FIELD_CAPS: dict = {
+    "id": 48,  # uuids are 36 chars; leave headroom
+    "name": 120,
+    "type": 40,
+    "slug": 80,
+    "code": 40,
+    "coding_system": 40,
+    "category": 80,
+    "kind": 40,
+    "unit": 40,
+    "status": 40,
+    "date": 40,
+    "description": 160,
+}
+
+
+def _compact_candidate(value: dict[str, Any]) -> dict[str, Any]:
+    """Drop None + unknown keys, apply per-field length caps, return an
+    identity-ordered dict. Returns ``{}`` for an all-empty input."""
+    out: dict[str, Any] = {}
+    for k in _CANDIDATE_FIELD_ORDER:
+        v = value.get(k)
+        if v is None or v == "":
+            continue
+        cap = _CANDIDATE_FIELD_CAPS.get(k)
+        if cap and isinstance(v, str) and len(v) > cap:
+            v = v[:cap].rstrip() + "…"
+        out[k] = v
+    return out
+
+
+def _hitl_resolved_brief(tasks: list[dict[str, Any]]) -> str | None:
+    """Compact one-line summary of resolved tasks on a past assistant message,
+    injected into history reconstruction so the agent remembers prior HITL
+    outcomes across user turns. Returns None if no tasks were resolved."""
+    bits = []
+    terminal = HitlTaskStatus.terminal()
+    for t in tasks:
+        status_raw = t.get("status")
+        if status_raw not in terminal:
+            continue
+        # Normalize enum -> plain string for display.
+        status = status_raw.value if isinstance(status_raw, HitlTaskStatus) else status_raw
+        task_type = t.get("task_type", "action")
+        title = t.get("title") or task_type
+        result = (t.get("resolved") or {}).get("result") or {}
+        rid = ""
+        if isinstance(result, dict):
+            for k in ("id", "biomarker_id", "catalog_id", "event_id", "slug"):
+                if k in result:
+                    rid = f" (id={str(result[k])[:8]})"
+                    break
+        bits.append(f"{task_type} '{title}': {status}{rid}")
+    if not bits:
+        return None
+    return "; ".join(bits)
+
+
+def _append_assistant_turn_to_history(msg: Any, history: list) -> None:
+    """Reconstruct a past assistant message + its tool results into ``history``.
+
+    OpenAI's chat API requires that every assistant message carrying
+    ``tool_calls`` be followed by a ``ToolMessage`` for **each** ``tool_call_id``.
+    The previous reconstruction only re-injected a ToolMessage for HITL-task
+    turns and silently dropped normal tool results — so on the next turn the
+    stored assistant ``tool_calls`` had no following tool responses and OpenAI
+    rejected the request with ``BadRequestError: 400 ... tool_call_ids did not
+    have response messages``.
+
+    This replays the per-tool ``result`` (captured at tool-execution time and
+    persisted on the assistant message's ``tool_calls`` JSONB) as one
+    ``ToolMessage`` per ``tool_call_id``. The compact HITL outcome brief is
+    folded into the LAST tool response so the agent still remembers what the
+    user confirmed/dismissed on prior turns (and so we don't emit a synthetic
+    tool_call_id, which some providers reject).
+    """
+    raw_calls = list(msg.tool_calls or [])
+    t_calls: list[dict[str, Any]] = []
+    for idx, tc in enumerate(raw_calls):
+        # Fall back to a unique synthetic id (per index) if none was stored —
+        # the AIMessage.tool_calls and the ToolMessage response MUST share it.
+        tc_id = tc.get("id") or f"call_{msg.id.hex[:8]}_{idx}"
+        t_calls.append({"name": tc.get("name", "tool"), "args": tc.get("args", {}), "id": tc_id})
+
+    history.append(AIMessage(content=(msg.content or {}).get("text"), tool_calls=t_calls))
+
+    # One ToolMessage per tool_call_id — satisfies OpenAI's contract and
+    # replays the actual past observation so the model retains prior context.
+    brief = _hitl_resolved_brief(list(msg.tasks or []))
+    last_idx = len(t_calls) - 1
+    for idx, tc in enumerate(t_calls):
+        raw = raw_calls[idx] if idx < len(raw_calls) else {}
+        result = raw.get("result")
+        if result is None:
+            result = "(no result stored)"
+        if brief and idx == last_idx:
+            result = f"{result}\n[HITL outcomes for this turn: {brief}]"
+        history.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+
+
+async def resume_after_hitl(
+    db: AsyncSession,
+    chat_session_service,
+    ai_provider_service,
+    max_iterations: int,
+    session_id: UUID,
+    tenant_id: UUID,
+    user_id: UUID,
+    message_id: UUID | None = None,
+    flow_events: bool = False,
+):
+    """Stream a continuation turn after the user has resolved one or more HITL
+    task cards. Reads the resolved tasks from the target message's ``tasks``
+    JSONB, builds a structured outcomes summary, persists it as a user message,
+    then runs the shared reasoning loop (streaming).
+
+    Guards:
+      * Session must belong to (user_id, tenant_id).
+      * Target message must exist and have tasks (graceful fallback otherwise).
+
+    Yields the same SSE sentinel vocabulary as the streaming chat path.
+    """
+    # Lazy import to avoid the chat_agent <-> hitl top-level cycle.
+    from sqlalchemy import select
+
+    from app.ai.agents.chat_agent import (
+        build_chat_tools,
+        reconstruct_history,
+        stream_loop_as_sse,
+    )
+    from app.ai.agents.prompts import build_resume_system_prompt
+    from app.ai.graphs.chat_agent import (
+        chat_engine_iter,
+        resume_interrupted_chat_graph,
+    )
+    from app.models.chat_model import ChatSession as _ChatSession
+
+    # Verify ownership + pull patient_id for tool context.
+    session_result = await db.execute(
+        select(_ChatSession).where(
+            _ChatSession.id == session_id,
+            _ChatSession.user_id == user_id,
+            _ChatSession.tenant_id == tenant_id,
+        )
+    )
+    session = session_result.scalars().first()
+    if not session:
+        raise ValueError("Session not found or access denied.")
+
+    target = await chat_session_service.find_resumable_message(
+        session_id, user_id, tenant_id, message_id=message_id
+    )
+
+    if target and target.tasks:
+        # Pending (unanswered) tasks do NOT hard-block the resume — the user
+        # may have clicked "Continue" to proceed with partial answers. The
+        # summary labels unanswered items as "NOT YET ANSWERED".
+        terminal = HitlTaskStatus.terminal()
+        pending = [
+            t for t in target.tasks if isinstance(t, dict) and t.get("status") not in terminal
+        ]
+        if pending:
+            logger.info(
+                f"HITL resume: {len(pending)} task(s) still pending in "
+                f"session {session_id} — proceeding with partial resume."
+            )
+        summary = _hitl_resolution_summary(target.tasks)
+    else:
+        # GRACEFUL FALLBACK: no task-bearing message (e.g. the proposing stream
+        # was interrupted before the proactive-save fix, or an old session).
+        # Don't error — run the continuation with a generic prompt.
+        logger.warning(
+            f"HITL resume: no task-bearing message found in session "
+            f"{session_id}; falling back to generic continuation."
+        )
+        summary = (
+            "[HITL RESOLUTION FEEDBACK] The user has resolved a proposed "
+            "action from your previous turn. The outcome is recorded in "
+            "the session history (look for the '✓ Confirmed and saved:' "
+            "or dismissal note). Please acknowledge the outcome and "
+            "offer any natural follow-up."
+        )
+
+    # Persist the summary as a user message so it reconstructs naturally
+    # into LLM history on subsequent turns. It is tagged ``kind=hitl_feedback``
+    # so the GET /messages endpoint can hide it from the UI (it is an
+    # LLM-internal instruction, never meant to render as a chat bubble).
+    await chat_session_service.save_message(
+        session_id=session_id,
+        role="user",
+        content={"text": summary, "kind": "hitl_feedback"},
+    )
+
+    patient_id = str(session.patient_id) if session.patient_id else None
+    # Resume turns don't carry exam context.
+    tools = await build_chat_tools(
+        db, tenant_id, patient_id, user_id, examination_id=None, label="resume"
+    )
+
+    llm = await ai_provider_service.get_llm("chat", tenant_id=tenant_id, user_id=user_id)
+    llm_with_tools = llm.bind_tools(tools) if tools else llm
+
+    system_prompt = build_resume_system_prompt()
+    history = await reconstruct_history(
+        chat_session_service, session_id, user_id, tenant_id, system_prompt, summary
+    )
+
+    # Graph engine (Phase 3.3): when the session's checkpointed run is paused
+    # at an ask_user interrupt, the summary is delivered as Command(resume=...)
+    # — the model continues the SAME conversation (the answers land as the
+    # ask_user ToolMessage). Falls back to the fresh-continuation turn when
+    # there is no pending interrupt (e.g. loop-engine sessions or an
+    # already-abandoned checkpoint).
+    resumed = await resume_interrupted_chat_graph(
+        session_id,
+        summary,
+        llm_with_tools=llm_with_tools,
+        tools=tools,
+        chat_session_service=chat_session_service,
+        log_label="AI Assistance (resume)",
+        user_id=user_id,
+        tenant_id=tenant_id,
+    )
+    if resumed is not None:
+        logger.info(
+            f"HITL resume: resuming checkpointed graph run for session "
+            f"{session_id} (ask_user interrupt)."
+        )
+        async for chunk in stream_loop_as_sse(resumed, flow_events=flow_events):
+            yield chunk
+        return
+
+    loop = chat_engine_iter(
+        llm_with_tools,
+        tools,
+        history,
+        max_iterations,
+        streaming=True,
+        chat_session_service=chat_session_service,
+        session_id=session_id,
+        log_label="AI Assistance (resume)",
+        user_id=user_id,
+        tenant_id=tenant_id,
+    )
+    async for chunk in stream_loop_as_sse(loop, flow_events=flow_events):
+        yield chunk

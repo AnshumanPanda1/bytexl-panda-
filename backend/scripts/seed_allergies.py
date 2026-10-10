@@ -1,0 +1,30 @@
+# ruff: noqa: RUF001 -- long immutable strings / legacy patterns; reflow when touched
+import asyncio
+import os
+import sys
+
+# Ensure backend path is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from app.core.database import DATABASE_AVAILABLE
+from app.services.seed_service import seed_service
+
+
+async def main():
+    if not DATABASE_AVAILABLE:
+        print("❌ Error: Database is not available.")
+        return
+
+    print("🚀 Starting manual allergy catalog sync...")
+    stats = await seed_service.seed_allergies()
+
+    print("-" * 30)
+    print("✅ Sync complete!")
+    print(f"➕ Added:   {stats['added']}")
+    print(f"🔄 Updated: {stats['updated']}")
+    print(f"❌ Errors:  {stats['errors']}")
+    print("-" * 30)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

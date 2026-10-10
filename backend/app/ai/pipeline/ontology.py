@@ -1,0 +1,110 @@
+"""Ontology generation for previously-unknown biomarkers and medications.
+
+Extracted from ``MedicalProcessingService`` (Phase 5b). These handlers run
+NLP Pass 2 — generating full catalog definitions for entities the Pass-1
+extractor couldn't match to the existing catalog — and persist them so the
+catalog auto-expands. ``MedicalProcessingService`` keeps thin delegate methods
+(``_process_unknown_biomarkers`` / ``_process_unknown_medications``) that
+forward to the functions here.
+"""
+
+import logging
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.biomarker_model import BiomarkerDefinition, Unit
+from app.models.enums import QuantityType
+from app.models.fhir.medication import MedicationCatalog
+from app.schemas.biomarker import sanitize_slug
+from app.services.concept_service import resolve_biomarker_class_concept
+
+logger = logging.getLogger(__name__)
+
+
+async def process_unknown_biomarkers(
+    db: AsyncSession, unknown_bios, nlp_extractor, tenant_id, slug_map: dict[str, Any]
+) -> None:
+    new_bio_defs = await nlp_extractor.parse_document_pass_2_biomarkers(unknown_bios)
+
+    # Pre-fetch units
+    unit_res = await db.execute(select(Unit))
+    unit_map = {u.symbol.lower(): u for u in unit_res.scalars().all()}
+
+    for def_data in new_bio_defs.definitions:
+        # Sanitize the AI-proposed slug before any DB use. Direct model writes
+        # bypass the Pydantic ``slug`` validator, so coerce here to keep the
+        # slug SQL-safe (it is interpolated into raw SQL by analytics).
+        proposed_slug = sanitize_slug(def_data.proposed_slug)
+        slug_map[def_data.raw_name_match] = proposed_slug
+
+        existing = await db.execute(
+            select(BiomarkerDefinition).where(BiomarkerDefinition.slug == proposed_slug)
+        )
+        if not existing.scalar_one_or_none():
+            preferred_unit_id = None
+            if def_data.preferred_unit_symbol:
+                u_lower = def_data.preferred_unit_symbol.lower()
+                if u_lower in unit_map:
+                    preferred_unit_id = unit_map[u_lower].id
+                else:
+                    new_unit = Unit(
+                        symbol=def_data.preferred_unit_symbol,
+                        name=def_data.preferred_unit_symbol,
+                        quantity_type=QuantityType.OTHER,
+                        conversion_multiplier=1.0,
+                    )
+                    db.add(new_unit)
+                    await db.flush()
+                    unit_map[u_lower] = new_unit
+                    preferred_unit_id = new_unit.id
+
+            # ``def_data.category`` is a slug like "blood_laboratory" —
+            # resolve it to a ``biomarker_class`` concept ID. The helper
+            # normalizes to the concept slug ("blood-laboratory-class").
+            class_concept_id = await resolve_biomarker_class_concept(
+                db, def_data.category, tenant_id=tenant_id
+            )
+
+            db.add(
+                BiomarkerDefinition(
+                    slug=proposed_slug,
+                    coding_system=def_data.proposed_coding_system,
+                    code=def_data.proposed_code,
+                    name=def_data.name,
+                    class_concept_id=class_concept_id,
+                    aliases=def_data.suggested_aliases,
+                    reference_range_min=def_data.reference_range_min,
+                    reference_range_max=def_data.reference_range_max,
+                    preferred_unit_id=preferred_unit_id,
+                    info=def_data.info,
+                    is_telemetry=def_data.is_telemetry,
+                    tenant_id=tenant_id,
+                )
+            )
+
+
+async def process_unknown_medications(
+    db: AsyncSession, unknown_meds, nlp_extractor, tenant_id, name_map: dict[str, Any]
+) -> None:
+    new_med_defs = await nlp_extractor.parse_document_pass_2_medications(unknown_meds)
+    for def_data in new_med_defs.definitions:
+        name_map[def_data.raw_name_match] = def_data.name
+        existing = await db.execute(
+            select(MedicationCatalog).where(
+                func.lower(MedicationCatalog.name) == func.lower(def_data.name)
+            )
+        )
+        if not existing.scalar_one_or_none():
+            db.add(
+                MedicationCatalog(
+                    name=def_data.name,
+                    description=def_data.description,
+                    indications=def_data.indications,
+                    side_effects=def_data.side_effects,
+                    contraindications=def_data.contraindications,
+                    dosage_info=def_data.dosage_info,
+                    tenant_id=tenant_id,
+                )
+            )

@@ -1,0 +1,141 @@
+/**
+ * Anatomy create/edit form — the single anatomy field set, shared by the
+ * Catalogs workspace and the Anatomy Explorer's structure modal.
+ *
+ * Registered in ``CATALOG_FORMS`` so the catalog modal's ``getCatalogForm``
+ * picks it up for ``type='anatomy'``. Writes route through ``/anatomy`` (not
+ * ``/catalogs/anatomy``) via the anatomy write-target, so the class concept is
+ * resolved server-side.
+ *
+ * Fields mirror the other catalog forms: name, slug (auto-derived on create),
+ * class concept (CatalogItemPicker, anatomy_class kind), coding system + code,
+ * description.
+ */
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { CatalogItemFormProps } from './catalogForms';
+import { Field, TextInput, TextArea } from './FormFields';
+import { CatalogItemPicker } from '../CatalogItemPicker';
+import { LinksSection } from '../../ai/hitl/LinksSection';
+import type { CatalogSelection } from '../../../types/catalog';
+import { CodingSystemSelect } from '../../ui/CodingSystemSelect';
+
+const slugify = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+export const AnatomyForm: React.FC<CatalogItemFormProps> = ({
+  values,
+  onChange,
+  mode,
+}) => {
+  const { t } = useTranslation();
+  const [slugTouched, setSlugTouched] = useState(mode === 'edit');
+
+  // Reset the slug auto-derive tracking whenever the edited target changes.
+  useEffect(() => {
+    setSlugTouched(mode === 'edit');
+  }, [mode, values.id]);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const patch: Record<string, unknown> = { name: e.target.value };
+    if (!slugTouched) patch.slug = slugify(e.target.value);
+    onChange(patch);
+  };
+
+  const classValue: CatalogSelection[] = values.class_concept_id
+    ? [{
+        type: 'concept',
+        id: String(values.class_concept_id),
+        label: String(values.class_concept_name ?? values.class_concept_id),
+      }]
+    : [];
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t('anatomy.name_label', 'Name')}>
+          <TextInput
+            value={String(values.name ?? '')}
+            onChange={handleNameChange}
+            placeholder={t('anatomy.name_placeholder', 'e.g. Left Ventricle')}
+          />
+        </Field>
+        {mode === 'create' ? (
+          <Field
+            label={t('anatomy.slug_label', 'Slug')}
+            hint={t('catalogs.field_slug_hint', 'kebab-case, immutable after creation')}
+          >
+            <TextInput
+              value={String(values.slug ?? '')}
+              onChange={(e) => {
+                setSlugTouched(true);
+                onChange({ slug: e.target.value });
+              }}
+              placeholder="auto-derived from name"
+            />
+          </Field>
+        ) : (
+          <Field label={t('anatomy.slug_label', 'Slug')}>
+            <TextInput value={String(values.slug ?? '')} disabled />
+          </Field>
+        )}
+      </div>
+
+      <Field label={t('anatomy.category_label', 'Class')}>
+        <CatalogItemPicker
+          mode="single"
+          allowedTypes={['concept']}
+          conceptKind="anatomy_class"
+          value={classValue}
+          onChange={(next) =>
+            onChange({
+              class_concept_id: next.length > 0 ? next[0].id : null,
+              class_concept_name: next.length > 0 ? next[0].label : null,
+            })
+          }
+          placeholder={t('anatomy.class_placeholder', 'Search anatomy class…')}
+          block
+        />
+      </Field>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t('catalogs.field_coding_system', 'Coding system')}>
+          <CodingSystemSelect
+            domain="anatomy"
+            includeEmpty
+            value={String(values.standard_system ?? '')}
+            onChange={(v) => onChange({ standard_system: v || null })}
+          />
+        </Field>
+        <Field label={t('catalogs.field_code', 'Code')}>
+          <TextInput
+            value={String(values.standard_code ?? '')}
+            onChange={(e) =>
+              onChange({ standard_code: e.target.value || null })
+            }
+            placeholder="e.g. 394579002"
+          />
+        </Field>
+      </div>
+
+      <Field label={t('anatomy.description_label', 'Description')}>
+        <TextArea
+          rows={3}
+          value={String(values.description ?? '')}
+          onChange={(e) => onChange({ description: e.target.value || null })}
+        />
+      </Field>
+
+      {/* Anatomy→anatomy hierarchy (BRANCH_OF, PART_OF, etc.). */}
+      <LinksSection
+        srcType="anatomy"
+        value={Array.isArray(values.links) ? (values.links as CatalogSelection[]) : []}
+        onChange={(next) => onChange({ links: next })}
+        hideWhenEmpty
+      />
+    </div>
+  );
+};

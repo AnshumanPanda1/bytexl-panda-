@@ -1,0 +1,228 @@
+import uuid
+from unittest.mock import patch
+
+import pytest
+import pytest_asyncio
+from httpx import AsyncClient
+
+from app.models.enums import Role
+
+from ._auth_helpers import create_user
+
+
+# Helper to mock the dependency
+class MockTokenData:
+    def __init__(self, user_id, tenant_id, role, sub=None):
+        self.user_id = user_id
+        self.tenant_id = tenant_id
+        self.role = role
+        self.sub = sub
+        # Add fields expected by UserResponse if used as return value
+        self.id = user_id
+        self.email = sub
+        self.settings = {}
+
+
+def override_get_current_user():
+    return MockTokenData(
+        user_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        role="USER",
+        sub="current_user@example.com",
+    )
+
+
+def override_get_admin_user():
+    return MockTokenData(
+        user_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        role="ADMIN",
+        sub="admin@example.com",
+    )
+
+
+def override_get_switched_admin():
+    """Simulate a SYSTEM_ADMIN who has switched into another tenant."""
+    original_tenant = uuid.uuid4()
+    scoped_tenant = uuid.uuid4()
+    admin_user_id = uuid.uuid4()
+    tok = MockTokenData(
+        user_id=admin_user_id,
+        tenant_id=scoped_tenant,
+        role="SYSTEM_ADMIN",
+        sub="sysadmin@example.com",
+    )
+    tok.original_tenant_id = original_tenant
+    tok.switched = True
+    return tok
+
+
+@pytest_asyncio.fixture
+async def mock_target_user():
+    # Real, committed row — responses are serialized through the
+    # PublicUser contract (full_name must be a string, not None).
+    return await create_user(email="target@example.com", role=Role.USER, full_name="")
+
+
+@pytest.mark.asyncio
+@patch("app.api.v1.endpoints.users.get_user_by_id")
+async def test_get_me(mock_get_user_by_id, async_client: AsyncClient):
+    # Mock the dependency using app.dependency_overrides
+    from app.core.security import get_current_user
+    from app.main import app
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    mock_get_user_by_id.return_value = override_get_current_user()
+
+    response = await async_client.get("/api/v1/users/me")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "current_user@example.com"
+
+    # Clean up
+    app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+@patch("app.api.v1.endpoints.users.get_user_by_id")
+async def test_get_me_switched_admin(mock_get_user_by_id, async_client: AsyncClient):
+    """A switched SYSTEM_ADMIN's user row lives in their ORIGINAL tenant,
+    not the scoped tenant. /users/me must look up by original_tenant_id
+    or the query returns 404."""
+    from app.core.security import get_current_user
+    from app.main import app
+
+    from ._auth_helpers import create_tenant
+
+    switched_admin = override_get_switched_admin()
+    # The original tenant must be a real row (users.tenant_id FK).
+    switched_admin.original_tenant_id = await create_tenant()
+    app.dependency_overrides[get_current_user] = lambda: switched_admin
+
+    # A real admin row living in the ORIGINAL tenant (full_name must be a
+    # string for the PublicUser contract serialization).
+    admin_user = await create_user(
+        email="sysadmin@example.com",
+        role=Role.SYSTEM_ADMIN,
+        tenant_id=switched_admin.original_tenant_id,
+        full_name="",
+    )
+    mock_get_user_by_id.return_value = admin_user
+
+    response = await async_client.get("/api/v1/users/me")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == admin_user.email
+
+    # Verify the lookup used original_tenant_id, NOT the scoped tenant_id
+    call_args = mock_get_user_by_id.call_args
+    passed_tenant = call_args.kwargs.get("tenant_id")
+    assert passed_tenant == switched_admin.original_tenant_id, (
+        f"Expected original_tenant_id {switched_admin.original_tenant_id}, "
+        f"got {passed_tenant} — switched admin would get 404"
+    )
+
+    app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+@patch("app.api.v1.endpoints.users.get_user_by_id")
+@pytest.mark.contract  # §18.7 — non-admin on user management ⇒ 403
+async def test_get_user_forbidden(mock_get_user_by_id, async_client: AsyncClient, mock_target_user):
+    from app.core.security import get_current_user
+    from app.main import app
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    mock_get_user_by_id.return_value = mock_target_user
+
+    response = await async_client.get(f"/api/v1/users/{mock_target_user.id}")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not authorized to view this user"
+
+    app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+@patch("app.api.v1.endpoints.users.get_user_by_id")
+async def test_get_user_admin_allowed(
+    mock_get_user_by_id, async_client: AsyncClient, mock_target_user
+):
+    from app.core.security import get_current_user
+    from app.main import app
+
+    app.dependency_overrides[get_current_user] = override_get_admin_user
+    mock_get_user_by_id.return_value = mock_target_user
+
+    response = await async_client.get(f"/api/v1/users/{mock_target_user.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == mock_target_user.email
+
+    app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+@patch("app.api.v1.endpoints.users.get_user_by_id")
+@patch("app.api.v1.endpoints.users.update_user")
+async def test_update_user_admin(
+    mock_update_user, mock_get_user_by_id, async_client: AsyncClient, mock_target_user
+):
+    from app.core.security import get_current_user
+    from app.main import app
+
+    app.dependency_overrides[get_current_user] = override_get_admin_user
+
+    # H2: the endpoint snapshots the pre-update row (for the §17 audit
+    # diff) before mutating — both lookups are mocked here.
+    mock_get_user_by_id.return_value = mock_target_user
+
+    # Mocks the updated user response
+    mock_target_user.email = "updated@example.com"
+    mock_update_user.return_value = mock_target_user
+
+    response = await async_client.put(
+        f"/api/v1/users/{mock_target_user.id}?email=updated@example.com"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "updated@example.com"
+
+    app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+@patch("app.api.v1.endpoints.users.delete_user")
+async def test_delete_user_admin(mock_delete_user, async_client: AsyncClient, mock_target_user):
+    from app.core.security import get_current_user
+    from app.main import app
+
+    admin_token_data = override_get_admin_user()
+    app.dependency_overrides[get_current_user] = lambda: admin_token_data
+    # Mock void return
+    mock_delete_user.return_value = True
+
+    response = await async_client.delete(f"/api/v1/users/{mock_target_user.id}")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "User deleted successfully"
+    mock_delete_user.assert_called_once_with(
+        str(mock_target_user.id), tenant_id=admin_token_data.tenant_id
+    )
+
+    app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.contract  # §18.7 — non-admin on user management ⇒ 403
+async def test_delete_user_forbidden(async_client: AsyncClient, mock_target_user):
+    from app.core.security import get_current_user
+    from app.main import app
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    response = await async_client.delete(f"/api/v1/users/{mock_target_user.id}")
+
+    assert response.status_code == 403
+    assert "not authorized to access this resource" in response.json()["detail"]
+
+    app.dependency_overrides = {}
