@@ -30,6 +30,7 @@ import {
 import { getBestIcon } from '../../components/dashboard';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StickyToolbar } from '../../components/ui/StickyToolbar';
+import { HeroPatientBanner } from '../../components/dashboard/HeroPatientBanner';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -777,6 +778,8 @@ function Dashboard() {
         subtitle={currentPatient ? `${currentPatient.name?.given?.join(' ')} ${currentPatient.name?.family}` : t('dashboard.all_patients')}
         icon={<img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-6 h-6" alt="Dashboard" />}
       />
+
+      <HeroPatientBanner />
 
       <StickyToolbar
         details={

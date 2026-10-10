@@ -103,10 +103,15 @@ export function MockAbdmImportModal({
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-dark-text tracking-tight">
-                Simulated ABHA / ABDM Record Import
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-dark-muted">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-bold text-gray-900 dark:text-dark-text tracking-tight">
+                  Simulated ABHA / ABDM Record Import
+                </h3>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50">
+                  Simulated Demo · Synthetic Cohort
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-dark-muted mt-0.5">
                 Import and map interoperable external health data into canonical patient records
               </p>
             </div>

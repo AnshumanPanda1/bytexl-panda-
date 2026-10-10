@@ -9,6 +9,7 @@ import {
   Info,
   CheckCircle2,
   Calendar,
+  ChevronDown,
 } from 'lucide-react';
 import {
   getPatientSummaries,
@@ -27,6 +28,7 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
   const [selectedLang, setSelectedLang] = useState<'en' | 'hi'>('en');
   const [error, setError] = useState<string | null>(null);
   const [showSources, setShowSources] = useState(false);
+  const [showFullDetails, setShowFullDetails] = useState(false);
 
   const loadSummaries = async () => {
     try {
@@ -210,10 +212,39 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
             )}
           </div>
 
-          {/* Text Container with Markdown-like styling */}
-          <div className="bg-gray-50/50 dark:bg-dark-bg/40 rounded-lg p-5 border border-gray-200/60 dark:border-dark-border text-gray-800 dark:text-dark-text text-sm leading-relaxed whitespace-pre-line font-normal">
-            {currentSummary.summary_text}
+          {/* Key Clinical Takeaways Card */}
+          <div className="p-4 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 text-blue-950 dark:text-blue-100 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+              <Sparkles className="w-3.5 h-3.5" />
+              Key Clinical Takeaways
+            </div>
+            <p className="text-sm font-medium leading-relaxed">
+              {currentSummary.summary_text.split('\n\n')[0]}
+            </p>
           </div>
+
+          {/* Collapsible Complete Synthesis */}
+          {currentSummary.summary_text.split('\n\n').length > 1 ? (
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowFullDetails(!showFullDetails)}
+                className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors py-1"
+              >
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFullDetails ? 'rotate-180' : ''}`} />
+                {showFullDetails ? 'Hide Detailed Clinical Breakdown' : 'Expand Detailed Clinical Breakdown & Lab Tables'}
+              </button>
+
+              {showFullDetails && (
+                <div className="bg-gray-50/50 dark:bg-dark-bg/40 rounded-lg p-5 border border-gray-200/60 dark:border-dark-border text-gray-800 dark:text-dark-text text-sm leading-relaxed whitespace-pre-line font-normal animate-in fade-in">
+                  {currentSummary.summary_text.split('\n\n').slice(1).join('\n\n')}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-gray-50/50 dark:bg-dark-bg/40 rounded-lg p-5 border border-gray-200/60 dark:border-dark-border text-gray-800 dark:text-dark-text text-sm leading-relaxed whitespace-pre-line font-normal">
+              {currentSummary.summary_text}
+            </div>
+          )}
 
           {/* Source References Accordion */}
           {currentSummary.source_references && currentSummary.source_references.length > 0 && (
