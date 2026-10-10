@@ -1,9 +1,31 @@
 # ruff: noqa: E501 -- long immutable strings; reflow when touched
-from typing import Literal
+import datetime
+import re
+from typing import Any, Literal
+from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.models.enums import CodingSystem
+
+ISO_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _validate_iso_date(value: str | None) -> str | None:
+    """Validate ISO YYYY-MM-DD date format without coercing or modifying valid values.
+
+    Returns None if value is None.
+    Raises ValueError if value is malformed or invalid calendar day.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str) or not ISO_DATE_REGEX.match(value):
+        raise ValueError(f"Date must be in ISO format YYYY-MM-DD, got '{value}'")
+    try:
+        datetime.date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid calendar date '{value}': {exc}") from exc
+    return value
 
 
 class MetricMappingRequest(BaseModel):
@@ -27,7 +49,7 @@ class MappedMetric(BaseModel):
 
 
 class MapResponsePayload(BaseModel):
-    mappings: list[MappedMetric]
+    mappings: list[MappedMetric] = Field(default_factory=list)
 
 
 class KnownBiomarkerExtract(BaseModel):
@@ -70,10 +92,31 @@ class KnownBiomarkerExtract(BaseModel):
     reference_range_min: float | None = None
     reference_range_max: float | None = None
     interpretation_flag: str | None = Field(None, description="e.g. High, Low, Normal, H, L")
-    page_number: int | None = Field(None, description="Source document page number")
-    confidence: float | None = Field(
-        None, description="Model extraction confidence score (0.0 - 1.0)"
+
+    # Provenance, confidence and review fields (Phase 2 extraction contract)
+    page_number: int | None = Field(
+        default=None, ge=1, description="1-based page number where observation was found"
     )
+    evidence_text: str | None = Field(
+        default=None, description="Exact text snippet from document supporting this observation"
+    )
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Model extraction confidence score between 0.0 and 1.0"
+    )
+    review_status: Literal["needs_review", "reviewed", "accepted", "rejected"] | None = Field(
+        default="needs_review", description="Review status of extracted fact"
+    )
+    observation_date: str | None = Field(
+        default=None, description="Explicit date of observation if stated in source (ISO YYYY-MM-DD)"
+    )
+    document_id: str | None = Field(
+        default=None, description="Source document UUID string if known"
+    )
+
+    @field_validator("observation_date", mode="before")
+    @classmethod
+    def _validate_observation_date(cls, v: str | None) -> str | None:
+        return _validate_iso_date(v)
 
     @model_validator(mode="after")
     def _exactly_one_value_path(self):
@@ -102,15 +145,37 @@ class KnownBiomarkerExtract(BaseModel):
 class UnknownBiomarkerExtract(BaseModel):
     raw_name: str = Field(description="Exact name from document for the unknown biomarker")
     value: float
-    unit_symbol: str = Field(description="e.g. mg/dL, mmol/L")
+    unit_symbol: str | None = Field(
+        default=None, description="e.g. mg/dL, mmol/L (omit if unstated)"
+    )
     method: str | None = None
     reference_range_min: float | None = None
     reference_range_max: float | None = None
     interpretation_flag: str | None = None
-    page_number: int | None = Field(None, description="Source document page number")
-    confidence: float | None = Field(
-        None, description="Model extraction confidence score (0.0 - 1.0)"
+    # Provenance, confidence and review fields (Phase 2 extraction contract)
+    page_number: int | None = Field(
+        default=None, ge=1, description="1-based page number where observation was found"
     )
+    evidence_text: str | None = Field(
+        default=None, description="Exact text snippet from document"
+    )
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Extraction confidence score between 0.0 and 1.0"
+    )
+    review_status: Literal["needs_review", "reviewed", "accepted", "rejected"] | None = Field(
+        default="needs_review", description="Review status of extracted fact"
+    )
+    observation_date: str | None = Field(
+        default=None, description="Explicit date of observation if stated in source (ISO YYYY-MM-DD)"
+    )
+    document_id: str | None = Field(
+        default=None, description="Source document UUID string if known"
+    )
+
+    @field_validator("observation_date", mode="before")
+    @classmethod
+    def _validate_observation_date(cls, v: str | None) -> str | None:
+        return _validate_iso_date(v)
 
 
 class PatientInfoExtract(BaseModel):
@@ -127,34 +192,141 @@ class KnownMedicationExtract(BaseModel):
     )
     dosage: str | None = None
     frequency: str | None = None
-    status: str = "ACTIVE"
-    reason: str | None = None
-    page_number: int | None = Field(None, description="Source document page number")
-    confidence: float | None = Field(
-        None, description="Model extraction confidence score (0.0 - 1.0)"
+    status: str | None = Field(
+        default=None,
+        description="Prescribed or clinical status if explicitly stated in document (e.g. 'ACTIVE', 'STOPPED', 'DISCONTINUED', 'PRN'), else None",
     )
+    reason: str | None = None
+    # Granular medication attributes (Phase 2 extraction contract)
+    strength: str | None = Field(
+        default=None, description="Strength of medication (e.g., '500 mg', distinct from dose amount)"
+    )
+    route: str | None = Field(
+        default=None, description="Administration route (e.g., 'oral', 'intravenous') if explicitly stated"
+    )
+    duration: str | None = Field(
+        default=None, description="Prescribed duration (e.g., '7 days') if explicitly stated"
+    )
+    start_date: str | None = Field(
+        default=None, description="Start date if explicitly stated (ISO YYYY-MM-DD)"
+    )
+    end_date: str | None = Field(
+        default=None, description="End date if explicitly stated (ISO YYYY-MM-DD)"
+    )
+    # Provenance, confidence and review fields
+    page_number: int | None = Field(
+        default=None, ge=1, description="1-based page number where medication was found"
+    )
+    evidence_text: str | None = Field(
+        default=None, description="Exact text snippet from document"
+    )
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Extraction confidence score between 0.0 and 1.0"
+    )
+    review_status: Literal["needs_review", "reviewed", "accepted", "rejected"] | None = Field(
+        default="needs_review", description="Review status of extracted fact"
+    )
+    document_id: str | None = Field(
+        default=None, description="Source document UUID string if known"
+    )
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v: str | None) -> str | None:
+        return _validate_iso_date(v)
 
 
 class UnknownMedicationExtract(BaseModel):
     raw_name: str = Field(description="Exact name from document")
     dosage: str | None = None
     frequency: str | None = None
-    status: str = "ACTIVE"
-    reason: str | None = None
-    page_number: int | None = Field(None, description="Source document page number")
-    confidence: float | None = Field(
-        None, description="Model extraction confidence score (0.0 - 1.0)"
+    status: str | None = Field(
+        default=None,
+        description="Prescribed or clinical status if explicitly stated in document (e.g. 'ACTIVE', 'STOPPED', 'DISCONTINUED', 'PRN'), else None",
     )
+    reason: str | None = None
+    # Granular medication attributes (Phase 2 extraction contract)
+    strength: str | None = Field(
+        default=None, description="Strength of medication (e.g., '500 mg', distinct from dose amount)"
+    )
+    route: str | None = Field(
+        default=None, description="Administration route (e.g., 'oral', 'intravenous') if explicitly stated"
+    )
+    duration: str | None = Field(
+        default=None, description="Prescribed duration (e.g., '7 days') if explicitly stated"
+    )
+    start_date: str | None = Field(
+        default=None, description="Start date if explicitly stated (ISO YYYY-MM-DD)"
+    )
+    end_date: str | None = Field(
+        default=None, description="End date if explicitly stated (ISO YYYY-MM-DD)"
+    )
+    # Provenance, confidence and review fields
+    page_number: int | None = Field(
+        default=None, ge=1, description="1-based page number where medication was found"
+    )
+    evidence_text: str | None = Field(
+        default=None, description="Exact text snippet from document"
+    )
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Extraction confidence score between 0.0 and 1.0"
+    )
+    review_status: Literal["needs_review", "reviewed", "accepted", "rejected"] | None = Field(
+        default="needs_review", description="Review status of extracted fact"
+    )
+    document_id: str | None = Field(
+        default=None, description="Source document UUID string if known"
+    )
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v: str | None) -> str | None:
+        return _validate_iso_date(v)
+
+
+class DiagnosisExtract(BaseModel):
+    name: str = Field(description="Exact diagnosis or condition name stated in the document")
+    icd10_code: str | None = Field(
+        default=None, description="ICD-10 code if explicitly mentioned or clearly mapped"
+    )
+    clinical_status: Literal["active", "recurrence", "relapse", "remission", "resolved"] | None = Field(
+        default=None, description="Clinical status of the condition if explicitly documented, else None"
+    )
+    verification_status: Literal["confirmed", "provisional", "differential", "refuted"] | None = Field(
+        default=None, description="Verification status if explicitly documented, else None"
+    )
+    page_number: int | None = Field(default=None, ge=1, description="1-based page number")
+    evidence_text: str | None = Field(default=None, description="Supporting text quote from document")
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Extraction confidence score between 0.0 and 1.0"
+    )
+    review_status: Literal["needs_review", "reviewed", "accepted", "rejected"] | None = Field(
+        default="needs_review", description="Review status"
+    )
+    document_id: str | None = Field(default=None, description="Source document UUID string if known")
 
 
 class DocumentEntitiesExtract(BaseModel):
     document_category: str = Field(description="General category of the document")
     patient_info: PatientInfoExtract
-    known_biomarkers: list[KnownBiomarkerExtract]
-    unknown_biomarkers: list[UnknownBiomarkerExtract]
-    known_medications: list[KnownMedicationExtract]
-    unknown_medications: list[UnknownMedicationExtract]
-    diagnoses: list[str]
+    known_biomarkers: list[KnownBiomarkerExtract] = Field(
+        default_factory=list, description="Known biomarkers extracted from document"
+    )
+    unknown_biomarkers: list[UnknownBiomarkerExtract] = Field(
+        default_factory=list, description="Unknown biomarkers extracted from document"
+    )
+    known_medications: list[KnownMedicationExtract] = Field(
+        default_factory=list, description="Known medications extracted from document"
+    )
+    unknown_medications: list[UnknownMedicationExtract] = Field(
+        default_factory=list, description="Unknown medications extracted from document"
+    )
+    diagnoses: list[str] = Field(
+        default_factory=list, description="Explicit diagnoses or conditions found in the document"
+    )
+    structured_diagnoses: list[DiagnosisExtract] = Field(
+        default_factory=list, description="Structured diagnoses with verification status and evidence"
+    )
     impressions: str = Field(description="General impressions or findings")
 
 
@@ -173,7 +345,9 @@ class NewBiomarkerDefinition(BaseModel):
     )
     name: str = Field(description="Clean, standard name of the biomarker")
     category: str = Field(description="e.g. blood_laboratory, vital_signs, imaging")
-    suggested_aliases: list[str] = Field(description="List of alternative names or abbreviations")
+    suggested_aliases: list[str] = Field(
+        default_factory=list, description="List of alternative names or abbreviations"
+    )
     reference_range_min: float | None = Field(
         None,
         description="The minimum value of the normal reference range. If not in input, provide standard clinical value if known.",
@@ -197,7 +371,7 @@ class NewBiomarkerDefinition(BaseModel):
 
 
 class NewBiomarkerDefinitions(BaseModel):
-    definitions: list[NewBiomarkerDefinition]
+    definitions: list[NewBiomarkerDefinition] = Field(default_factory=list)
 
 
 class NewMedicationDefinition(BaseModel):
@@ -213,13 +387,26 @@ class NewMedicationDefinition(BaseModel):
 
 
 class NewMedicationDefinitions(BaseModel):
-    definitions: list[NewMedicationDefinition]
+    definitions: list[NewMedicationDefinition] = Field(default_factory=list)
 
 
 class ExaminationMetadataExtract(BaseModel):
     examination_date: str | None = Field(
         None,
         description="The date the examination occurred (ISO format, e.g. 2024-03-21)",
+    )
+    document_date: str | None = Field(
+        None,
+        description="The date the document was produced/reported, distinct from examination date (ISO format)",
+    )
+    document_type: str | None = Field(
+        None,
+        description="Document type (e.g. lab_report, prescription, discharge_summary)",
+    )
+    page_count: int | None = Field(
+        None,
+        ge=1,
+        description="Total page count of the source document",
     )
     doctor_names: list[str] = Field(
         default_factory=list, description="List of doctor names found in the document"
@@ -231,3 +418,93 @@ class ExaminationMetadataExtract(BaseModel):
     clinical_notes: str | None = Field(
         None, description="Summary of clinical findings and notes from the doctor"
     )
+
+    @field_validator("examination_date", "document_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v: str | None) -> str | None:
+        return _validate_iso_date(v)
+
+
+# ===========================================================================
+# Phase 3 / Phase 4: Page-Aware Extraction Input Boundary (Decoupled DTOs)
+# ===========================================================================
+
+
+class DocumentPageContent(BaseModel):
+    """Represents text extracted from a single page of a document.
+
+    Designed for Phase 4 page-aware text extraction without altering
+    the legacy OCR string output or ORM models in Phase 3.
+    """
+
+    document_id: str | UUID = Field(
+        description="Source document UUID identifier"
+    )
+    page_number: int = Field(
+        ge=1,
+        description="1-based page index (strictly positive integer)",
+    )
+    text: str = Field(
+        default="",
+        description="Verbatim extracted text content for this specific page",
+    )
+    extraction_method: str | None = Field(
+        default=None,
+        description="Extraction method / engine (e.g. 'native_pdf', 'tesseract_ocr', 'vision_llm')",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional processing metadata (e.g. dimensions, dpi, confidence, engine_version)",
+    )
+
+
+class PageAwareDocumentContent(BaseModel):
+    """Container for multi-page document content with preserved boundaries.
+
+    Provides a clean transition path for Phase 4 to supply structured,
+    page-indexed text to the extraction pipeline while offering a backward-
+    compatible consolidation method for legacy single-string consumers.
+    """
+
+    document_id: str | UUID = Field(
+        description="Source document UUID identifier"
+    )
+    total_pages: int = Field(
+        ge=1,
+        description="Total count of processed pages (strictly positive integer)",
+    )
+    pages: list[DocumentPageContent] = Field(
+        default_factory=list,
+        description="Ordered list of page content objects",
+    )
+
+    @model_validator(mode="after")
+    def _validate_page_bounds(self) -> "PageAwareDocumentContent":
+        """Ensure page numbers do not exceed total_pages while allowing partial processing."""
+        for page in self.pages:
+            if page.page_number > self.total_pages:
+                raise ValueError(
+                    f"Page number {page.page_number} exceeds total_pages {self.total_pages}"
+                )
+        return self
+
+    def to_consolidated_text(
+        self, delimiter: str = "\n\n", include_page_markers: bool = False
+    ) -> str:
+        """Produce flat string output in ascending page order for backward compatibility.
+
+        When include_page_markers is True, formats each non-empty page with:
+        `--- Document <document_id> | Page <page_number> ---`
+        to preserve page provenance for structured extractors.
+        """
+        sorted_pages = sorted(self.pages, key=lambda p: p.page_number)
+        if include_page_markers:
+            chunks: list[str] = []
+            for page in sorted_pages:
+                if page.text and page.text.strip():
+                    marker = f"--- Document {self.document_id} | Page {page.page_number} ---"
+                    chunks.append(f"{marker}\n{page.text.strip()}")
+            return delimiter.join(chunks)
+        return delimiter.join(page.text for page in sorted_pages if page.text)
+
+

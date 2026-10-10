@@ -86,6 +86,21 @@ async def upload_document_endpoint(
     if isinstance(include_in_extraction, str):
         include_in_extraction = include_in_extraction.lower() == "true"
 
+    patient_id_clean = patient_id.strip() if patient_id and patient_id.strip() else None
+    examination_id_clean = examination_id.strip() if examination_id and examination_id.strip() else None
+
+    # Validate patient access if provided
+    if patient_id_clean:
+        from app.services.access import check_patient_access
+
+        await check_patient_access(patient_id_clean, current_user, db)
+
+    # Validate examination access if provided
+    if examination_id_clean:
+        from app.services.access import check_examination_access
+
+        await check_examination_access(examination_id_clean, current_user, db)
+
     # Create document. ``upload_document`` reads the UploadFile in capped
     # chunks (audit A4), delegates to ``ingest_document_bytes`` (workstream
     # C.1) which writes the file + DB row + dispatches the OCR Celery task
@@ -96,11 +111,11 @@ async def upload_document_endpoint(
     # sync background processing; user can re-trigger from the UI.
     document = await upload_document(
         file,
-        patient_id,
+        patient_id_clean,
         user_uuid,
         str(tenant_uuid),
         db,
-        examination_id,
+        examination_id_clean,
         include_in_extraction,
     )
 
@@ -117,8 +132,8 @@ async def upload_document_endpoint(
         resource_id=getattr(document, "id", None),
         new_value={
             "filename": file.filename,
-            "patient_id": patient_id,
-            "examination_id": examination_id,
+            "patient_id": patient_id_clean,
+            "examination_id": examination_id_clean,
             "include_in_extraction": bool(include_in_extraction),
         },
     )

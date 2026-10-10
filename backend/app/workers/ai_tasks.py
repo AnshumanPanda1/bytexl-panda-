@@ -80,13 +80,14 @@ async def ocr_document(
             await task_logger.log_progress("ocr_start", 50)
             file_path_obj = Path(file_path)
 
-            if file_path_obj.suffix.lower() in [".pdf", ".dcm"]:
-                from app.ai.processors.ocr.utils import convert_to_images
+            from app.ai.processors.ocr.native_pdf import extract_document_content
 
-                images = await convert_to_images(file_path_obj)
-                raw_text = await ocr_processor.extract_text_from_images(images)
-            else:
-                raw_text = await ocr_processor.extract_text(file_path_obj)
+            page_aware_doc = await extract_document_content(
+                file_path=file_path_obj,
+                document_id=doc_uuid,
+                ocr_processor=ocr_processor,
+            )
+            raw_text = page_aware_doc.to_consolidated_text(include_page_markers=True)
 
             # 4. Success Persistence
             await db.execute(

@@ -99,9 +99,9 @@ CRITICAL RULES:
         if reference_data:
             reference_context = f"\n\nHere is the PREVIOUS context for this examination. Please merge new findings into this:\n{json.dumps(reference_data, indent=2)}\n"
 
-        system_prompt = """You are a medical data extraction assistant.
-You will be provided with the raw text of a medical document (like lab results or clinical notes).
-Your task is to extract all medical entities perfectly structured.
+        system_prompt = """You are a clinically cautious medical data extraction assistant.
+You will be provided with the raw text of medical documents (lab results, prescriptions, clinical notes).
+Your task is to extract all medical entities perfectly structured, strictly grounded in the document evidence.
 
 Here is the current catalog of KNOWN biomarkers:
 {biomarker_catalog}
@@ -110,23 +110,40 @@ Here is the current catalog of KNOWN medications:
 {medication_catalog}
 {reference_context}
 Instructions:
-1. Try to match each extracted biomarker to the `slug` of a known biomarker.
-2. Try to match each extracted medication to the `id` of a known medication.
-3. If it matches, add it to `known_*` list with the correct identifier.
-4. If it absolutely does not match, add it to `unknown_*` list.
-5. NUMERIC biomarkers: parse numerical values strictly as floats, including
-   result `value`, `reference_range_min`, and `reference_range_max`.
-6. STATE biomarkers (the catalog marks these as `value_type: "state"``):
-   do NOT extract a numeric `value`. Instead pick a `value_state_code` from
-   the biomarker's `allowed_states` list (e.g. POS/NEG/IND). The matching
-   `value_state_system` URL is in the catalog entry — copy it verbatim.
-   Examples of state results: "Positive", "Negative", "Detected", "Not
-   Detected", "Indeterminate", "Weakly reactive", "Within limits".
-7. For medications:
-   - Extract the CLEAN, GENERIC name (e.g., 'Phenylephrine Hydrochloride' instead of 'Phenylephrine Hydrochloride 2.5% Ophthalmic Solution').
-   - DO NOT include dosages, concentrations, or delivery formats in the name.
-   - Extract dosage, frequency, and reason if available into their respective fields.
-8. Provide a concise narrative `impressions` summary.
+1. DOCUMENT STRUCTURE & PROVENANCE:
+   - The input is divided into sections marked by: `--- Document <document_id> | Page <page_number> ---`.
+   - For every extracted entity, populate:
+     * `document_id`: the UUID string from the section marker enclosing the fact.
+     * `page_number`: the 1-based page integer from the section marker enclosing the fact.
+     * `evidence_text`: the EXACT verbatim text snippet from that page supporting this fact.
+     * `confidence`: realistic score between 0.0 and 1.0 reflecting clarity and fidelity.
+     * `review_status`: always default to 'needs_review'.
+
+2. BILINGUAL SUPPORT (ENGLISH & HINDI):
+   - The source document may be in English, Hindi (Devanagari script), or mixed English/Hindi.
+   - Preserve the EXACT original-language wording in `evidence_text` in its original script without translation.
+   - For Hindi or bilingual medications/biomarkers, preserve numbers and units (e.g., mg/dL, mmol/L, %, मि.ग्रा.) verbatim.
+
+3. CLINICAL CAUTION & ZERO FABRICATION:
+   - Extract ONLY information supported by the document context.
+   - NEVER guess or infer missing dates, units, reference ranges, medication frequencies, or clinical statuses.
+   - If an observation date, unit, or frequency is unstated, leave it as null/None.
+   - Medication `status`: leave as null/None if not explicitly stated in text (do NOT assume 'ACTIVE').
+   - Diagnoses: populate `structured_diagnoses` (with `verification_status` and `clinical_status`). If verification or clinical status is not explicitly stated, leave as null/None (do NOT assume 'confirmed' or 'active').
+   - Keep normalized values separate from original evidence.
+
+4. BIOMARKERS:
+   - Try to match each extracted biomarker to the `slug` of a known biomarker.
+   - If it matches, add to `known_biomarkers`; if not, add to `unknown_biomarkers`.
+   - NUMERIC biomarkers: parse numerical values strictly as floats, including `value`, `reference_range_min`, and `reference_range_max`.
+   - STATE biomarkers (`value_type: "state"`): do NOT extract a numeric `value`. Pick `value_state_code` from `allowed_states` (e.g. POS/NEG/IND) and copy `value_state_system`.
+
+5. MEDICATIONS:
+   - Try to match each extracted medication to the `id` of a known medication in catalog.
+   - Extract the CLEAN generic/brand name into `name` / `raw_name`.
+   - Extract `strength`, `dosage`, `route`, `frequency`, and `reason` if explicitly stated.
+
+6. Provide a concise narrative `impressions` summary.
 """
 
         logger.info(

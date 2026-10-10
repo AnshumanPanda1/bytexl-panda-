@@ -304,6 +304,20 @@ class MedicalProcessingService:
         )
         await task_logger.log_progress("nlp_pass_1_completed", 45)
 
+        # 3.5. Evidence Grounding & Provenance Validation (Phase 5)
+        from app.ai.pipeline.evidence_validator import EvidenceValidator
+
+        validator = EvidenceValidator()
+        validation_report = validator.validate_document_entities(
+            parsed_data, cumulative_text=cumulative_text, docs=docs_with_text
+        )
+        await task_logger.log_progress(
+            "evidence_validation_completed",
+            48,
+            valid_count=validation_report.valid_count,
+            flagged_count=validation_report.flagged_count,
+        )
+
         # 4. Pass 2: Ontology Generation for Unknowns
         raw_to_slug_map = {}
         raw_to_med_name_map = {}

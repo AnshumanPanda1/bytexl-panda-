@@ -3,10 +3,13 @@ from uuid import UUID
 from langchain_core.language_models.chat_models import BaseChatModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai import chat_models
-
 from .base import OCRProcessor
 from .langchain_vision import LangChainOCRProcessor
+from .native_pdf import (
+    NativePDFExtractor,
+    extract_document_content,
+    is_usable_text,
+)
 from .tesseract import TesseractOCRProcessor
 
 
@@ -30,6 +33,8 @@ def get_ocr_processor(
     """
     if provider == "openai":
         if llm is None:
+            from app.ai import chat_models
+
             llm = chat_models.build_openai(
                 api_key=api_key,
                 base_url=api_base or "https://api.openai.com/v1",
@@ -58,8 +63,11 @@ async def get_ocr_processor_from_db(
 
 __all__ = [
     "LangChainOCRProcessor",
+    "NativePDFExtractor",
     "OCRProcessor",
     "TesseractOCRProcessor",
+    "extract_document_content",
     "get_ocr_processor",
     "get_ocr_processor_from_db",
+    "is_usable_text",
 ]

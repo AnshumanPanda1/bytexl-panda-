@@ -37,6 +37,7 @@ dependencies = [
     "pydantic>=2.13",
     "pyjwt>=2.14",
     "pydantic-settings>=2.15",
+    "pypdf>=5.0",
     "pytesseract>=0.3",
     "pywebpush>=2.5",
     "python-multipart>=0.0.32",
