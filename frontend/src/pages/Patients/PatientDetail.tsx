@@ -6,13 +6,11 @@ import { Patient } from '../../types/patient';
 import { Edit2, Trash2, Fingerprint, User, Download, Database } from 'lucide-react';
 import { useUIStore } from '../../store/slices/uiSlice';
 import { usePatientStore } from '../../store/slices/patientSlice';
-import { AllergySummary } from '../../components/patients/AllergySummary';
 import { MedicationSummary } from '../../components/patients/MedicationSummary';
 import { PatientFormWizard } from '../../components/patients/PatientFormWizard';
 import BiomarkerSummary from '../../components/patients/BiomarkerSummary';
 import ExaminationSummary from '../../components/patients/ExaminationSummary';
 import ClinicalEventSummary from '../../components/patients/ClinicalEventSummary';
-import ScheduleSummary from '../../components/patients/ScheduleSummary';
 import { PatientSummaryCard } from '../../components/patients/PatientSummaryCard';
 import { PatientTimelineCard } from '../../components/patients/PatientTimelineCard';
 import { MockAbdmImportModal } from '../../components/patients/MockAbdmImportModal';
@@ -170,9 +168,8 @@ function PatientDetail() {
           {/* AI Bilingual Plain-Language Health Summary */}
           {patientId && <PatientSummaryCard patientId={patientId} />}
 
-          {/* Middle Section: Quick Clinical Overview (Now part of main flow) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {patientId && <AllergySummary patientId={patientId} />}
+          {/* Middle Section: Quick Clinical Overview */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {patientId && <MedicationSummary patientId={patientId} />}
             {patientId && <BiomarkerSummary patientId={patientId} />}
           </div>
@@ -180,11 +177,10 @@ function PatientDetail() {
           {/* Unified Chronological Health Timeline */}
           {patientId && <PatientTimelineCard patientId={patientId} />}
 
-          {/* Activity Overview: rich summary cards (replaces former tabbed area) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Activity Overview: Document & Event Records */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {patientId && <ExaminationSummary patientId={patientId} />}
             {patientId && <ClinicalEventSummary patientId={patientId} />}
-            {patientId && <ScheduleSummary patientId={patientId} />}
           </div>
         </div>
 

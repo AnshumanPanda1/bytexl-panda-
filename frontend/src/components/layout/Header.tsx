@@ -12,7 +12,6 @@ import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useSyncStatus } from '../ui/SyncIndicator';
 import { UserMenu, type UserMenuItem, type UserMenuStatus } from '../ui/user-menu';
 import { NotificationBell } from './NotificationBell';
-import { TenantSwitcher } from './TenantSwitcher';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { useUIStore } from '../../store/slices/uiSlice';
 import { useTenantSwitchStore } from '../../store/slices/tenantSwitchSlice';
@@ -138,9 +137,7 @@ function Header() {
 
   const menuItems: UserMenuItem[] = [
     { id: '/profile', label: t('common.profile'), icon: UserCircle },
-    { id: '/setup/wizard', label: t('setup.role.title'), icon: ListChecks },
     { id: '/settings', label: t('common.settings'), icon: Settings },
-    { id: '/settings/integrations', label: t('common.integrations'), icon: LinkIcon },
     { id: '/about', label: t('common.about'), icon: Info },
   ];
 
@@ -283,8 +280,6 @@ function Header() {
             labels={{ openMenu: t('common.account'), account: t('common.account') }}
             switcher={
               <div className="flex flex-col gap-2">
-                {/* Tenant Switcher — always in the user menu */}
-                <TenantSwitcher className="w-full" />
                 {/* Mobile/Compact Patient Selector in Menu */}
                 <div className="sm:hidden">
                   <PatientSelect className="border-none bg-transparent shadow-none" align="right" />
