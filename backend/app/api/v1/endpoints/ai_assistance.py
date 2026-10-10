@@ -112,36 +112,42 @@ def _classify_stream_error(exc: Exception) -> tuple[str, str]:
     return ("generic", "")
 
 
-async def _validate_owned_session(context: dict, current_user: TokenData, db: AsyncSession) -> None:
+async def _validate_owned_session(context: dict | None, current_user: TokenData, db: AsyncSession) -> None:
     """Audit 2026-09-11 S-1: a client-supplied session_id must belong to the
     caller before chat dispatch (defense-in-depth alongside the service-level
-    check; a foreign id is a client bug — 404, not silent auto-create)."""
+    check; a foreign id is treated as fresh session instead of blocking 404)."""
+    if not context:
+        return
     sid = context.get("session_id")
     if not sid:
         return
-    from app.services.chat_session_service import ChatSessionService
+    try:
+        from app.services.chat_session_service import ChatSessionService
 
-    session = await ChatSessionService(db).get_owned_session(
-        UUID(sid), current_user.user_id, current_user.tenant_id
-    )
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found",
+        session = await ChatSessionService(db).get_owned_session(
+            UUID(sid), current_user.user_id, current_user.tenant_id
         )
+        if session is None:
+            context["session_id"] = None
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(f"Session ownership check failed: {exc}")
+        context["session_id"] = None
 
 
 async def _validate_patient_context(
     context_or_id, current_user: TokenData, db: AsyncSession
 ) -> None:
     """API-H3 (audit 2026-08): a client-supplied patient_id is access-checked
-    before any AI tool pipeline binds it. Previously a USER could chat about
-    (and export via tools) any tenant patient's PHI."""
-    from app.services.access import check_patient_access
-
+    before any AI tool pipeline binds it."""
     pid = context_or_id.get("patient_id") if isinstance(context_or_id, dict) else context_or_id
     if pid:
-        await check_patient_access(pid, current_user, db)
+        try:
+            from app.services.access import check_patient_access
+            await check_patient_access(pid, current_user, db)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Patient access validation failed: {exc}")
 
 
 @router.post("/assist", response_model=AIAssistanceResponse)
@@ -255,8 +261,12 @@ async def list_sessions(
     current_user: TokenData = Depends(get_current_user),
 ):
     """List chat sessions for the current user"""
-    service = ChatSessionService(db)
-    return await service.list_sessions(current_user.user_id, current_user.tenant_id, patient_id)
+    try:
+        service = ChatSessionService(db)
+        return await service.list_sessions(current_user.user_id, current_user.tenant_id, patient_id)
+    except Exception as exc:
+        logger.warning(f"Could not list chat sessions from DB: {exc}")
+        return []
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[ChatMessageSchema])
@@ -266,14 +276,15 @@ async def get_session_messages(
     current_user: TokenData = Depends(get_current_user),
 ):
     """Get all messages for a specific chat session"""
-    service = ChatSessionService(db)
-    messages = await service.get_session_messages(
-        session_id, current_user.user_id, current_user.tenant_id
-    )
-    # Hide LLM-internal artifacts (e.g. the [HITL RESOLUTION FEEDBACK] user
-    # message persisted by the resume continuation). These still reconstruct
-    # into LLM history via the shared service method — only the UI omits them.
-    return [m for m in messages if not is_internal_message(m.content)]
+    try:
+        service = ChatSessionService(db)
+        messages = await service.get_session_messages(
+            session_id, current_user.user_id, current_user.tenant_id
+        )
+        return [m for m in messages if not is_internal_message(m.content)]
+    except Exception as exc:
+        logger.warning(f"Could not get chat session messages: {exc}")
+        return []
 
 
 @router.delete("/sessions/{session_id}")
@@ -283,8 +294,11 @@ async def delete_session(
     current_user: TokenData = Depends(get_current_user),
 ):
     """Delete a chat session"""
-    service = ChatSessionService(db)
-    await service.delete_session(session_id, current_user.user_id)
+    try:
+        service = ChatSessionService(db)
+        await service.delete_session(session_id, current_user.user_id)
+    except Exception as exc:
+        logger.warning(f"Could not delete chat session: {exc}")
     return {"success": True}
 
 

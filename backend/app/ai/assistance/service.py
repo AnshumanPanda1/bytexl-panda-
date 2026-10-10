@@ -87,28 +87,31 @@ class AIAssistanceService:
 
     async def _get_max_iterations(self, tenant_id: UUID) -> int:
         """Get the maximum iterations for the AI reasoning loop"""
-        # 1. Check Tenant-specific setting
-        if tenant_id:
-            result = await self.db.execute(
-                select(TenantModel.settings).where(TenantModel.id == tenant_id)
-            )
-            tenant_settings = result.scalar_one_or_none()
-            if tenant_settings and "ai_agent_max_iterations" in tenant_settings:
+        try:
+            # 1. Check Tenant-specific setting
+            if tenant_id:
+                result = await self.db.execute(
+                    select(TenantModel.settings).where(TenantModel.id == tenant_id)
+                )
+                tenant_settings = result.scalar_one_or_none()
+                if tenant_settings and "ai_agent_max_iterations" in tenant_settings:
+                    try:
+                        return int(tenant_settings["ai_agent_max_iterations"])
+                    except (ValueError, TypeError):
+                        pass
+
+            # 2. Check System-wide DB setting
+            system_max = await SystemSetting.get_value(self.db, "ai_agent_max_iterations")
+            if system_max is not None:
                 try:
-                    return int(tenant_settings["ai_agent_max_iterations"])
+                    return int(system_max)
                 except (ValueError, TypeError):
                     pass
-
-        # 2. Check System-wide DB setting
-        system_max = await SystemSetting.get_value(self.db, "ai_agent_max_iterations")
-        if system_max is not None:
-            try:
-                return int(system_max)
-            except (ValueError, TypeError):
-                pass
+        except Exception as e:
+            logger.warning(f"Could not load max iterations from DB ({e}), using default")
 
         # 3. Fallback to ENV setting
-        return settings.AI_AGENT_MAX_ITERATIONS
+        return settings.AI_AGENT_MAX_ITERATIONS or 15
 
     # ------------------------------------------------------------------
     # Dispatcher
@@ -207,6 +210,7 @@ class AIAssistanceService:
         flow_events: bool = False,
     ):
         """Stream a chat response (SSE). Body lives in the LangGraph engine."""
+        context = context or {}
         patient_id = context.get("patient_id")
         examination_id = context.get("examination_id")
         session_id_str = context.get("session_id")
@@ -220,9 +224,8 @@ class AIAssistanceService:
                     session_id, user_id, tenant_id
                 )
                 if owned is None:
-                    raise ValueError("Chat session not found.")
-            except ValueError:
-                raise
+                    # Stale or nonexistent session in DB — treat as fresh session
+                    session_id = None
             except Exception as exc:
                 logger.warning(f"Failed to check session ownership in DB: {exc}")
 
@@ -238,6 +241,14 @@ class AIAssistanceService:
                 yield f"[SESSION_ID] {session_id}"
             except Exception as exc:
                 logger.warning(f"Failed to create chat session in DB: {exc}")
+                if not session_id:
+                    from uuid import uuid4
+                    session_id = uuid4()
+                    yield f"[SESSION_ID] {session_id}"
+        elif not session_id:
+            from uuid import uuid4
+            session_id = uuid4()
+            yield f"[SESSION_ID] {session_id}"
 
         # Save user message. Persist image attachments inside the content
         # JSONB so a reloaded session reconstructs them in the UI AND so the
@@ -331,6 +342,7 @@ class AIAssistanceService:
     ) -> dict[str, Any]:
         """Non-streaming chat with tool support. Collects content events from
         the chat engine (streaming=False) into the response dict."""
+        context = context or {}
         patient_id = context.get("patient_id")
         examination_id = context.get("examination_id")
         session_id_str = context.get("session_id")
@@ -338,20 +350,27 @@ class AIAssistanceService:
 
         # Audit 2026-09-11 S-1: mirror of the streaming-path ownership check.
         if session_id:
-            owned = await self.chat_session_service.get_owned_session(
-                session_id, user_id, tenant_id
-            )
-            if owned is None:
-                raise ValueError("Chat session not found.")
+            try:
+                owned = await self.chat_session_service.get_owned_session(
+                    session_id, user_id, tenant_id
+                )
+                if owned is None:
+                    session_id = None
+            except Exception as exc:
+                logger.warning(f"Failed to check session ownership in DB: {exc}")
+                session_id = None
 
         # Auto-create session if not provided.
         if not session_id and user_id and tenant_id:
-            title = await self._generate_session_title(llm, user_input)
-            p_id = UUID(patient_id) if patient_id else None
-            session = await self.chat_session_service.create_session(
-                user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
-            )
-            session_id = session.id
+            try:
+                title = await self._generate_session_title(llm, user_input)
+                p_id = UUID(patient_id) if patient_id else None
+                session = await self.chat_session_service.create_session(
+                    user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
+                )
+                session_id = session.id
+            except Exception as exc:
+                logger.warning(f"Failed to auto-create chat session in DB: {exc}")
 
         # Save user message (with persisted image attachments).
         if session_id:

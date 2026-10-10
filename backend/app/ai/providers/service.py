@@ -557,7 +557,7 @@ class AIProviderService:
                         base_url=provider.api_base or "https://api.openai.com/v1",
                         model_name=model.model_name if model else "gpt-4o-mini",
                         temperature=model.temperature if model else 0.7,
-                        max_tokens=model.max_tokens if model else 65536,
+                        max_tokens=min(model.max_tokens if model else 8192, 8192),
                         reasoning_effort=_model_reasoning_effort(model),
                     )
         except Exception as exc:
@@ -568,25 +568,38 @@ class AIProviderService:
         from app.services.ai_summary_service import _load_secret_config
 
         secret_config = _load_secret_config()
+        groq_key = secret_config.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+        openrouter_key = (
+            secret_config.get("OPENROUTER_API_KEY")
+            or os.getenv("OPENROUTER_API_KEY")
+            or secret_config.get("LLM_API_KEY")
+            or os.getenv("LLM_API_KEY")
+        )
+        openai_key = secret_config.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+
         api_key = (
             secret_config.get("LLM_API_KEY")
-            or secret_config.get("OPENAI_API_KEY")
+            or groq_key
+            or openrouter_key
+            or openai_key
             or os.getenv("LLM_API_KEY")
-            or os.getenv("OPENAI_API_KEY")
             or settings.OPENAI_API_KEY
         )
         base_url = (
             secret_config.get("LLM_BASE_URL")
-            or secret_config.get("OPENAI_API_BASE")
             or os.getenv("LLM_BASE_URL")
+            or (("https://api.groq.com/openai/v1") if (groq_key and not openai_key and not secret_config.get("LLM_BASE_URL")) else None)
+            or (("https://openrouter.ai/api/v1") if (openrouter_key and not openai_key) else None)
+            or secret_config.get("OPENAI_API_BASE")
             or os.getenv("OPENAI_API_BASE")
             or settings.OPENAI_API_BASE
             or "https://api.openai.com/v1"
         )
         model_name = (
             secret_config.get("LLM_MODEL")
-            or secret_config.get("OPENAI_MODEL")
             or os.getenv("LLM_MODEL")
+            or (("qwen/qwen3.8-27b") if groq_key else None)
+            or secret_config.get("OPENAI_MODEL")
             or os.getenv("OPENAI_MODEL")
             or settings.OPENAI_MODEL
             or "gpt-4o-mini"
@@ -601,7 +614,7 @@ class AIProviderService:
             base_url=base_url,
             model_name=model_name,
             temperature=0.7,
-            max_tokens=settings.OPENAI_MAX_TOKENS or 4096,
+            max_tokens=min(settings.OPENAI_MAX_TOKENS or 4096, 8192),
         )
 
     async def get_ocr_processor(self, tenant_id: UUID | None = None, user_id: UUID | None = None):

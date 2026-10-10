@@ -62,7 +62,11 @@ async def build_chat_tools(
         return []
 
     exam_id = UUID(examination_id) if examination_id else None
-    tools = get_tools(db, tenant_id, UUID(patient_id), examination_id=exam_id, user_id=user_id)
+    try:
+        tools = get_tools(db, tenant_id, UUID(patient_id), examination_id=exam_id, user_id=user_id)
+    except Exception as e:
+        logger.warning(f"Failed to load built-in tools for {label}: {e}")
+        tools = []
     try:
         from app.ai.tools.aggregator import aggregate as integration_aggregate
 
