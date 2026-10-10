@@ -104,10 +104,16 @@ def async_task(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             return loop.run_until_complete(func(*args, **kwargs))
         finally:
+            try:
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            except Exception:
+                pass
             loop.close()
+            asyncio.set_event_loop(None)
 
     return wrapper
 

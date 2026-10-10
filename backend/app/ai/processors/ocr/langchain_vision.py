@@ -141,6 +141,19 @@ class LangChainOCRProcessor(OCRProcessor):
                         await asyncio.sleep(1 * (j + 1))
 
                 if not response:
+                    logger.warning(
+                        f"Vision LLM OCR failed on page {i + 1} ({last_error}). Falling back to local Tesseract OCR engine."
+                    )
+                    try:
+                        from .tesseract import TesseractOCRProcessor
+                        tess = TesseractOCRProcessor()
+                        tess_text = await tess.extract_text_from_images([image_data])
+                        if tess_text and tess_text.strip():
+                            full_text.append(tess_text.strip())
+                            continue
+                    except Exception as tess_err:
+                        logger.warning(f"Local Tesseract fallback also failed: {tess_err}")
+
                     raise ValueError(
                         f"Permanent OCR failure for page {i + 1} after all strategies. Last error: {last_error}"
                     )

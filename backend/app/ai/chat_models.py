@@ -59,7 +59,8 @@ def build_openai(
     """
     effective_max_tokens = max_tokens
     if base_url and ("groq.com" in base_url or "groq" in base_url):
-        effective_max_tokens = min(max_tokens, 8192)
+        # Groq on_demand enforces 1000 OTPM (output tokens per minute) limit
+        effective_max_tokens = min(max_tokens, 950)
     elif max_tokens > 16384 and ("api.openai.com" not in (base_url or "")):
         effective_max_tokens = 8192
 

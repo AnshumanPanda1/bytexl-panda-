@@ -178,6 +178,29 @@ async def persist_results(
                 med_code["duration"] = m.duration
 
             ev_text = getattr(m, "evidence_text", None) or name
+
+            raw_start = getattr(m, "start_date", None) or exam.examination_date
+            med_start_date = None
+            if raw_start:
+                if isinstance(raw_start, datetime.date):
+                    med_start_date = raw_start
+                elif isinstance(raw_start, str):
+                    try:
+                        med_start_date = datetime.date.fromisoformat(raw_start[:10])
+                    except Exception:
+                        med_start_date = exam.examination_date
+
+            raw_end = getattr(m, "end_date", None)
+            med_end_date = None
+            if raw_end:
+                if isinstance(raw_end, datetime.date):
+                    med_end_date = raw_end
+                elif isinstance(raw_end, str):
+                    try:
+                        med_end_date = datetime.date.fromisoformat(raw_end[:10])
+                    except Exception:
+                        med_end_date = None
+
             db.add(
                 Medication(
                     patient_id=exam.patient_id,
@@ -193,8 +216,8 @@ async def persist_results(
                     dosage=m.dosage,
                     reason=m.reason,
                     subject={"reference": patient_ref},
-                    start_date=getattr(m, "start_date", None) or exam.examination_date,
-                    end_date=getattr(m, "end_date", None),
+                    start_date=med_start_date,
+                    end_date=med_end_date,
                 )
             )
 
