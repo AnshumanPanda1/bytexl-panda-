@@ -71,8 +71,8 @@ async def persist_results(
     exam,
     parsed_data,
     docs_with_text: list[DocumentModel],
-    slug_map: dict[str, Any],
-    med_name_map: dict[str, Any],
+    slug_map: dict[str, Any] | None = None,
+    med_name_map: dict[str, Any] | None = None,
 ) -> None:
     """Persist the LLM extraction results for an examination.
 
@@ -84,6 +84,10 @@ async def persist_results(
     (savepoint) so any failure during re-extraction rolls back to the pre-delete
     state. The caller's outer transaction is unaffected.
     """
+    if slug_map is None:
+        slug_map = {}
+    if med_name_map is None:
+        med_name_map = {}
     # Savepoint: any exception inside this block releases the savepoint with a
     # rollback, restoring the prior Observations + Medications. The outer
     # transaction stays open for the caller to handle the error.
@@ -121,6 +125,8 @@ async def persist_results(
                 patient_ref,
                 eff_date,
                 source_doc_id,
+                page_number=getattr(b, "page_number", None),
+                confidence=getattr(b, "confidence", None),
             )
 
         for b in parsed_data.unknown_biomarkers:
@@ -150,6 +156,8 @@ async def persist_results(
                 patient_ref,
                 eff_date,
                 source_doc_id,
+                page_number=getattr(b, "page_number", None),
+                confidence=getattr(b, "confidence", None),
             )
 
         # Save Medications
@@ -157,11 +165,17 @@ async def persist_results(
             name = m.name if hasattr(m, "name") else m.raw_name
             mapped_name = med_name_map.get(name, name)
             catalog_item = med_map.get(mapped_name.lower())
+            source_doc_id = find_source_doc(name, docs_with_text)
             db.add(
                 Medication(
                     patient_id=exam.patient_id,
                     tenant_id=exam.tenant_id,
                     examination_id=exam.id,
+                    document_id=source_doc_id,
+                    original_text=name,
+                    page_number=getattr(m, "page_number", None),
+                    confidence=getattr(m, "confidence", None),
+                    review_status="extracted",
                     status=MedicationStatus.ACTIVE,
                     code={
                         "text": name,
@@ -173,6 +187,68 @@ async def persist_results(
                     start_date=exam.examination_date,
                 )
             )
+
+        # Save Diagnoses as ClinicalEvents (Conditions)
+        from app.models.clinical_event import ClinicalEvent, EventExaminationLink
+        from app.models.enums import ClinicalEventStatus
+
+        # Clean prior extraction-created conditions for this exam on re-extraction
+        existing_links_res = await db.execute(
+            select(EventExaminationLink.event_id).where(
+                EventExaminationLink.examination_id == exam.id
+            )
+        )
+        linked_event_ids = list(existing_links_res.scalars().all())
+        if linked_event_ids:
+            await db.execute(
+                delete(ClinicalEvent).where(
+                    ClinicalEvent.id.in_(linked_event_ids),
+                    ClinicalEvent.review_status == "extracted",
+                )
+            )
+
+        for diag in parsed_data.diagnoses:
+            if not diag or not str(diag).strip():
+                continue
+            clean_diag = str(diag).strip()
+            source_doc_id = find_source_doc(clean_diag, docs_with_text)
+            event = ClinicalEvent(
+                patient_id=exam.patient_id,
+                tenant_id=exam.tenant_id,
+                title=clean_diag,
+                document_id=source_doc_id,
+                original_text=clean_diag,
+                confidence=None,
+                review_status="extracted",
+                status=ClinicalEventStatus.ACTIVE,
+                onset_date=eff_date,
+                evidence=[
+                    {
+                        "source": "document_extraction",
+                        "document_id": str(source_doc_id) if source_doc_id else None,
+                        "examination_id": str(exam.id),
+                    }
+                ],
+            )
+            db.add(event)
+            await db.flush()
+
+            link = EventExaminationLink(
+                event_id=event.id,
+                examination_id=exam.id,
+                reason="Extracted from examination document",
+            )
+            db.add(link)
+
+        # Invalidate existing plain-language summaries on new clinical extraction
+        from app.services.health_summary_service import invalidate_patient_summaries
+
+        await invalidate_patient_summaries(
+            db,
+            exam.tenant_id,
+            exam.patient_id,
+            reason="New clinical facts extracted from document",
+        )
     # end begin_nested — savepoint released cleanly, outer txn continues
 
 
@@ -194,6 +270,8 @@ async def save_observation(
     patient_ref: str,
     effective_date: datetime.datetime,
     document_id: UUID | None = None,
+    page_number: int | None = None,
+    confidence: float | None = None,
 ) -> None:
     val_float = b.value
     biomarker_id = target_bio.id if target_bio else None
@@ -238,6 +316,10 @@ async def save_observation(
             document_id=document_id,
             patient_id=exam.patient_id,
             tenant_id=exam.tenant_id,
+            original_text=b.name,
+            page_number=page_number,
+            confidence=confidence,
+            review_status="extracted",
             status="final",
             code={"coding": coding, "text": b.name},
             subject={"reference": patient_ref},
@@ -366,6 +448,10 @@ async def save_observation(
         document_id=document_id,
         patient_id=exam.patient_id,
         tenant_id=exam.tenant_id,
+        original_text=b.name,
+        page_number=page_number,
+        confidence=confidence,
+        review_status="extracted",
         status="final",
         code={"coding": coding, "text": b.name},
         subject={"reference": patient_ref},

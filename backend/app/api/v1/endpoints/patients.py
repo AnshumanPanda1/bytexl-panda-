@@ -148,3 +148,43 @@ async def delete_patient_endpoint(
         old_value=old_snapshot,
     )
     return {"message": "Patient deleted successfully"}
+
+
+@router.get("/{patient_id}/fhir-export")
+async def export_patient_fhir_direct_endpoint(
+    patient_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Direct limited FHIR R4-inspired Bundle export for this patient."""
+    from uuid import UUID
+
+    from app.services.fhir_export_service import export_patient_fhir_bundle
+
+    await check_patient_access(patient_id, current_user, db)
+    pid = UUID(patient_id)
+    tenant_id = UUID(str(current_user.tenant_id))
+    return await export_patient_fhir_bundle(db, tenant_id, pid)
+
+
+@router.get("/{patient_id}/timeline")
+async def get_patient_timeline_direct_endpoint(
+    patient_id: str,
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    limit: int = Query(100),
+    offset: int = Query(0),
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Direct longitudinal health timeline for this patient."""
+    from uuid import UUID
+
+    from app.services.timeline_service import get_patient_timeline
+
+    await check_patient_access(patient_id, current_user, db)
+    pid = UUID(patient_id)
+    tenant_id = UUID(str(current_user.tenant_id))
+    return await get_patient_timeline(
+        db, tenant_id, pid, start_date=start_date, end_date=end_date, limit=limit, offset=offset
+    )

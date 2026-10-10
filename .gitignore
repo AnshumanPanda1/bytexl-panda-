@@ -70,6 +70,7 @@ uploads/
 # Docker
 
 # Celery
+celerybeat-schedule*
 celerybeat-schedule
 celerybeat-schedule.db
 celerybeat-schedule.bak

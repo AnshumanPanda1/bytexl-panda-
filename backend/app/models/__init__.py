@@ -46,8 +46,10 @@ from .fhir.communication import CommunicationModel
 from .fhir.device import DeviceModel
 from .fhir.organization import OrganizationModel
 from .fhir.provenance import ProvenanceModel
+from .health_summary_model import PatientHealthSummary
 from .instance_setting_model import InstanceSettingModel
 from .integration_proposal import IntegrationProposal
+from .mock_abdm_model import MockAbdmImportRecord
 from .notification import (
     Notification,
     NotificationCategory,
@@ -124,6 +126,7 @@ __all__ = [
     "IntegrationProposal",
     "Laboratory",
     "Medication",
+    "MockAbdmImportRecord",
     "Notification",
     "NotificationCategory",
     "NotificationChannel",
@@ -141,6 +144,7 @@ __all__ = [
     "Observation",
     "OrganizationModel",
     "Patient",
+    "PatientHealthSummary",
     "PatientImmunization",
     "PatientLayoutModel",
     "ProvenanceModel",

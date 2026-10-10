@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
@@ -260,6 +260,19 @@ class ClinicalEvent(
     )
     external_id = Column(String, nullable=True, index=True)
 
+    # Provenance, confidence, review status, raw extracted text, and evidence
+    document_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    original_text = Column(Text, nullable=True)
+    page_number = Column(Integer, nullable=True)
+    confidence = Column(Float, nullable=True)
+    review_status = Column(String(50), nullable=True, default="extracted")
+    evidence = Column(JSONB, nullable=True, default=list)
+
     # Relationships
     patient = relationship("Patient", backref="clinical_events")
     type_entity = relationship("ClinicalEventType", back_populates="events")
@@ -316,6 +329,12 @@ class ClinicalEvent(
                 str(self.source_integration_id) if self.source_integration_id else None
             ),
             "external_id": self.external_id,
+            "document_id": str(self.document_id) if self.document_id else None,
+            "original_text": self.original_text,
+            "page_number": self.page_number,
+            "confidence": self.confidence,
+            "review_status": self.review_status,
+            "evidence": self.evidence or [],
             "examinations": [
                 {
                     "id": str(link.examination.id),
@@ -441,6 +460,12 @@ class ClinicalEvent(
             "note": [{"text": self.description}] if self.description else None,
             "meta": build_meta(version_id=str(self.version or 1)),
         }
+        if self.document_id:
+            data["evidence"] = [
+                {"detail": [{"reference": f"DocumentReference/{self.document_id}"}]}
+            ]
+        elif self.evidence:
+            data["evidence"] = self.evidence
         return build_fhir_resource("Condition", data)
 
     def to_fhir_episode_of_care_dict(self) -> dict:

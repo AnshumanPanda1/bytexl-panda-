@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Initial Release — AI-Powered Personal Health Copilot
 
 #### Features
-- **Document Ingestion & Extraction**:
+- **Document Ingestion & Extraction (Person 1)**:
   - Processing for medical records, lab reports, and prescriptions.
   - OCR extraction with structured field mapping, confidence scoring, and review flags.
 - **AI-Powered Bilingual Summaries (Person 2)**:
@@ -18,11 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Strict clinical safety guards (no hallucinated reference ranges or diagnoses).
   - Multi-provider support (Groq, Google Gemini, OpenRouter) with offline fallback.
   - Automatic cache invalidation when facts are edited or new documents arrive.
-- **Patient Health Timeline**:
-  - Chronological tracking of clinical observations, labs, and vitals.
-- **Interoperability & Standards**:
-  - HL7 FHIR R4 JSON Bundle export.
-  - Simulated ABHA record import and preview flow with clear simulation boundaries.
-- **Modern Bilingual UX**:
-  - English and Hindi language switching.
-  - Interactive fact review screen with source document provenance and snippets.
+- **Frontend & Bilingual UX (Person 3)**:
+  - Streamlined health copilot interface in English and Hindi.
+  - Interactive fact review screen with source document provenance and confidence badges.
+  - Simplified navigation focused on patient copilot workflows.
+- **Canonical Health Models, Interoperability & Timeline (Person 4)**:
+  - Extended canonical health models (`Observation`, `Medication`, `ClinicalEvent`) with provenance and raw text retention.
+  - Patient health timeline aggregating visits, lab observations, medications, and conditions (`GET /api/v1/timeline/patient/{patient_id}`).
+  - Document facts extraction and audited corrections with summary invalidation (`POST /api/v1/facts/correct`).
+  - Machine-readable HL7 FHIR R4 JSON Bundle export (`GET /api/v1/export/fhir/patient/{patient_id}`).
+  - Simulated ABHA/ABDM preview and confirmation workflow with deterministic SHA-256 deduplication.
+- **DevOps, Security & Packaging (Person 5)**:
+  - Tenant isolation enforcement across all clinical endpoints.
+  - Docker Compose orchestration for full-stack local and server deployment.

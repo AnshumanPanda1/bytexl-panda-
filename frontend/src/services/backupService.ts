@@ -56,3 +56,25 @@ export async function getImportJob(jobId: string): Promise<ImportJob> {
   const response = await api.get<ImportJob>(`/import/jobs/${jobId}`);
   return response.data;
 }
+
+export async function exportPatientFhirBundle(patientId: string): Promise<any> {
+  const response = await api.get<any>(`/export/patient/${patientId}/fhir`);
+  return response.data;
+}
+
+export async function downloadPatientFhirBundle(patientId: string, filename?: string): Promise<void> {
+  const data = await exportPatientFhirBundle(patientId);
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || `fhir-bundle-${patientId}.json`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+

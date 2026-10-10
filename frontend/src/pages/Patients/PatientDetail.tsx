@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getPatient, deletePatient } from '../../services/patientService';
 import { Patient } from '../../types/patient';
-import { Edit2, Trash2, Fingerprint, User } from 'lucide-react';
+import { Edit2, Trash2, Fingerprint, User, Download, Database } from 'lucide-react';
 import { useUIStore } from '../../store/slices/uiSlice';
 import { usePatientStore } from '../../store/slices/patientSlice';
 import { AllergySummary } from '../../components/patients/AllergySummary';
@@ -13,11 +13,13 @@ import BiomarkerSummary from '../../components/patients/BiomarkerSummary';
 import ExaminationSummary from '../../components/patients/ExaminationSummary';
 import ClinicalEventSummary from '../../components/patients/ClinicalEventSummary';
 import ScheduleSummary from '../../components/patients/ScheduleSummary';
+import { PatientSummaryCard } from '../../components/patients/PatientSummaryCard';
+import { PatientTimelineCard } from '../../components/patients/PatientTimelineCard';
+import { MockAbdmImportModal } from '../../components/patients/MockAbdmImportModal';
+import { downloadPatientFhirBundle } from '../../services/backupService';
 import { formatAge } from '../../utils/dateUtils';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StickyToolbar } from '../../components/ui/StickyToolbar';
-import { DatePicker } from '../../components/ui/DatePicker';
-import { FormModal } from '../../components/ui/FormModal';
 import { SetupChecklistCard } from '../../components/setup/SetupChecklistCard';
 
 function PatientDetail() {
@@ -38,6 +40,21 @@ function PatientDetail() {
 
   // Edit state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAbdmModalOpen, setIsAbdmModalOpen] = useState(false);
+  const [exportingFhir, setExportingFhir] = useState(false);
+
+  const handleExportFhir = async () => {
+    if (!patientId || !patient) return;
+    try {
+      setExportingFhir(true);
+      await downloadPatientFhirBundle(patientId, `fhir-bundle-${patient.mrn || patient.id}.json`);
+    } catch (err) {
+      console.error('Failed to export FHIR bundle:', err);
+      alert('Failed to export FHIR bundle');
+    } finally {
+      setExportingFhir(false);
+    }
+  };
 
   useEffect(() => {
     if (patientId) {
@@ -113,16 +130,31 @@ function PatientDetail() {
       <StickyToolbar
         actions={
           <>
+            <button
+              onClick={() => setIsAbdmModalOpen(true)}
+              className="flex items-center space-x-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded-xl transition-all font-bold active:scale-95 text-xs"
+            >
+              <Database className="w-4 h-4 text-emerald-600" />
+              <span>Simulate ABDM Import</span>
+            </button>
+            <button
+              onClick={handleExportFhir}
+              disabled={exportingFhir}
+              className="flex items-center space-x-2 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 rounded-xl transition-all font-bold active:scale-95 text-xs disabled:opacity-50"
+            >
+              <Download className="w-4 h-4 text-blue-600" />
+              <span>{exportingFhir ? 'Exporting...' : 'Export FHIR (R4)'}</span>
+            </button>
             <button 
               onClick={handleOpenEditModal}
-              className="flex items-center space-x-2 px-4 py-2.5 border border-gray-200 dark:border-dark-border text-gray-700 dark:text-dark-text rounded-xl hover:bg-gray-50 dark:hover:bg-dark-surface transition-all font-bold active:scale-95"
+              className="flex items-center space-x-2 px-4 py-2 border border-gray-200 dark:border-dark-border text-gray-700 dark:text-dark-text rounded-xl hover:bg-gray-50 dark:hover:bg-dark-surface transition-all font-bold active:scale-95 text-xs"
             >
               <Edit2 className="w-4 h-4" />
               <span>{t('patients.edit_profile')}</span>
             </button>
             <button 
               onClick={handleDeletePatient}
-              className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-900/40 active:scale-95"
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-900/40 active:scale-95"
               title={t('patients.delete_patient')}
             >
               <Trash2 className="w-5 h-5" />
@@ -135,12 +167,18 @@ function PatientDetail() {
         {/* Main Content Area: Content & Summaries */}
         <div className="2xl:col-span-3 order-2 2xl:order-1 space-y-8 min-w-0">
           
+          {/* AI Bilingual Plain-Language Health Summary */}
+          {patientId && <PatientSummaryCard patientId={patientId} />}
+
           {/* Middle Section: Quick Clinical Overview (Now part of main flow) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {patientId && <AllergySummary patientId={patientId} />}
             {patientId && <MedicationSummary patientId={patientId} />}
             {patientId && <BiomarkerSummary patientId={patientId} />}
           </div>
+
+          {/* Unified Chronological Health Timeline */}
+          {patientId && <PatientTimelineCard patientId={patientId} />}
 
           {/* Activity Overview: rich summary cards (replaces former tabbed area) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -201,6 +239,15 @@ function PatientDetail() {
         onClose={() => setIsModalOpen(false)}
         patient={patient}
         onSaved={(updated) => { setPatient(updated); setIsModalOpen(false); }}
+      />
+
+      <MockAbdmImportModal
+        isOpen={isAbdmModalOpen}
+        onClose={() => setIsAbdmModalOpen(false)}
+        patientId={patient.id}
+        onImportCompleted={() => {
+          loadData();
+        }}
       />
     </div>
   );

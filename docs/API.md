@@ -1147,6 +1147,36 @@ See [EXPORT_IMPORT.md](EXPORT_IMPORT.md) for the full format/scopes/restore spec
 | `PUT` | `/organizations/{organization_id}` | any | `OrganizationUpdate` | `Organization` |  |
 | `DELETE` | `/organizations/{organization_id}` | any | — | `204` |  |
 
+### `timeline` (Patient Health Timeline)
+
+| Method | Path | Auth | Query | Response | Notes |
+|---|---|---|---|---|---|
+| `GET` | `/timeline/patient/{patient_id}` | patient-scoped | `skip?=0`, `limit?=100`, `item_type?` | `TimelineResponse` | Reverse chronological timeline aggregating examinations, documents, observations, medications, and conditions with stable unknown-date handling. |
+
+### `facts` (Document Facts & User Corrections)
+
+| Method | Path | Auth | Body / Query | Response | Notes |
+|---|---|---|---|---|---|
+| `GET` | `/facts/document/{document_id}` | any | — | `DocumentFactsResponse` | Aggregated observations, medications, conditions linked to document with confidence and review status. |
+| `POST` | `/facts/correct` | patient-scoped | `FactCorrectionRequest` | `FactCorrectionResponse` | User fact correction preserving original text, capturing audit logs, and automatically invalidating patient summaries. |
+
+### `summaries` (Plain-Language Health Summaries)
+
+| Method | Path | Auth | Body / Query | Response | Notes |
+|---|---|---|---|---|---|
+| `GET` | `/summaries/patient/{patient_id}` | patient-scoped | `language?=en\|hi`, `include_stale?=true` | `List[PatientHealthSummaryResponse]` | Generated plain-language summaries with staleness status and source references. |
+| `POST` | `/summaries/patient/{patient_id}` | patient-scoped | `PatientHealthSummaryCreate` | `PatientHealthSummaryResponse` | Create bilingual plain-language health summary. |
+| `POST` | `/summaries/{summary_id}/invalidate` | any | `reason?` | `PatientHealthSummaryResponse` | Explicitly flag summary as stale. |
+
+### `mock-abdm` (Simulated ABHA/ABDM Readiness)
+
+| Method | Path | Auth | Body / Query | Response | Notes |
+|---|---|---|---|---|---|
+| `POST` | `/mock-abdm/patient/{patient_id}/preview` | patient-scoped | `SyntheticRecordBundle` | `MockAbdmPreviewResponse` | Calculate SHA-256 fingerprint, preview mapped resources, check duplicate status without database mutation. |
+| `POST` | `/mock-abdm/patient/{patient_id}/confirm` | patient-scoped | `SyntheticRecordBundle` | `MockAbdmConfirmResponse` | Persist synthetic records to canonical models, log audit trails, track `mock_abdm` provenance, and reject duplicate submissions. |
+| `GET` | `/mock-abdm/imports` | any | `patient_id?`, `limit?=50` | `List[MockAbdmImportRecordResponse]` | List import history and deduplication status. |
+| `GET` | `/mock-abdm/samples` | any | — | `List[SyntheticRecordBundle]` | Pre-packaged bilingual test bundles (English and Hindi). |
+
 ---
 
 ## FHIR R4 facade

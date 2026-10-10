@@ -229,9 +229,14 @@ def _clean_quantity(q: Any) -> dict[str, Any] | None:
 
 def _normalize_timing(timing: Any) -> Any:
     """Normalize a FHIR Timing dict: expand short ``timeOfDay`` ("HH:MM")
-    values into full ISO ("HH:MM:SS"). Non-dict values pass through."""
+    values into full ISO ("HH:MM:SS"). Also wraps plain strings or text-only
+    dicts into a FHIR Timing-compliant code structure."""
+    if isinstance(timing, str):
+        return {"code": {"text": timing}}
     if not isinstance(timing, dict):
         return timing
+    if "text" in timing and "repeat" not in timing and "code" not in timing:
+        return {"code": {"text": timing["text"]}}
     repeat = timing.get("repeat")
     if not isinstance(repeat, dict):
         return timing
