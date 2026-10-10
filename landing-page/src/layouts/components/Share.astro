@@ -1,0 +1,57 @@
+---
+import config from "@/config/config.json";
+import {
+  IoLogoFacebook,
+  IoLogoLinkedin,
+  IoLogoPinterest,
+  IoLogoTwitter,
+} from "react-icons/io5";
+
+const { base_url }: { base_url: string } = config.site;
+const {
+  title,
+  description,
+  slug,
+  className,
+}: { title?: string; description?: string; slug?: string; className?: string } =
+  Astro.props;
+---
+
+<ul class={`${className}`}>
+  <li class="inline-block">
+    <a
+      aria-label="facebook share button"
+      href={`#!`}
+      rel="noreferrer noopener"
+    >
+      <IoLogoFacebook />
+    </a>
+  </li>
+  <li class="inline-block">
+    <a
+      aria-label="twitter share button"
+      href={`#!`}
+      rel="noreferrer noopener"
+    >
+      <IoLogoTwitter />
+    </a>
+  </li>
+  <li class="inline-block">
+    <a
+      aria-label="linkedin share button"
+      href={`#!`}
+      rel="noreferrer noopener"
+    >
+      <IoLogoLinkedin />
+    </a>
+  </li>
+  <li class="inline-block">
+    <a
+      aria-label="pinterest share button"
+      href={`#!`}
+      rel="noreferrer noopener"
+    >
+      <IoLogoPinterest />
+    </a>
+  </li>
+</ul>
