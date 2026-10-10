@@ -1,5 +1,6 @@
 [project]
 name = "medibot-backend"
+version = "1.0.0"
 description = "MediBot — AI-Powered Personal Health Copilot (FastAPI, Groq LPU, FHIR R4)"
 license = "Apache-2.0"
 requires-python = ">=3.12"
