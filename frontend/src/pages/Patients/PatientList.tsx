@@ -5,12 +5,13 @@ import { useAuthStore } from '../../store/slices/authSlice';
 import { useUIStore } from '../../store/slices/uiSlice';
 import { listPatients, deletePatient } from '../../services/patientService';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, User, Edit2, Trash2, Calendar, Fingerprint, ChevronRight, Users } from 'lucide-react';
+import { Search, Plus, User, Edit2, Trash2, Calendar, Fingerprint, ChevronRight, Users, Sparkles } from 'lucide-react';
 import { calculateAge, formatAge } from '../../utils/dateUtils';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StickyToolbar } from '../../components/ui/StickyToolbar';
 import { useCreateIntent } from '../../hooks/useCreateIntent';
 import { PatientFormWizard } from '../../components/patients/PatientFormWizard';
+import { getTestPatients } from '../../data/testPatients';
 
 function Patients() {
   const { t } = useTranslation();
@@ -105,7 +106,18 @@ function Patients() {
 
       <StickyToolbar
         actions={
-          <>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => {
+                const demoCohort = getTestPatients();
+                setPatients(demoCohort);
+              }}
+              className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/60 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all font-semibold active:scale-95 shadow-xs"
+              title="Load rich demo patient cohort showcasing chronic disease, respiratory, thyroid, and geriatric profiles"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Load Demo Showcase</span>
+            </button>
             <button 
               onClick={() => handleOpenModal()}
               className="flex items-center space-x-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/50 dark:shadow-none font-bold active:scale-95"
@@ -113,7 +125,7 @@ function Patients() {
               <Plus className="w-4 h-4" />
               <span>{t('patients.add_patient')}</span>
             </button>
-          </>
+          </div>
         }
       />
 
@@ -157,13 +169,19 @@ function Patients() {
                     {patient.name?.given?.join(' ')} {patient.name?.family}
                   </h3>
                   
-                  <div className="flex items-center space-x-2 mt-2">
+                  <div className="flex items-center space-x-2 mt-2 flex-wrap gap-y-1">
                     <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-sm ${getGenderColor(patient.gender)}`}>
                       {patient.gender}
                     </span>
                     {patient.mrn && (
                       <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-gray-100 dark:bg-dark-bg text-gray-600 dark:text-dark-muted rounded-sm">
                         {t('patients.mrn')}: {patient.mrn}
+                      </span>
+                    )}
+                    {patient.id?.startsWith('33333333-3333-') && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <Sparkles className="w-2.5 h-2.5 mr-1" />
+                        Demo Cohort
                       </span>
                     )}
                   </div>
@@ -213,12 +231,35 @@ function Patients() {
           <p className="text-gray-500 mt-1 mb-6 text-center max-w-xs">
             {searchTerm ? t('patients.no_results', { term: searchTerm }) : t('patients.start_adding')}
           </p>
-          <button 
-            onClick={() => searchTerm ? setSearchTerm('') : handleOpenModal()} 
-            className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/50 dark:shadow-none active:scale-95"
-          >
-            {searchTerm ? t('common.reset') : t('patients.add_first')}
-          </button>
+          <div className="flex items-center space-x-3">
+            {searchTerm ? (
+              <button 
+                onClick={() => setSearchTerm('')} 
+                className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/50 dark:shadow-none active:scale-95"
+              >
+                {t('common.reset')}
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={() => {
+                    const demoCohort = getTestPatients();
+                    setPatients(demoCohort);
+                  }}
+                  className="flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200/50 dark:shadow-none active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Load Demo Showcase</span>
+                </button>
+                <button 
+                  onClick={() => handleOpenModal()} 
+                  className="px-6 py-2.5 bg-gray-100 dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-gray-800 dark:text-dark-text rounded-xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  {t('patients.add_first')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 

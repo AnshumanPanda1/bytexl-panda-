@@ -1,0 +1,284 @@
+{
+  "patients": [
+    {
+      "id": "33333333-3333-4333-8333-333333333301",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100234",
+      "name": {
+        "family": "Sharma",
+        "given": ["Rajesh", "Kumar"]
+      },
+      "gender": "male",
+      "birth_date": "1974-05-12",
+      "age": 52,
+      "address": [{ "city": "New Delhi", "state": "Delhi", "country": "India", "line": ["B-42 Hauz Khas"] }],
+      "telecom": [{ "system": "phone", "value": "+91 98765 43210" }],
+      "emergency_contact": { "name": "Sunita Sharma", "relationship": "Spouse", "phone": "+91 98765 43211" },
+      "clinical_profile": "Metabolic Syndrome, Type 2 Diabetes & Hypertension",
+      "conditions": [
+        {
+          "title": "Type 2 Diabetes Mellitus without complications",
+          "code": "E11.9",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2022-04-10"
+        },
+        {
+          "title": "Essential (Primary) Hypertension",
+          "code": "I10",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2021-08-15"
+        },
+        {
+          "title": "Mixed Hyperlipidemia",
+          "code": "E78.2",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2023-01-20"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Metformin Hydrochloride 500mg",
+          "dosage": "500 mg",
+          "route": "oral",
+          "frequency": "1 tablet twice daily after meals",
+          "status": "active",
+          "start_date": "2026-01-10"
+        },
+        {
+          "name": "Telmisartan 40mg",
+          "dosage": "40 mg",
+          "route": "oral",
+          "frequency": "1 tablet once daily morning",
+          "status": "active",
+          "start_date": "2026-02-15"
+        },
+        {
+          "name": "Atorvastatin 20mg",
+          "dosage": "20 mg",
+          "route": "oral",
+          "frequency": "1 tablet at bedtime",
+          "status": "active",
+          "start_date": "2026-03-01"
+        }
+      ],
+      "biomarkers": [
+        { "name": "HbA1c", "slug": "hba1c", "value": 8.4, "unit": "%", "interpretation": "High" },
+        { "name": "Fasting Blood Glucose", "slug": "glucose-fasting", "value": 162, "unit": "mg/dL", "interpretation": "High" },
+        { "name": "LDL Cholesterol", "slug": "cholesterol-ldl", "value": 148, "unit": "mg/dL", "interpretation": "High" },
+        { "name": "Serum Creatinine", "slug": "creatinine", "value": 1.05, "unit": "mg/dL", "interpretation": "Normal" },
+        { "name": "eGFR", "slug": "egfr", "value": 84, "unit": "mL/min/1.73m2", "interpretation": "Normal" }
+      ],
+      "ai_summary": {
+        "en": "Rajesh Sharma has suboptimal glycemic control with an elevated HbA1c of 8.4% and fasting blood sugar of 162 mg/dL on Metformin 500mg BID. Kidney function is preserved with eGFR 84 mL/min.",
+        "hi": "राजेश शर्मा का ग्लाइसेमिक नियंत्रण कमजोर है, जिसमें मेटफॉर्मिन 500 मिलीग्राम प्रतिदिन दो बार लेने के बावजूद HbA1c 8.4% और फास्टिंग ब्लड शुगर 162 mg/dL है। किडनी का कार्य सामान्य है।"
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333302",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100582",
+      "name": {
+        "family": "Nair",
+        "given": ["Priya"]
+      },
+      "gender": "female",
+      "birth_date": "1992-08-23",
+      "age": 34,
+      "address": [{ "city": "Bengaluru", "state": "Karnataka", "country": "India", "line": ["14th Cross, Indiranagar"] }],
+      "telecom": [{ "system": "phone", "value": "+91 98112 34567" }],
+      "emergency_contact": { "name": "Karthik Nair", "relationship": "Brother", "phone": "+91 98112 34568" },
+      "clinical_profile": "Allergic Asthma & Seasonal Rhinitis",
+      "conditions": [
+        {
+          "title": "Moderate Persistent Asthma with acute exacerbation",
+          "code": "J45.41",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2020-09-14"
+        },
+        {
+          "title": "Allergic Rhinitis due to pollen and environmental dust",
+          "code": "J30.1",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2019-02-10"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Budesonide / Formoterol Turbuhaler 160/4.5 mcg",
+          "dosage": "160/4.5 mcg",
+          "route": "inhalation",
+          "frequency": "2 inhalations twice daily and PRN",
+          "status": "active",
+          "start_date": "2025-11-05"
+        },
+        {
+          "name": "Levocetirizine 5mg",
+          "dosage": "5 mg",
+          "route": "oral",
+          "frequency": "1 tablet once daily bedtime",
+          "status": "active",
+          "start_date": "2026-03-10"
+        },
+        {
+          "name": "Montelukast Sodium 10mg",
+          "dosage": "10 mg",
+          "route": "oral",
+          "frequency": "1 tablet once daily evening",
+          "status": "active",
+          "start_date": "2026-03-10"
+        }
+      ],
+      "biomarkers": [
+        { "name": "Peak Expiratory Flow Rate", "slug": "pefr", "value": 310, "unit": "L/min", "interpretation": "Low" },
+        { "name": "Total Serum IgE", "slug": "ige-total", "value": 345, "unit": "IU/mL", "interpretation": "High" },
+        { "name": "Absolute Eosinophil Count", "slug": "eosinophils-abs", "value": 580, "unit": "cells/uL", "interpretation": "High" },
+        { "name": "Oxygen Saturation (SpO2)", "slug": "spo2", "value": 98, "unit": "%", "interpretation": "Normal" }
+      ],
+      "ai_summary": {
+        "en": "Priya Nair demonstrates an allergic asthma profile with elevated total IgE (345 IU/mL), peripheral eosinophilia (580 cells/uL), and mild airflow limitation (PEFR 310 L/min). Resting oxygenation is normal at 98%.",
+        "hi": "प्रिया नायर में एलर्जिक अस्थमा के लक्षण हैं, जिसमें उच्च सीरम IgE (345 IU/mL) और बढ़ा हुआ इओसिनोफिल काउंट (580 cells/uL) शामिल है। ऑक्सीजन स्तर सामान्य (98%) है।"
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333303",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100791",
+      "name": {
+        "family": "Patel",
+        "given": ["Amit", "Ramesh"]
+      },
+      "gender": "male",
+      "birth_date": "1985-02-14",
+      "age": 41,
+      "address": [{ "city": "Ahmedabad", "state": "Gujarat", "country": "India", "line": ["Navrangpura, Near University"] }],
+      "telecom": [{ "system": "phone", "value": "+91 98220 12345" }],
+      "emergency_contact": { "name": "Bhavna Patel", "relationship": "Spouse", "phone": "+91 98220 12346" },
+      "clinical_profile": "Primary Hypothyroidism & Severe Vitamin D Deficiency",
+      "conditions": [
+        {
+          "title": "Primary Hypothyroidism, unspecified",
+          "code": "E03.9",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2024-06-18"
+        },
+        {
+          "title": "Vitamin D Deficiency, unspecified",
+          "code": "E55.9",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2026-03-01"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Levothyroxine Sodium 50mcg",
+          "dosage": "50 mcg",
+          "route": "oral",
+          "frequency": "1 tablet once daily morning fasting",
+          "status": "active",
+          "start_date": "2025-12-01"
+        },
+        {
+          "name": "Cholecalciferol (Vitamin D3) 60,000 IU",
+          "dosage": "60,000 IU",
+          "route": "oral",
+          "frequency": "1 sachet weekly x 8 weeks",
+          "status": "active",
+          "start_date": "2026-03-01"
+        }
+      ],
+      "biomarkers": [
+        { "name": "Thyroid Stimulating Hormone (TSH)", "slug": "tsh", "value": 8.4, "unit": "uIU/mL", "interpretation": "High" },
+        { "name": "Free Thyroxine (FT4)", "slug": "free-t4", "value": 0.82, "unit": "ng/dL", "interpretation": "Normal" },
+        { "name": "25-Hydroxy Vitamin D", "slug": "vitamin-d", "value": 12.4, "unit": "ng/mL", "interpretation": "Low" },
+        { "name": "Hemoglobin", "slug": "hemoglobin", "value": 14.2, "unit": "g/dL", "interpretation": "Normal" }
+      ],
+      "ai_summary": {
+        "en": "Amit Patel presents with persistent primary hypothyroidism characterized by an elevated TSH of 8.4 uIU/mL and low-normal Free T4 of 0.82 ng/dL. Severe Vitamin D deficiency (12.4 ng/mL) contributes to ongoing fatigue.",
+        "hi": "अमित पटेल में थायरॉइड की समस्या (हाइपोथायरायडिज्म) का स्तर बढ़ा हुआ है (TSH 8.4 uIU/mL)। साथ ही विटामिन डी की गंभीर कमी (12.4 ng/mL) है जिससे थकान महसूस हो सकती है।"
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333304",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100915",
+      "name": {
+        "family": "Deshmukh",
+        "given": ["Sunita", "Anand"]
+      },
+      "gender": "female",
+      "birth_date": "1958-11-30",
+      "age": 68,
+      "address": [{ "city": "Pune", "state": "Maharashtra", "country": "India", "line": ["Kothrud, Flat 402"] }],
+      "telecom": [{ "system": "phone", "value": "+91 98450 67890" }],
+      "emergency_contact": { "name": "Rohit Deshmukh", "relationship": "Son", "phone": "+91 98450 67891" },
+      "clinical_profile": "Geriatric Osteoarthritis, Mild Cognitive Impairment & Medication Reconciliation",
+      "conditions": [
+        {
+          "title": "Primary Osteoarthritis of Bilateral Knees",
+          "code": "M17.0",
+          "status": "active",
+          "verification_status": "confirmed",
+          "onset_date": "2021-03-10"
+        },
+        {
+          "title": "Mild Cognitive Impairment, so stated",
+          "code": "G31.84",
+          "status": "active",
+          "verification_status": "provisional",
+          "onset_date": "2025-05-20"
+        },
+        {
+          "title": "Urinary tract infection, site not specified",
+          "code": "N39.0",
+          "status": "resolved",
+          "verification_status": "confirmed",
+          "onset_date": "2026-08-01"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Paracetamol 650mg",
+          "dosage": "650 mg",
+          "route": "oral",
+          "frequency": "1 tablet PRN for joint pain",
+          "status": "active",
+          "start_date": "2026-01-15"
+        },
+        {
+          "name": "Calcium Carbonate 500mg + Vitamin D3 250IU",
+          "dosage": "500mg / 250IU",
+          "route": "oral",
+          "frequency": "1 tablet once daily after lunch",
+          "status": "active",
+          "start_date": "2026-02-01"
+        },
+        {
+          "name": "Nitrofurantoin 100mg",
+          "dosage": "100 mg",
+          "route": "oral",
+          "frequency": "1 capsule twice daily for 7 days (Course completed)",
+          "status": "stopped",
+          "start_date": "2026-08-01",
+          "end_date": "2026-08-08"
+        }
+      ],
+      "biomarkers": [
+        { "name": "Erythrocyte Sedimentation Rate (ESR)", "slug": "esr", "value": 42, "unit": "mm/hr", "interpretation": "High" },
+        { "name": "hs-CRP", "slug": "crp-hs", "value": 5.8, "unit": "mg/L", "interpretation": "High" },
+        { "name": "Total Serum Calcium", "slug": "calcium", "value": 9.2, "unit": "mg/dL", "interpretation": "Normal" },
+        { "name": "Uric Acid", "slug": "uric-acid", "value": 5.4, "unit": "mg/dL", "interpretation": "Normal" }
+      ],
+      "ai_summary": {
+        "en": "Sunita Deshmukh is a 68-year-old female with bilateral knee osteoarthritis and mild chronic inflammatory markers (ESR 42 mm/hr, hs-CRP 5.8 mg/L). Her previous urinary tract infection is successfully resolved, and Nitrofurantoin antibiotic therapy has been stopped.",
+        "hi": "सुनीता देशमुख (68 वर्ष) में दोनों घुटनों में ऑस्टियोआर्थराइटिस (जोड़ों का दर्द) है और सूजन के संकेत (ESR 42 mm/hr) थोड़े बढ़े हुए हैं। उनका यूटीआई संक्रमण ठीक हो चुका है और एंटीबायोटिक दवा पूरी होकर बंद कर दी गई है।"
+      }
+    }
+  ]
+}
