@@ -29,6 +29,7 @@ import { ChatVoiceButton } from '../ai/ChatVoiceButton';
 import { RecordingBanner } from '../ai/RecordingBanner';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 import { transcribeAudio } from '../../services/aiAssistanceService';
+import { AISummaryCard } from '../ai/AISummaryCard';
 
 interface Props {
   isFullScreen?: boolean;
@@ -1170,24 +1171,15 @@ export const AIChatInterface: React.FC<Props> = ({
             )}
 
             {activeTab === 'insights' && (
-              <div className="max-w-4xl mx-auto w-full p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className={`p-6 md:p-8 rounded-2xl md:rounded-4xl border shadow-2xl ${
-                    isFullScreen 
-                      ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-900 dark:text-amber-200' 
-                      : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-900 dark:text-amber-200'
-                  }`}>
-                    <div className="flex items-center gap-3 md:gap-4 mb-4">
-                       <div className="p-2 md:p-2.5 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-500/20">
-                          <BarChart2 className="w-5 h-5 md:w-5.5 md:h-5.5" />
-                       </div>
-                       <h3 className="text-lg md:text-xl font-black uppercase tracking-[0.2em]">{t('ai_chat.insights.title')}</h3>
-                    </div>
-                    <p className="text-base md:text-lg font-medium leading-relaxed opacity-80">
-                        {currentPatient 
-                          ? t('ai_chat.insights.select_document', { name: `${currentPatient.name?.given?.join(' ')} ${currentPatient.name?.family}` })
-                          : t('ai_chat.insights.select_patient')}
-                    </p>
+              <div className="max-w-4xl mx-auto w-full p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                {currentPatient ? (
+                  <AISummaryCard patientId={String(currentPatient.id)} />
+                ) : (
+                  <div className="p-8 text-center text-gray-500 dark:text-dark-muted rounded-2xl border border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-surface">
+                    <p className="font-semibold text-base mb-1">No Patient Selected</p>
+                    <p className="text-sm">Please select a patient from the top bar to generate and inspect grounded bilingual summaries.</p>
                   </div>
+                )}
               </div>
             )}
 

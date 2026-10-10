@@ -1,11 +1,11 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  Bell,
-  BookOpen,
   LayoutDashboard,
-  ShieldCheck,
+  FileText,
   Sparkles,
-  User,
+  Clock,
+  Activity,
+  Share2,
 } from 'lucide-react';
 
 export interface MainNavSubItem {
@@ -27,62 +27,52 @@ export interface MainNavItem {
   roles?: string[];
 }
 
-/** Primary sidebar registry — single source for the app shell. */
+/**
+ * Streamlined MediBot Copilot Navigation:
+ * Focused on Document Ingestion, Fact Review, Bilingual AI Summary,
+ * Patient Timeline, Biomarker Trends, and FHIR Interop.
+ */
 export const MAIN_NAV: MainNavItem[] = [
-  // 1. Dashboard
-  { path: '/dashboard', labelKey: 'common.dashboard', icon: LayoutDashboard },
-
-  // 2. Patient Record (grouped — clinical record, treatments & alerts, timeline)
+  // 1. Ingestion Hub & Overview
   {
-    path: '/patient-record',
-    labelKey: 'common.patient_record',
-    icon: User,
-    subItems: [
-      { path: '/patient-info', labelKey: 'common.patient_overview', dynamicPath: 'patient-detail' },
-      // ── Clinical Record ──
-      { path: '/examinations', labelKey: 'common.examinations', section: 'common.section_clinical_record' },
-      { path: '/documents', labelKey: 'common.documents_explorer' },
-      { path: '/biomarkers', labelKey: 'common.biomarkers' },
-      { path: '/analytics/correlative', labelKey: 'common.correlative_analytics' },
-      // ── Treatments & Alerts ──
-      { path: '/medications', labelKey: 'common.medications', section: 'common.section_treatments_alerts' },
-      { path: '/vaccinations', labelKey: 'common.vaccinations' },
-      { path: '/allergies', labelKey: 'common.allergies' },
-      // ── Timeline ──
-      { path: '/events', labelKey: 'events.title', section: 'common.section_timeline' },
-      { path: '/calendar', labelKey: 'common.calendar' },
-    ],
+    path: '/dashboard',
+    labelKey: 'common.dashboard',
+    icon: LayoutDashboard,
   },
 
-  // 3. Notifications (app-level, not patient-scoped)
-  { path: '/notifications', labelKey: 'common.notifications', icon: Bell },
-
-  // 4. Catalogs (reference catalogs — all users). Single link to the unified
-  //    tabbed workspace at /catalogs (formerly expanded into 6 ?type= shortcuts).
-  { path: '/catalogs', labelKey: 'common.catalogs', icon: BookOpen },
-
-  // 5. AI Assistant
-  { path: '/ai-assistant', labelKey: 'common.ai_assistant', icon: Sparkles },
-
-  // 6. Administration (merged System + Tenant, role-gated)
+  // 2. Document Extraction & Review
   {
-    path: '/administration',
-    labelKey: 'common.administration',
-    icon: ShieldCheck,
-    roles: ['SYSTEM_ADMIN', 'ADMIN', 'MANAGER'],
-    subItems: [
-      // ── System section ──
-      { path: '/admin/system/tenants', labelKey: 'admin.system_tenants', section: 'admin.system_administration', roles: ['SYSTEM_ADMIN'] },
-      { path: '/admin/system/users', labelKey: 'admin.users', roles: ['SYSTEM_ADMIN'] },
-      { path: '/admin/system/settings', labelKey: 'admin.system_settings', roles: ['SYSTEM_ADMIN'] },
-      // ── Tenant section ──
-      { path: '/admin/tenant/users', labelKey: 'admin.users', section: 'admin.tenant_management', roles: ['SYSTEM_ADMIN', 'ADMIN'] },
-      { path: '/admin/tenant/settings', labelKey: 'admin.tenant_settings', roles: ['SYSTEM_ADMIN', 'ADMIN'] },
-      { path: '/admin/tenant/oauth-clients', labelKey: 'admin.api_clients', roles: ['SYSTEM_ADMIN', 'ADMIN', 'MANAGER'] },
-      { path: '/patients', labelKey: 'common.patients', roles: ['SYSTEM_ADMIN', 'ADMIN'] },
-      { path: '/doctors', labelKey: 'common.doctors', roles: ['SYSTEM_ADMIN', 'ADMIN'] },
-      { path: '/organizations', labelKey: 'common.organizations', roles: ['SYSTEM_ADMIN', 'ADMIN'] },
-    ],
+    path: '/documents',
+    labelKey: 'common.documents_explorer',
+    icon: FileText,
+  },
+
+  // 3. Bilingual AI Summaries & Copilot
+  {
+    path: '/ai-assistant',
+    labelKey: 'common.ai_assistant',
+    icon: Sparkles,
+  },
+
+  // 4. Patient Health Timeline
+  {
+    path: '/events',
+    labelKey: 'events.title',
+    icon: Clock,
+  },
+
+  // 5. Biomarker Trends (Good to have)
+  {
+    path: '/biomarkers',
+    labelKey: 'common.biomarkers',
+    icon: Activity,
+  },
+
+  // 6. FHIR Export & Mock ABHA Interop (Good to have)
+  {
+    path: '/settings/export-import',
+    labelKey: 'settings.export_import_title',
+    icon: Share2,
   },
 ];
 
@@ -108,7 +98,6 @@ export function filterNavByRole(items: MainNavItem[], role?: string): MainNavIte
     .map((item) => {
       if (!item.subItems) return item;
       const filteredSubItems = item.subItems.filter((sub) => allowed(sub.roles));
-      // Preserve the section divider on the first surviving item of each section
       const seenSections = new Set<string>();
       const recomputed = filteredSubItems.map((sub) => {
         if (sub.section && seenSections.has(sub.section)) {
@@ -118,23 +107,17 @@ export function filterNavByRole(items: MainNavItem[], role?: string): MainNavIte
         if (sub.section) seenSections.add(sub.section);
         return sub;
       });
-      if (recomputed.length === 0) return item; // group dropped below
+      if (recomputed.length === 0) return item;
       return { ...item, subItems: recomputed };
     })
     .filter((item) => {
-      // Hide a role-gated group entirely if no sub-items survived filtering
       if (item.roles && item.subItems !== undefined && item.subItems.length === 0) return false;
       return true;
     });
 }
 
 /**
- * Resolve the active nav id from the location — the exact matching rules
- * the sidebar has always used, extracted so they are testable:
- * - patient-detail sub-item is active on any /patients/{id} page
- * - the patient list matches exactly (so it does not shadow the detail page)
- * - sub-items with ?type= query strings match pathname + the type param
- * - everything else matches by exact path or trailing-slash prefix
+ * Resolve the active nav id from the location.
  */
 export function resolveActiveNavId(
   pathname: string,

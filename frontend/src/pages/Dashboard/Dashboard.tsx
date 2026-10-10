@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
 import { useDashboardStore } from '../../store/slices/dashboardSlice';
@@ -18,7 +19,7 @@ import {
 } from '../../services/dashboardLayoutService';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { NoPatientState } from '../../components/ui/NoPatientState';
-import { Settings, Plus, Save, ChevronDown, Trash2, Copy, LayoutTemplate, Edit2, Star, Zap } from 'lucide-react';
+import { Settings, Plus, Save, ChevronDown, Trash2, Copy, LayoutTemplate, Edit2, Star, Zap, UploadCloud, Sparkles, Clock, Share2, FileText, ArrowRight } from 'lucide-react';
 import {
   getCardDefinition,
   resolveCardComponent,
@@ -229,6 +230,7 @@ const generateSmartLayout = (
 
 function Dashboard() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { 
     setDashboardData, 
     activeLayout, 
@@ -918,6 +920,55 @@ function Dashboard() {
           </div>
         }
       />
+
+      {/* Copilot Ingestion Hub Hero Banner */}
+      <div className="mb-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-xs font-semibold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>AI Health Copilot</span>
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight mb-1">
+              Personal Health Ingestion Hub
+            </h2>
+            <p className="text-blue-100 text-sm leading-relaxed">
+              Upload diagnostic lab reports, prescriptions, and medical records to extract clinical observations, generate bilingual summaries, and export FHIR bundles.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            <button
+              onClick={() => navigate('/examinations/upload')}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-700 font-bold text-sm shadow-md hover:bg-blue-50 transition-all active:scale-95 shrink-0"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>Upload Document</span>
+            </button>
+            <button
+              onClick={() => navigate('/ai-assistant')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/30 hover:bg-blue-500/50 text-white font-medium text-sm border border-white/20 transition-all shrink-0"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Bilingual AI Summary</span>
+            </button>
+            <button
+              onClick={() => navigate('/events')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/30 hover:bg-blue-500/50 text-white font-medium text-sm border border-white/20 transition-all shrink-0"
+            >
+              <Clock className="w-4 h-4" />
+              <span>Timeline</span>
+            </button>
+            <button
+              onClick={() => navigate('/settings/export-import')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/30 hover:bg-blue-500/50 text-white font-medium text-sm border border-white/20 transition-all shrink-0"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>FHIR / ABHA</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <ResponsiveGridLayout
         className="layout"

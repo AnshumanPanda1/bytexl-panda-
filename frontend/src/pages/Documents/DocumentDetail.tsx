@@ -22,6 +22,7 @@ import { AuthenticatedTextViewer } from '../../components/ui/AuthenticatedTextVi
 import { User, Clock, FileText, Database, Shield, Download, Trash2, RotateCw, Maximize2, MoreVertical, RefreshCw } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StickyToolbar } from '../../components/ui/StickyToolbar';
+import { AISummaryCard } from '../../components/ai/AISummaryCard';
 
 export default function DocumentDetail() {
   const { t } = useTranslation();
@@ -511,6 +512,14 @@ export default function DocumentDetail() {
           </div>
         </div>
       </div>
+
+      {docData?.patient_id && (
+        <AISummaryCard
+          patientId={String(docData.patient_id)}
+          documentIds={[String(docData.id || documentId)]}
+          className="mb-8"
+        />
+      )}
 
       {status === 'completed' && (
         <div className="space-y-6">
