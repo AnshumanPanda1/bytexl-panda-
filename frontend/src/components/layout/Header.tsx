@@ -42,7 +42,7 @@ function Header() {
     if (pageHeaderConfig?.title) return pageHeaderConfig.title;
     const path = location.pathname;
     if (path === '/' || path === '/dashboard') return t('common.dashboard');
-    return 'Health Assistant';
+    return 'MediBot';
   };
 
   // Load the current tenant's display name whenever the user changes

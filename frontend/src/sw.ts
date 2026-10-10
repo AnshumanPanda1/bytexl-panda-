@@ -26,7 +26,7 @@ if (import.meta.env.PROD) {
 self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();
-    const title = data.title || 'Health Assistant Notification';
+    const title = data.title || 'MediBot Notification';
     const notificationId = data.id;
 
     const options = {

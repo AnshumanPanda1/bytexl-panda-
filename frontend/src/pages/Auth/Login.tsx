@@ -242,7 +242,7 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-bg">
         <div className="max-w-md w-full bg-white dark:bg-dark-surface rounded-lg shadow-md p-8">
           <div className="text-center mb-6">
-            <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-12 h-12 mx-auto mb-3" alt="Health Assistant Logo" />
+            <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-12 h-12 mx-auto mb-3" alt="MediBot Logo" />
             <h1 className="text-2xl font-bold text-blue-600">
               {mfaEnrollment
                 ? t('auth.mfa_enroll_title', 'Set up two-factor authentication')
@@ -342,8 +342,8 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
     <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-bg">
       <div className="max-w-md w-full bg-white dark:bg-dark-surface rounded-lg shadow-md p-8">
         <div className="text-center mb-8">
-          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-16 h-16 mx-auto mb-4" alt="Health Assistant Logo" />
-          <h1 className="text-3xl font-bold text-blue-600">Health Assistant</h1>
+          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-16 h-16 mx-auto mb-4" alt="MediBot Logo" />
+          <h1 className="text-3xl font-bold text-blue-600">MediBot</h1>
           <p className="text-gray-600 dark:text-dark-muted mt-2">
             {t('auth.sign_in_title')}
           </p>

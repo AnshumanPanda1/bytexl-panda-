@@ -781,7 +781,7 @@ function ExaminationUpload() {
         context={{ patientId }}
         title="Magic Fill"
         subtitle="Clinical Extraction"
-        description="Describe the visit in natural language. Health Assistant AI will extract the date, category, doctors, and notes automatically."
+        description="Describe the visit in natural language. MediBot AI will extract the date, category, doctors, and notes automatically."
         placeholder="e.g. Yesterday I visited Dr. Smith for a checkup..."
       />
     </div>
