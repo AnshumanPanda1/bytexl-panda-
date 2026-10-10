@@ -73,40 +73,68 @@ class AISummaryService:
         secret_cfg = _load_secret_config()
 
         # Server-side provider configuration (D1, P2-06: Never exposed to client)
-        self.api_key = (
-            api_key
-            or secret_cfg.get("OPENROUTER_API_KEY")
-            or secret_cfg.get("LLM_API_KEY")
+        groq_key = secret_cfg.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+        gemini_key = secret_cfg.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+        openrouter_key = (
+            secret_cfg.get("OPENROUTER_API_KEY")
             or os.getenv("OPENROUTER_API_KEY")
+            or secret_cfg.get("LLM_API_KEY")
             or os.getenv("LLM_API_KEY")
-            or secret_cfg.get("OPENAI_API_KEY")
-            or os.getenv("OPENAI_API_KEY")
         )
+        openai_key = secret_cfg.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
-        self.model_name = (
+        if api_key:
+            self.api_key = api_key
+        elif groq_key:
+            self.api_key = groq_key
+        elif gemini_key:
+            self.api_key = gemini_key
+        elif openrouter_key:
+            self.api_key = openrouter_key
+        else:
+            self.api_key = openai_key
+
+        explicit_model = (
             model_name
             or secret_cfg.get("LLM_MODEL")
             or os.getenv("LLM_MODEL")
             or secret_cfg.get("OPENAI_MODEL")
             or os.getenv("OPENAI_MODEL")
-            or "google/gemma-4-31b-it:free"
         )
 
-        default_base = (
-            "https://openrouter.ai/api/v1"
-            if "openrouter" in (self.model_name or "").lower() or "google/" in (self.model_name or "").lower() or "free" in (self.model_name or "").lower()
-            else ("https://api.deepseek.com/v1" if "deepseek" in (self.model_name or "").lower() else "https://api.openai.com/v1")
-        )
+        if explicit_model:
+            self.model_name = explicit_model
+        elif groq_key:
+            self.model_name = "llama-3.3-70b-versatile"
+        elif gemini_key:
+            self.model_name = "gemini-1.5-flash"
+        elif openrouter_key:
+            # Valid active free model on OpenRouter (gemma-4 does not exist)
+            self.model_name = "meta-llama/llama-3.3-70b-instruct:free"
+        else:
+            self.model_name = "meta-llama/llama-3.3-70b-instruct:free"
 
-        self.base_url = (
-            base_url
-            or secret_cfg.get("LLM_BASE_URL")
-            or os.getenv("LLM_BASE_URL")
-            or secret_cfg.get("OPENAI_API_BASE")
-            or os.getenv("OPENAI_API_BASE")
-            or os.getenv("AGENTROUTER_BASE_URL")
-            or default_base
-        )
+        if base_url:
+            self.base_url = base_url
+        elif secret_cfg.get("LLM_BASE_URL") or os.getenv("LLM_BASE_URL"):
+            self.base_url = secret_cfg.get("LLM_BASE_URL") or os.getenv("LLM_BASE_URL")
+        elif groq_key and not openrouter_key:
+            self.base_url = "https://api.groq.com/openai/v1"
+        elif gemini_key and not openrouter_key:
+            self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+        elif "groq" in (self.model_name or "").lower():
+            self.base_url = "https://api.groq.com/openai/v1"
+        elif "deepseek" in (self.model_name or "").lower():
+            self.base_url = "https://api.deepseek.com/v1"
+        elif "openrouter" in (self.model_name or "").lower() or ":free" in (self.model_name or "").lower():
+            self.base_url = "https://openrouter.ai/api/v1"
+        else:
+            self.base_url = (
+                secret_cfg.get("OPENAI_API_BASE")
+                or os.getenv("OPENAI_API_BASE")
+                or os.getenv("AGENTROUTER_BASE_URL")
+                or "https://openrouter.ai/api/v1"
+            )
 
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
@@ -423,7 +451,12 @@ class AISummaryService:
 
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             resp = await client.post(url, json=payload, headers=headers)
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                logger.error(
+                    f"LLM API request to {url} failed with status {resp.status_code}. "
+                    f"Model: {self.model_name}. Response: {resp.text}"
+                )
+                resp.raise_for_status()
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
             return {"sections": [SummarySection(title="Summary", text=content)]}
