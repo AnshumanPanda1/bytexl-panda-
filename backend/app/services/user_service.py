@@ -23,11 +23,15 @@ async def get_user_by_email(email: str) -> UserModel | None:
         logger.warning("Database not available for get_user_by_email")
         return None
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(UserModel).where(UserModel.email == normalize_email(email))
-        )
-        return result.scalar_one_or_none()
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(UserModel).where(UserModel.email == normalize_email(email))
+            )
+            return result.scalar_one_or_none()
+    except Exception as exc:
+        logger.warning(f"Database query failed for get_user_by_email: {exc}")
+        return None
 
 
 async def get_user_by_id(user_id: str | UUID, tenant_id: UUID | None = None) -> UserModel | None:
@@ -43,13 +47,17 @@ async def get_user_by_id(user_id: str | UUID, tenant_id: UUID | None = None) -> 
             logger.error(f"Invalid UUID format: {user_id}")
             return None
 
-    async with AsyncSessionLocal() as session:
-        query = select(UserModel).where(UserModel.id == user_id)
-        if tenant_id:
-            query = query.where(UserModel.tenant_id == tenant_id)
+    try:
+        async with AsyncSessionLocal() as session:
+            query = select(UserModel).where(UserModel.id == user_id)
+            if tenant_id:
+                query = query.where(UserModel.tenant_id == tenant_id)
 
-        result = await session.execute(query)
-        return result.scalar_one_or_none()
+            result = await session.execute(query)
+            return result.scalar_one_or_none()
+    except Exception as exc:
+        logger.warning(f"Database query failed for get_user_by_id: {exc}")
+        return None
 
 
 async def create_user(

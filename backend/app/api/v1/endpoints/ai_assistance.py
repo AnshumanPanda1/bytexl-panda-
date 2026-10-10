@@ -32,8 +32,11 @@ from app.core.rate_limit import rate_limit_user
 from app.core.security import get_current_user
 from app.models.enums import HitlTaskStatus
 from app.schemas.user import TokenData
+import logging
 from app.services.chat_session_service import ChatSessionService, is_internal_message
 from app.utils.prompt_guard import check_user_input_safety
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai-assistance", tags=["AI Assistance"])
 
@@ -88,23 +91,21 @@ _PROVIDER_ERROR_NAMES: tuple[tuple[str, str], ...] = (
     ("AuthenticationError", "auth"),
     ("RateLimitError", "rate_limit"),
     ("BadRequestError", "model_config"),
+    ("APIStatusError", "rate_limit"),
 )
 
 
 def _classify_stream_error(exc: Exception) -> tuple[str, str]:
-    """Return ``(error_type, user_message)`` for a streaming exception.
-
-    The ``error_type`` is a stable lowercase code the frontend localizes.
-    ``user_message`` is non-empty only for soft guard messages (ValueError);
-    for provider errors it is empty so the frontend MUST localize from the
-    code (no raw SDK text leaves the server).
-    """
+    """Return ``(error_type, user_message)`` for a streaming exception."""
     if isinstance(exc, ValueError):
         # Intentional guard violation — message is already user-facing.
         return ("guard", str(exc))
 
-    # Map known LLM/provider errors to non-leaky codes by walking the MRO —
-    # LangChain passes the provider SDK's exception classes through verbatim.
+    err_str = str(exc).lower()
+    if any(k in err_str for k in ("413", "payload too large", "rate_limit", "rate limit", "itpm", "limit 7000", "limit 8000", "tokens")):
+        return ("rate_limit", "")
+
+    # Map known LLM/provider errors to non-leaky codes by walking the MRO
     names = {cls.__name__ for cls in type(exc).__mro__}
     for name, code in _PROVIDER_ERROR_NAMES:
         if name in names:

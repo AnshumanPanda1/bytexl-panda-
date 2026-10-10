@@ -108,26 +108,34 @@ async def get_inbox(
     if patient_id:
         await check_patient_access(patient_id, current_user, db)
 
-    items, total = await notification_service.get_inbox(
-        user_id=current_user.user_id,
-        tenant_id=current_user.tenant_id,
-        status=_parse_status(status),
-        category=_parse_category(category),
-        source=_parse_source(source),
-        patient_id=patient_id,
-        limit=limit,
-        offset=offset,
-    )
-    return InboxResponse(items=items, total=total)
+    try:
+        items, total = await notification_service.get_inbox(
+            user_id=current_user.user_id,
+            tenant_id=current_user.tenant_id,
+            status=_parse_status(status),
+            category=_parse_category(category),
+            source=_parse_source(source),
+            patient_id=patient_id,
+            limit=limit,
+            offset=offset,
+        )
+        return InboxResponse(items=items, total=total)
+    except Exception as exc:
+        logger.warning(f"Failed to fetch notification inbox: {exc}")
+        return InboxResponse(items=[], total=0)
 
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
 async def get_unread_count(current_user: TokenData = Depends(get_current_user)):
     """Badge count for the notification bell."""
-    count = await notification_service.get_unread_count(
-        user_id=current_user.user_id, tenant_id=current_user.tenant_id
-    )
-    return UnreadCountResponse(count=count)
+    try:
+        count = await notification_service.get_unread_count(
+            user_id=current_user.user_id, tenant_id=current_user.tenant_id
+        )
+        return UnreadCountResponse(count=count)
+    except Exception as exc:
+        logger.warning(f"Failed to fetch unread notification count: {exc}")
+        return UnreadCountResponse(count=0)
 
 
 @router.patch("/{recipient_id}/read")

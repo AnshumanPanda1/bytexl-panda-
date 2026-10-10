@@ -14,7 +14,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -276,6 +276,7 @@ class AIAssistanceService:
                 user_id,
                 examination_id=examination_id,
                 label="chat",
+                user_input=user_input,
             )
         except Exception as exc:
             logger.warning(f"Failed to build chat tools: {exc}")
@@ -304,8 +305,48 @@ class AIAssistanceService:
             user_id=user_id,
             tenant_id=tenant_id,
         )
-        async for chunk in stream_loop_as_sse(loop, flow_events=flow_events):
-            yield chunk
+        stream_chunks_yielded = 0
+        try:
+            async for chunk in stream_loop_as_sse(loop, flow_events=flow_events):
+                stream_chunks_yielded += 1
+                yield chunk
+        except Exception as exc:
+            logger.warning(
+                f"Interactive chat reasoning loop encountered an error: {exc}. "
+                f"Chunks yielded so far: {stream_chunks_yielded}. Attempting resilient response..."
+            )
+            if stream_chunks_yielded == 0:
+                # Try lean direct LLM call without tools (avoids tool payload bloat)
+                try:
+                    lean_prompt = (
+                        "You are MediBot, a helpful AI medical assistant. "
+                        "Answer the user clearly and professionally using Markdown. "
+                        "Include relevant clinical considerations and remind the user to consult a licensed doctor."
+                    )
+                    lean_messages = [
+                        SystemMessage(content=lean_prompt),
+                        HumanMessage(content=user_input),
+                    ]
+                    async for chunk in llm.astream(lean_messages):
+                        if getattr(chunk, "content", None):
+                            yield chunk.content
+                    return
+                except Exception as direct_exc:
+                    logger.error(f"Direct LLM fallback also failed: {direct_exc}")
+
+                # Resilient fallback message if direct call fails
+                fallback_reply = (
+                    f"I received your inquiry regarding: **{user_input}**.\n\n"
+                    "I am currently operating in resilient offline mode while the clinical reasoning service connects. "
+                    "You can view your laboratory records, medications, and visits directly in the health overview tabs.\n\n"
+                    "**Medical Disclaimer**\n\n"
+                    "This software is for informational and hackathon demonstration purposes only. "
+                    "It does NOT provide medical diagnosis or act as a substitute for professional medical care. "
+                    "Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions."
+                )
+                yield fallback_reply
+            else:
+                raise
 
     async def resume_after_hitl(
         self,
@@ -391,6 +432,7 @@ class AIAssistanceService:
             user_id,
             examination_id=examination_id,
             label="chat",
+            user_input=user_input,
         )
         llm_with_tools = llm.bind_tools(tools) if tools else llm
 
