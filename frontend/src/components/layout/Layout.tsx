@@ -100,6 +100,13 @@ function Layout() {
             <Outlet />
           </div>
         </main>
+        {!isAiPage && (
+          <footer className="py-1.5 px-4 bg-amber-500/10 dark:bg-amber-950/30 border-t border-amber-500/20 text-center shrink-0 z-10">
+            <p className="text-[10px] md:text-xs text-amber-900/80 dark:text-amber-200/80 font-medium">
+              <span className="font-bold">Medical Disclaimer:</span> This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
+            </p>
+          </footer>
+        )}
       </div>
 
       <AIDrawer 

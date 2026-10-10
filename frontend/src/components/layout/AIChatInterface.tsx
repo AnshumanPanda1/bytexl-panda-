@@ -1319,8 +1319,11 @@ export const AIChatInterface: React.FC<Props> = ({
                       </span>
                     </div>
                   )}
-              </form>
-              <p className="text-[8px] md:text-[10px] text-gray-500 dark:text-slate-500 text-center mt-3 md:mt-5 font-black uppercase tracking-[0.2em] opacity-40">{t('ai_chat.input.disclaimer')}</p>
+              <div className="mt-2.5 md:mt-3 px-3 py-2 rounded-xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 flex items-center justify-center gap-2 text-center">
+                <span className="text-[10px] md:text-xs text-amber-800 dark:text-amber-200/90 leading-normal">
+                  <strong className="font-bold">Medical Disclaimer:</strong> This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
+                </span>
+              </div>
             </div>
           )}
         </div>

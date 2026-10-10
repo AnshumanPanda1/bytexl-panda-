@@ -178,6 +178,15 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
         </div>
       )}
 
+      {/* Medical Disclaimer Banner */}
+      <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex items-start space-x-2.5">
+        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="leading-relaxed">
+          <strong className="font-bold block mb-0.5">Medical Disclaimer</strong>
+          This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
+        </div>
+      </div>
+
       {/* Summary Content Body */}
       {loading ? (
         <div className="py-12 flex items-center justify-center space-x-3 text-gray-400">

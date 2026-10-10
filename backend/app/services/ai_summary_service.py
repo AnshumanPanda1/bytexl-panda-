@@ -23,10 +23,15 @@ logger = logging.getLogger(__name__)
 
 # Standard Medical Caveats
 CAVEAT_EN = (
-    "This summary is for general understanding and not a substitute "
-    "for professional medical advice."
+    "This software is for informational and hackathon demonstration purposes only. "
+    "It does NOT provide medical diagnosis or act as a substitute for professional medical care. "
+    "Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions."
 )
-CAVEAT_HI = "यह जानकारी सामान्य समझ के लिए है, चिकित्सकीय सलाह का विकल्प नहीं।"
+CAVEAT_HI = (
+    "यह सॉफ्टवेयर केवल सूचनात्मक और हैकथॉन प्रदर्शन उद्देश्यों के लिए है। यह चिकित्सा निदान "
+    "प्रदान नहीं करता है और न ही पेशेवर चिकित्सा देखभाल का विकल्प है। स्वास्थ्य सलाह, निदान "
+    "या उपचार निर्णयों के लिए हमेशा लाइसेंस प्राप्त चिकित्सा पेशेवरों से परामर्श लें।"
+)
 
 # Terminology preservation patterns for Hindi translation (P2-03)
 GLOSSARY_PROTECTED_PATTERNS = [
