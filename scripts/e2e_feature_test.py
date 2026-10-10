@@ -89,14 +89,18 @@ def run_tests():
     print("\n[6] Unified Health Timeline & Events:")
     if patient_id:
         st, timeline = req("GET", f"/api/v1/timeline/patient/{patient_id}")
-        tl_cnt = len(timeline.get("events", [])) if isinstance(timeline, dict) else (len(timeline) if isinstance(timeline, list) else 0)
+        tl_cnt = len(timeline.get("items", []) or timeline.get("events", [])) if isinstance(timeline, dict) else (len(timeline) if isinstance(timeline, list) else 0)
         print(f"    GET /timeline/patient/{patient_id}: HTTP {st} -> {tl_cnt} timeline events")
 
     # 7. AI Health Summaries (Bilingual English / Hindi)
     print("\n[7] Bilingual AI Health Summaries:")
     if patient_id:
         st, summary = req("GET", f"/api/v1/summaries/patient/{patient_id}")
-        if st == 200 and isinstance(summary, dict):
+        if st == 200 and isinstance(summary, list) and summary:
+            has_en = any(s.get("language") == "en" for s in summary)
+            has_hi = any(s.get("language") == "hi" for s in summary)
+            print(f"    GET /summaries/patient/{patient_id}: HTTP {st} -> English: {has_en}, Hindi: {has_hi} ({len(summary)} summaries)")
+        elif st == 200 and isinstance(summary, dict):
             has_en = bool(summary.get("english_summary") or summary.get("summary_text"))
             has_hi = bool(summary.get("hindi_summary"))
             print(f"    GET /summaries/patient/{patient_id}: HTTP {st} -> English: {has_en}, Hindi: {has_hi}")
