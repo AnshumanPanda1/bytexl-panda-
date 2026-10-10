@@ -121,6 +121,7 @@ htmlcov/
 credentials.json
 secrets.json
 secrets/
+!secrets/secrets.json.example
 
 # assistant-ui dev-link state (never commit)
 .assistant-ui-dev-link.json
