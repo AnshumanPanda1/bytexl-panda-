@@ -19,7 +19,7 @@ import { AuthenticatedImageViewer } from '../../components/ui/AuthenticatedImage
 import { AuthenticatedDicomViewer } from '../../components/ui/AuthenticatedDicomViewer';
 import { AuthenticatedPdfViewer } from '../../components/ui/AuthenticatedPdfViewer';
 import { AuthenticatedTextViewer } from '../../components/ui/AuthenticatedTextViewer';
-import { User, Clock, FileText, Database, Shield, Download, Trash2, RotateCw, Maximize2, MoreVertical, RefreshCw } from 'lucide-react';
+import { User, Clock, FileText, Database, Shield, Download, Trash2, RotateCw, Maximize2, MoreVertical, RefreshCw, ShieldAlert, Sparkles } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StickyToolbar } from '../../components/ui/StickyToolbar';
 import { AISummaryCard } from '../../components/ai/AISummaryCard';
@@ -254,7 +254,7 @@ export default function DocumentDetail() {
       <PageHeader
         title={docData?.filename || 'Document'}
         subtitle={
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm text-gray-500 dark:text-dark-muted font-medium">Clinical Document ID: {documentId?.substring(0,8)}</p>
             <span className="text-gray-300 dark:text-dark-border">•</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -264,6 +264,15 @@ export default function DocumentDetail() {
             }`}>
               {status === 'completed' ? t('common.success') : status === 'failed' ? t('common.error') : t('documents_explorer.processing')}
             </span>
+            {docData?.filename?.toLowerCase().endsWith('.pdf') ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/50 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-indigo-500" /> Native PDF + OCR
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/50 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-purple-500" /> OCR Pipeline
+              </span>
+            )}
           </div>
         }
         icon={<FileText className="w-8 h-8" />}
@@ -305,6 +314,14 @@ export default function DocumentDetail() {
           </div>
         }
       />
+
+      {/* Universal Medical Disclaimer Banner */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-900/40 p-3.5 flex items-start gap-2.5">
+        <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="text-xs text-amber-900 dark:text-amber-200/90 leading-relaxed">
+          <span className="font-bold">Medical Disclaimer:</span> This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
+        </div>
+      </div>
 
       <TaskProgressIndicator 
         documents={docData ? [docData] : []}

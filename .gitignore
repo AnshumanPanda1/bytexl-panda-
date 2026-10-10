@@ -3,6 +3,7 @@ mypy_report.txt
 
 # MCP / browser-debug artifacts
 .playwright-mcp/
+.chronos/
 # Python
 __pycache__/
 *.py[cod]

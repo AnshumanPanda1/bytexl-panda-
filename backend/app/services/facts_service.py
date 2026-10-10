@@ -53,7 +53,12 @@ async def get_document_facts(
             Observation.deleted_at.is_(None),
         )
     )
-    observations = [o.to_dict() for o in obs_res.scalars().all()]
+    observations = []
+    for o in obs_res.scalars().all():
+        d = o.to_dict()
+        if not d.get("evidence_text"):
+            d["evidence_text"] = d.get("original_text")
+        observations.append(d)
 
     # Fetch medications linked to document
     med_res = await db.execute(
@@ -63,7 +68,20 @@ async def get_document_facts(
             Medication.deleted_at.is_(None),
         )
     )
-    medications = [m.to_dict() for m in med_res.scalars().all()]
+    medications = []
+    for m in med_res.scalars().all():
+        d = m.to_dict()
+        if not d.get("evidence_text"):
+            d["evidence_text"] = d.get("original_text")
+        code_info = d.get("code")
+        if isinstance(code_info, dict):
+            if "strength" in code_info and not d.get("strength"):
+                d["strength"] = code_info.get("strength")
+            if "route" in code_info and not d.get("route"):
+                d["route"] = code_info.get("route")
+            if "duration" in code_info and not d.get("duration"):
+                d["duration"] = code_info.get("duration")
+        medications.append(d)
 
     # Fetch conditions linked to document
     ce_res = await db.execute(
@@ -73,7 +91,20 @@ async def get_document_facts(
             ClinicalEvent.deleted_at.is_(None),
         )
     )
-    conditions = [c.to_dict() for c in ce_res.scalars().all()]
+    conditions = []
+    for c in ce_res.scalars().all():
+        d = c.to_dict()
+        if not d.get("evidence_text"):
+            d["evidence_text"] = d.get("original_text")
+        meta = d.get("event_metadata") or {}
+        if isinstance(meta, dict):
+            if not d.get("verification_status") and meta.get("verification_status"):
+                d["verification_status"] = meta["verification_status"]
+            if not d.get("clinical_status") and meta.get("clinical_status"):
+                d["clinical_status"] = meta["clinical_status"]
+            if not d.get("icd10_code") and (meta.get("icd10_code") or d.get("code")):
+                d["icd10_code"] = meta.get("icd10_code") or d.get("code")
+        conditions.append(d)
 
     return DocumentFactsResponse(
         document_id=str(doc.id),
@@ -147,9 +178,17 @@ async def correct_fact(
         old_value = med.to_dict()
 
         if "name" in updates:
-            med.code = {"text": updates["name"]}
+            code_d = dict(med.code or {})
+            code_d["text"] = updates["name"]
+            med.code = code_d
+        if any(k in updates for k in ("strength", "route", "duration")):
+            code_d = dict(med.code or {})
+            for k in ("strength", "route", "duration"):
+                if k in updates:
+                    code_d[k] = updates[k]
+            med.code = code_d
         for key, val in updates.items():
-            if key != "name" and hasattr(med, key):
+            if key not in ("name", "strength", "route", "duration") and hasattr(med, key):
                 setattr(med, key, val)
         med.review_status = target_status
         med.updated_at = _dt.datetime.now(_dt.UTC)
@@ -166,8 +205,17 @@ async def correct_fact(
 
         if "name" in updates:
             ce.title = updates["name"]
+        meta_d = dict(ce.event_metadata or {})
+        for k in ("verification_status", "clinical_status", "icd10_code"):
+            if k in updates:
+                meta_d[k] = updates[k]
+        ce.event_metadata = meta_d
+        if "icd10_code" in updates and updates["icd10_code"]:
+            from app.models.enums import CodingSystem
+            ce.code = updates["icd10_code"]
+            ce.coding_system = CodingSystem.ICD10
         for key, val in updates.items():
-            if key != "name" and hasattr(ce, key):
+            if key not in ("name", "verification_status", "clinical_status", "icd10_code") and hasattr(ce, key):
                 setattr(ce, key, val)
         ce.review_status = target_status
         ce.updated_at = _dt.datetime.now(_dt.UTC)

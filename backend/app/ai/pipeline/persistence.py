@@ -166,25 +166,35 @@ async def persist_results(
             mapped_name = med_name_map.get(name, name)
             catalog_item = med_map.get(mapped_name.lower())
             source_doc_id = find_source_doc(name, docs_with_text)
+            med_code = {
+                "text": name,
+                "catalog_id": str(catalog_item.id) if catalog_item else None,
+            }
+            if getattr(m, "strength", None):
+                med_code["strength"] = m.strength
+            if getattr(m, "route", None):
+                med_code["route"] = m.route
+            if getattr(m, "duration", None):
+                med_code["duration"] = m.duration
+
+            ev_text = getattr(m, "evidence_text", None) or name
             db.add(
                 Medication(
                     patient_id=exam.patient_id,
                     tenant_id=exam.tenant_id,
                     examination_id=exam.id,
                     document_id=source_doc_id,
-                    original_text=name,
+                    original_text=ev_text,
                     page_number=getattr(m, "page_number", None),
                     confidence=getattr(m, "confidence", None),
                     review_status="extracted",
                     status=MedicationStatus.ACTIVE,
-                    code={
-                        "text": name,
-                        "catalog_id": str(catalog_item.id) if catalog_item else None,
-                    },
+                    code=med_code,
                     dosage=m.dosage,
                     reason=m.reason,
                     subject={"reference": patient_ref},
-                    start_date=exam.examination_date,
+                    start_date=getattr(m, "start_date", None) or exam.examination_date,
+                    end_date=getattr(m, "end_date", None),
                 )
             )
 
@@ -207,26 +217,51 @@ async def persist_results(
                 )
             )
 
-        for diag in parsed_data.diagnoses:
-            if not diag or not str(diag).strip():
+        # Prioritize structured diagnoses if present, else fallback to string list
+        diag_items = []
+        if getattr(parsed_data, "structured_diagnoses", None):
+            diag_items = list(parsed_data.structured_diagnoses)
+        elif getattr(parsed_data, "diagnoses", None):
+            diag_items = [d for d in parsed_data.diagnoses if d and str(d).strip()]
+
+        for diag in diag_items:
+            is_struct = hasattr(diag, "name")
+            title_text = diag.name if is_struct else str(diag).strip()
+            if not title_text:
                 continue
-            clean_diag = str(diag).strip()
-            source_doc_id = find_source_doc(clean_diag, docs_with_text)
+            source_doc_id = find_source_doc(title_text, docs_with_text)
+            ev_text = (getattr(diag, "evidence_text", None) or title_text) if is_struct else title_text
+            v_status = getattr(diag, "verification_status", None) if is_struct else None
+            c_status = getattr(diag, "clinical_status", None) if is_struct else None
+            icd = getattr(diag, "icd10_code", None) if is_struct else None
+            conf = getattr(diag, "confidence", None) if is_struct else None
+            pg = getattr(diag, "page_number", None) if is_struct else None
+
             event = ClinicalEvent(
                 patient_id=exam.patient_id,
                 tenant_id=exam.tenant_id,
-                title=clean_diag,
+                title=title_text,
                 document_id=source_doc_id,
-                original_text=clean_diag,
-                confidence=None,
+                original_text=ev_text,
+                page_number=pg,
+                confidence=conf,
                 review_status="extracted",
                 status=ClinicalEventStatus.ACTIVE,
+                coding_system=CodingSystem.ICD10 if icd else None,
+                code=icd,
+                event_metadata={
+                    "verification_status": v_status,
+                    "clinical_status": c_status,
+                    "icd10_code": icd,
+                    "evidence_text": ev_text,
+                },
                 onset_date=eff_date,
                 evidence=[
                     {
                         "source": "document_extraction",
                         "document_id": str(source_doc_id) if source_doc_id else None,
                         "examination_id": str(exam.id),
+                        "evidence_text": ev_text,
                     }
                 ],
             )
@@ -448,7 +483,7 @@ async def save_observation(
         document_id=document_id,
         patient_id=exam.patient_id,
         tenant_id=exam.tenant_id,
-        original_text=b.name,
+        original_text=getattr(b, "evidence_text", None) or b.name,
         page_number=page_number,
         confidence=confidence,
         review_status="extracted",
