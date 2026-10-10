@@ -34,13 +34,13 @@
   --color-brand-cyan: #0088cc;
   --color-brand-cyanHover: #0077b3;
 
-  --color-dark-bg: #0f172a;
-  --color-dark-surface: #1e293b;
-  --color-dark-border: #334155;
-  --color-dark-text: #f8fafc;
-  --color-dark-muted: #94a3b8;
+  --color-dark-bg: #0b0f19;
+  --color-dark-surface: #111827;
+  --color-dark-border: #1f2937;
+  --color-dark-text: #f9fafb;
+  --color-dark-muted: #9ca3af;
   --color-dark-primary: #3b82f6;
-  --color-dark-hover: #1e293b;
+  --color-dark-hover: #172033;
 
   --z-index-dropdown: 100;
   --z-index-modal: 1000;
@@ -193,34 +193,34 @@
   }
 
   .dark {
-    /* Modern Slate-based Dark Theme (radix-ui inspired) */
-    --background: 222.2 84% 4.9%; /* Very dark slate for main bg */
-    --foreground: 210 40% 98%;    /* Off-white text */
+    /* Refined Minimalist Slate-Dark Theme */
+    --background: 222 47% 7%; /* Deep clean dark #0b0f19 */
+    --foreground: 210 40% 98%;
     
-    --card: 222.2 47.4% 11.2%;    /* Slightly lighter slate for cards */
+    --card: 222 47% 10.5%; /* Card surface #111827 */
     --card-foreground: 210 40% 98%;
     
-    --popover: 222.2 47.4% 11.2%;
+    --popover: 222 47% 10.5%;
     --popover-foreground: 210 40% 98%;
     
-    --primary: 217.2 91.2% 59.8%; /* Vivid blue */
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 217 91% 60%; /* Refined vibrant blue #3b82f6 */
+    --primary-foreground: 210 40% 98%;
     
-    --secondary: 217.2 32.6% 17.5%; /* Slate 800 */
+    --secondary: 217 33% 15%; /* Muted surface */
     --secondary-foreground: 210 40% 98%;
     
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%; /* Slate 400 */
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%; /* Soft slate muted text */
     
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217 33% 15%;
     --accent-foreground: 210 40% 98%;
     
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 63% 40%;
     --destructive-foreground: 210 40% 98%;
     
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --border: 217 33% 16%; /* Soft, non-harsh border */
+    --input: 217 33% 16%;
+    --ring: 224 76% 50%;
   }
 }
 

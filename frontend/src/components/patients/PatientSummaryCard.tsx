@@ -79,18 +79,18 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
   ) || summaries[0];
 
   return (
-    <div className="bg-white dark:bg-dark-surface rounded-3xl shadow-xs border border-gray-100 dark:border-dark-border p-6 lg:p-8 space-y-6">
+    <div className="bg-white dark:bg-dark-surface rounded-xl shadow-xs border border-gray-200/80 dark:border-dark-border p-5 lg:p-6 space-y-5">
       {/* Header with Title and Language Toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-dark-border pb-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl text-white shadow-md shadow-purple-500/20">
-            <Sparkles className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-dark-border pb-4">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-lg flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-dark-text tracking-tight flex items-center gap-2">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-dark-text tracking-tight flex items-center gap-2">
               Bilingual AI Health Summary
               {currentSummary && !currentSummary.is_stale && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   <CheckCircle2 className="w-3 h-3 mr-1" /> Fresh
                 </span>
               )}
@@ -102,13 +102,13 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
         </div>
 
         {/* Controls: Language Toggle & Generate Button */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center bg-gray-100 dark:bg-dark-bg p-1 rounded-xl text-xs font-bold">
+        <div className="flex items-center space-x-2.5">
+          <div className="flex items-center bg-gray-100 dark:bg-dark-bg p-0.5 rounded-lg border border-gray-200 dark:border-dark-border text-xs font-medium">
             <button
               onClick={() => setSelectedLang('en')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-colors ${
                 selectedLang === 'en'
-                  ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white shadow-xs'
+                  ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white shadow-xs font-semibold'
                   : 'text-gray-500 hover:text-gray-900 dark:text-dark-muted'
               }`}
             >
@@ -116,13 +116,13 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
             </button>
             <button
               onClick={() => setSelectedLang('hi')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1 ${
+              className={`px-2.5 py-1 rounded-md transition-colors flex items-center space-x-1 ${
                 selectedLang === 'hi'
-                  ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white shadow-xs'
+                  ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white shadow-xs font-semibold'
                   : 'text-gray-500 hover:text-gray-900 dark:text-dark-muted'
               }`}
             >
-              <Languages className="w-3.5 h-3.5 mr-1" />
+              <Languages className="w-3 h-3 mr-1" />
               हिंदी
             </button>
           </div>
@@ -130,7 +130,7 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors shadow-xs active:scale-95 disabled:opacity-50"
           >
             {generating ? (
               <>
@@ -179,26 +179,26 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
       )}
 
       {/* Medical Disclaimer Banner */}
-      <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex items-start space-x-2.5">
+      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs flex items-start space-x-2">
         <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <strong className="font-bold block mb-0.5">Medical Disclaimer</strong>
+          <strong className="font-semibold block mb-0.5">Medical Disclaimer</strong>
           This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
         </div>
       </div>
 
       {/* Summary Content Body */}
       {loading ? (
-        <div className="py-12 flex items-center justify-center space-x-3 text-gray-400">
-          <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
-          <span className="text-sm font-medium">Loading summary...</span>
+        <div className="py-10 flex items-center justify-center space-x-2.5 text-gray-400">
+          <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+          <span className="text-xs font-medium">Loading summary...</span>
         </div>
       ) : currentSummary ? (
-        <div className="space-y-5">
-          <div className="flex items-center justify-between text-xs text-gray-400 border-b border-gray-50 dark:border-dark-border/50 pb-2">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-xs text-gray-400 border-b border-gray-100 dark:border-dark-border/50 pb-2">
             <div className="flex items-center space-x-2">
               <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="font-bold text-gray-700 dark:text-dark-text">
+              <span className="font-semibold text-gray-800 dark:text-dark-text">
                 {currentSummary.title}
               </span>
             </div>
@@ -211,16 +211,16 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
           </div>
 
           {/* Text Container with Markdown-like styling */}
-          <div className="bg-gray-50/70 dark:bg-dark-bg/40 rounded-2xl p-6 border border-gray-100 dark:border-dark-border text-gray-800 dark:text-dark-text text-sm leading-relaxed whitespace-pre-line font-normal">
+          <div className="bg-gray-50/50 dark:bg-dark-bg/40 rounded-lg p-5 border border-gray-200/60 dark:border-dark-border text-gray-800 dark:text-dark-text text-sm leading-relaxed whitespace-pre-line font-normal">
             {currentSummary.summary_text}
           </div>
 
           {/* Source References Accordion */}
           {currentSummary.source_references && currentSummary.source_references.length > 0 && (
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 onClick={() => setShowSources(!showSources)}
-                className="flex items-center space-x-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                className="flex items-center space-x-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 <Info className="w-3.5 h-3.5" />
                 <span>
@@ -229,18 +229,18 @@ export function PatientSummaryCard({ patientId }: PatientSummaryCardProps) {
               </button>
 
               {showSources && (
-                <div className="mt-3 p-4 bg-gray-50 dark:bg-dark-bg rounded-2xl border border-gray-100 dark:border-dark-border space-y-2">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <div className="mt-2.5 p-3.5 bg-gray-50 dark:bg-dark-bg rounded-lg border border-gray-200/60 dark:border-dark-border space-y-2">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                     Verified Citations & Records
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {currentSummary.source_references.map((ref, idx) => (
                       <div
                         key={idx}
-                        className="p-2.5 bg-white dark:bg-dark-surface rounded-xl border border-gray-100 dark:border-dark-border text-xs flex items-center justify-between"
+                        className="p-2.5 bg-white dark:bg-dark-surface rounded-lg border border-gray-200/60 dark:border-dark-border text-xs flex items-center justify-between"
                       >
                         <div className="truncate mr-2">
-                          <p className="font-semibold text-gray-800 dark:text-dark-text truncate">
+                          <p className="font-medium text-gray-800 dark:text-dark-text truncate">
                             {ref.name || ref.title || ref.code || ref.filename || 'Record'}
                           </p>
                           <p className="text-[10px] text-gray-400 capitalize">

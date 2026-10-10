@@ -554,7 +554,7 @@ function ExaminationList() {
               <button 
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="flex items-center space-x-2 px-6 py-2 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-50 dark:hover:bg-dark-bg transition-all active:scale-95 disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-dark-bg transition-all active:scale-95 disabled:opacity-50"
               >
                 {loadingMore ? (
               <div className="flex items-center space-x-2">
@@ -604,7 +604,7 @@ function ExaminationList() {
               <button 
                 onClick={handleBulkDelete}
                 disabled={isDeleting}
-                className="flex items-center space-x-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20 rounded-xl font-bold text-xs hover:bg-red-100 dark:hover:bg-red-900/20 transition-all active:scale-95 disabled:opacity-50"
+                className="flex items-center space-x-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20 rounded-xl font-medium text-xs hover:bg-red-100 dark:hover:bg-red-900/20 transition-all active:scale-95 disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{t('common.delete')} ({selectedIds.length})</span>
@@ -616,7 +616,7 @@ function ExaminationList() {
                 setIsEditMode(!isEditMode);
                 setSelectedIds([]);
               }}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-xs active:scale-95 border ${
+              className={`flex items-center space-x-2 px-3 py-2 rounded-xl font-medium text-xs sm:text-sm transition-all shadow-xs active:scale-95 border ${
                 isEditMode 
                   ? 'bg-blue-600 text-white border-blue-700 shadow-lg shadow-blue-200/50' 
                   : 'bg-white dark:bg-dark-surface text-gray-700 dark:text-dark-text border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-bg'
@@ -631,7 +631,7 @@ function ExaminationList() {
                 <Calendar className="h-4 w-4 text-gray-400" />
               </div>
               <select
-                className="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-dark-border rounded-xl leading-5 bg-white dark:bg-dark-surface dark:text-dark-text focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-dark-border rounded-xl leading-5 bg-white dark:bg-dark-surface dark:text-dark-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm appearance-none"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
               >
@@ -649,7 +649,7 @@ function ExaminationList() {
 
             <button 
               onClick={() => navigate('/examinations/upload')}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/50 dark:shadow-none font-bold active:scale-95 whitespace-nowrap"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-3.5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-medium text-xs sm:text-sm shadow-sm active:scale-95 whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden lg:inline">{t('common.new_examination')}</span>

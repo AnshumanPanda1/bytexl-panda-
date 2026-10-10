@@ -525,45 +525,7 @@ class AIProviderService:
 
         return provider, model
 
-    async def get_llm(
-        self,
-        task_type: str,
-        tenant_id: UUID | None = None,
-        user_id: UUID | None = None,
-    ) -> BaseChatModel:
-        """Get an initialized LangChain chat model for a specific task"""
-        provider = None
-        model = None
-        assignment = None
-
-        try:
-            assignment = await self.get_active_assignment_for_task(task_type, tenant_id, user_id)
-            if assignment:
-                if assignment.provider_id:
-                    provider = await self.get_provider(assignment.provider_id)
-                if assignment.model_id:
-                    model = await self.get_model(assignment.model_id)
-
-                logger.info(
-                    f"AI Resolution [{task_type}]: Using {assignment.scope} configuration. "
-                    f"Provider: {provider.name if provider else 'None'}, "
-                    f"Model: {model.model_name if model else 'Default'}"
-                )
-
-                if provider:
-                    builder = get_llm_builder(provider.provider_type)
-                    return builder(
-                        api_key=provider.get_api_key_plaintext(),
-                        base_url=provider.api_base or "https://api.openai.com/v1",
-                        model_name=model.model_name if model else "gpt-4o-mini",
-                        temperature=model.temperature if model else 0.7,
-                        max_tokens=min(model.max_tokens if model else 8192, 8192),
-                        reasoning_effort=_model_reasoning_effort(model),
-                    )
-        except Exception as exc:
-            logger.warning(f"AI Resolution [{task_type}]: DB resolution failed ({exc}). Falling back to secrets/ENV.")
-
-        # Fallback to secrets.json and environment variables
+    def _resolve_fallback_credentials(self) -> tuple[str | None, str, str]:
         import os
         from app.services.ai_summary_service import _load_secret_config
 
@@ -604,6 +566,48 @@ class AIProviderService:
             or settings.OPENAI_MODEL
             or "gpt-4o-mini"
         )
+        return api_key, base_url, model_name
+
+    async def get_llm(
+        self,
+        task_type: str,
+        tenant_id: UUID | None = None,
+        user_id: UUID | None = None,
+    ) -> BaseChatModel:
+        """Get an initialized LangChain chat model for a specific task"""
+        provider = None
+        model = None
+        assignment = None
+
+        try:
+            assignment = await self.get_active_assignment_for_task(task_type, tenant_id, user_id)
+            if assignment:
+                if assignment.provider_id:
+                    provider = await self.get_provider(assignment.provider_id)
+                if assignment.model_id:
+                    model = await self.get_model(assignment.model_id)
+
+                logger.info(
+                    f"AI Resolution [{task_type}]: Using {assignment.scope} configuration. "
+                    f"Provider: {provider.name if provider else 'None'}, "
+                    f"Model: {model.model_name if model else 'Default'}"
+                )
+
+                if provider:
+                    builder = get_llm_builder(provider.provider_type)
+                    return builder(
+                        api_key=provider.get_api_key_plaintext(),
+                        base_url=provider.api_base or "https://api.openai.com/v1",
+                        model_name=model.model_name if model else "gpt-4o-mini",
+                        temperature=model.temperature if model else 0.7,
+                        max_tokens=min(model.max_tokens if model else 8192, 8192),
+                        reasoning_effort=_model_reasoning_effort(model),
+                    )
+        except Exception as exc:
+            logger.warning(f"AI Resolution [{task_type}]: DB resolution failed ({exc}). Falling back to secrets/ENV.")
+
+        # Fallback to secrets.json and environment variables
+        api_key, base_url, model_name = self._resolve_fallback_credentials()
 
         logger.warning(
             f"AI Resolution [{task_type}]: No DB assignment found or DB offline. Falling back to secrets/ENV. "
@@ -662,15 +666,34 @@ class AIProviderService:
                     llm=llm,
                 )
 
-        # Fallback to settings
+        # Fallback to secrets/settings
+        api_key, base_url, model_name = self._resolve_fallback_credentials()
+        if api_key and settings.OCR_PROVIDER == ProviderType.OPENAI.value:
+            logger.info(
+                f"AI Resolution [ocr]: No DB assignment found. Using fallback LLM OCR with model {model_name} at {base_url}."
+            )
+            llm = chat_models.build_openai(
+                api_key=api_key,
+                base_url=base_url,
+                model_name=model_name,
+                temperature=0.0,
+                max_tokens=min(settings.OPENAI_MAX_TOKENS or 65536, 65536),
+            )
+            return get_ocr_processor(
+                provider=ProviderType.OPENAI.value,
+                api_key=api_key,
+                api_base=base_url,
+                model=model_name,
+                temperature=0.0,
+                llm=llm,
+            )
+
         logger.warning(
             f"AI Resolution [ocr]: No DB assignment found. Falling back to ENV settings. Provider: {settings.OCR_PROVIDER}"
         )
         return get_ocr_processor(
             provider=settings.OCR_PROVIDER,
-            api_key=settings.OPENAI_API_KEY
-            if ProviderType.OPENAI.value == settings.OCR_PROVIDER
-            else None,
+            api_key=api_key if ProviderType.OPENAI.value == settings.OCR_PROVIDER else None,
         )
 
     async def get_nlp_extractor(self, tenant_id: UUID | None = None, user_id: UUID | None = None):
@@ -717,17 +740,26 @@ class AIProviderService:
                     llm=llm,
                 )
 
-        # Fallback to defaults
-        if settings.OPENAI_API_KEY:
-            logger.warning(
-                "AI Resolution [nlp]: No DB assignment found, but OPENAI_API_KEY is present in environment. Falling back to OpenAI extractor."
+        # Fallback to defaults / secrets
+        api_key, base_url, model_name = self._resolve_fallback_credentials()
+        if api_key:
+            logger.info(
+                f"AI Resolution [nlp]: No DB assignment found. Using fallback LLM NLP with model {model_name} at {base_url}."
+            )
+            llm = chat_models.build_openai(
+                api_key=api_key,
+                base_url=base_url,
+                model_name=model_name,
+                temperature=0.7,
+                max_tokens=min(settings.OPENAI_MAX_TOKENS or 65536, 65536),
             )
             return get_nlp_extractor(
                 provider=ProviderType.OPENAI.value,
-                api_key=settings.OPENAI_API_KEY,
-                api_base=settings.OPENAI_API_BASE or "https://api.openai.com/v1",
-                model=settings.OPENAI_MODEL or "gpt-4o-mini",
+                api_key=api_key,
+                api_base=base_url,
+                model=model_name,
                 temperature=0.7,
+                llm=llm,
             )
 
         logger.warning(

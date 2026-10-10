@@ -682,9 +682,9 @@ export const AIChatInterface: React.FC<Props> = ({
         <div className={`flex flex-col shrink-0 ${isFullScreen ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white' : ''}`}>
           
           {/* Top Header Row */}
-          <div className={`px-4 md:px-6 py-3 md:py-4 flex items-center justify-between ${isFullScreen ? 'border-b border-gray-100 dark:border-dark-border' : 'bg-indigo-600 text-white'}`}>
+          <div className={`px-4 md:px-6 py-3 md:py-4 flex items-center justify-between ${'border-b border-gray-200/80 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white'}`}>
              <div className="flex items-center space-x-2 md:space-x-3">
-                <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl ${isFullScreen ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-white/20 text-white'}`}>
+                <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl ${'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'}`}>
                    <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
                  <div className={isFullScreen ? 'hidden md:block' : ''}>
@@ -698,12 +698,12 @@ export const AIChatInterface: React.FC<Props> = ({
 
               {/* Tabs in Center for Full Screen */}
               {isFullScreen && (
-                <div className="hidden sm:flex items-center bg-gray-100 dark:bg-dark-bg p-1 rounded-2xl border border-gray-200 dark:border-dark-border mx-2 md:mx-4">
+                <div className="hidden sm:flex items-center bg-gray-100 dark:bg-dark-bg p-0.5 rounded-lg border border-gray-200 dark:border-dark-border mx-2 md:mx-4">
                    {tabs.map(tab => (
                       <button
                        key={tab.id}
                        onClick={() => setActiveTab(tab.id as any)}
-                       className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${
+                       className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-md text-xs font-medium transition-all ${
                          activeTab === tab.id 
                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
                            : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-white/50 dark:hover:bg-dark-surface'
@@ -867,7 +867,7 @@ export const AIChatInterface: React.FC<Props> = ({
           >
             <div className="bg-white dark:bg-dark-surface border border-l-0 border-gray-100 dark:border-dark-border py-8 px-1 rounded-r-2xl shadow-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all flex flex-col items-center gap-4">
                <History className="w-4 h-4 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform" />
-               <div className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-dark-muted group-hover:text-indigo-600 transition-colors">
+               <div className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-muted group-hover:text-indigo-600 transition-colors">
                  History
                </div>
                <ChevronRight className="w-3 h-3 text-gray-300 dark:text-dark-muted" />
@@ -911,7 +911,7 @@ export const AIChatInterface: React.FC<Props> = ({
                               ? <User className={isFullScreen ? 'w-4 h-4 md:w-5 md:h-5' : 'w-3.5 h-3.5'} />
                               : <Bot className={isFullScreen ? 'w-4 h-4 md:w-5 md:h-5' : 'w-3.5 h-3.5'} />}
                           </div>
-                          <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl text-sm md:text-[15px] leading-relaxed shadow-lg ${
+                          <div className={`p-4 md:p-5 rounded-xl text-sm leading-relaxed shadow-xs ${
                             msg.role === 'user'
                               ? 'bg-indigo-600 text-white rounded-tr-none'
                               : (isFullScreen 
@@ -1042,7 +1042,7 @@ export const AIChatInterface: React.FC<Props> = ({
                                         }`}
                                       >
                                         <Database className={`w-3 h-3 ${tc.status !== 'finished' ? 'animate-pulse' : ''}`} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">{tc.name.replace(/get_recent_|get_|history/g, '').replace(/_/g, ' ')}</span>
+                                        <span className="text-xs font-medium">{tc.name.replace(/get_recent_|get_|history/g, '').replace(/_/g, ' ')}</span>
                                         {tc.status !== 'finished' && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
                                       </button>
                                     );
@@ -1232,7 +1232,7 @@ export const AIChatInterface: React.FC<Props> = ({
                   }
                 }}
               >
-                  <div className={`absolute -inset-1 bg-linear-to-r from-indigo-500 to-blue-500 rounded-[2.5rem] opacity-0 group-focus-within:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none`} />
+                  <div className={`absolute -inset-1 bg-linear-to-r from-indigo-500 to-blue-500 rounded-xl opacity-0 group-focus-within:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none`} />
 
                   {/* Preview rail + recording banner live OUTSIDE the rounded
                       input box so neither thumbnails nor the banner are clipped
@@ -1248,7 +1248,7 @@ export const AIChatInterface: React.FC<Props> = ({
                     onCancel={cancelRecording}
                   />
 
-                  <div className={`relative flex items-center border rounded-[1.8rem] md:rounded-[2.2rem] transition-all shadow-2xl overflow-hidden ${
+                  <div className={`relative flex items-center border rounded-xl transition-all shadow-2xl overflow-hidden ${
                     isDragging ? 'ring-4 ring-indigo-500/40 border-indigo-400' : ''
                   } ${
                     isFullScreen
@@ -1313,7 +1313,7 @@ export const AIChatInterface: React.FC<Props> = ({
                     </div>
                   </div>
                   {isDragging && (
-                    <div className="absolute inset-0 z-10 bg-indigo-50/90 dark:bg-indigo-900/40 flex items-center justify-center pointer-events-none rounded-[1.8rem] md:rounded-[2.2rem]">
+                    <div className="absolute inset-0 z-10 bg-indigo-50/90 dark:bg-indigo-900/40 flex items-center justify-center pointer-events-none rounded-xl">
                       <span className="text-sm font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
                         {t('ai_chat.attachments.drop', { defaultValue: 'Drop images to attach' })}
                       </span>
