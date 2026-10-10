@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Person 2 AI Summaries, English/Hindi & LLM Integration:**
+  Implemented `AISummaryService`, `AISummaryModel`, `AISummaryRequest/Response` schemas, and `/api/v1/ai/summaries` endpoints.
+  Features grounded bilingual summaries in English and Hindi (`language="en"`/`"hi"`), strict prompt safety (rejects ungrounded reference ranges P2-02, avoids diagnoses P2-07), secret key hygiene (P2-06), provider failure fallback (P2-04), and stale summary invalidation propagation (P2-05).
 - **Boot-time warning on unknown/renamed env names (audit follow-up a):**
   `Settings` construction now emits warning-only telemetry when an env var
   matches a retired name (`APP_ENV` → `HA_APP_ENV`, `SECRET_KEY` → the

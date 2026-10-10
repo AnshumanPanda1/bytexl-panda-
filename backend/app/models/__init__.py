@@ -1,6 +1,7 @@
 from app.models.enums import ImmunizationStatus
 
 from .ai_provider_model import AIModel, AIProviderModel, AITaskAssignment
+from .ai_summary_model import AISummaryModel
 from .anatomy_model import AnatomyFigure, AnatomyStructure
 from .associations import examination_doctors, organization_doctors
 from .audit_model import AuditEvent
@@ -81,6 +82,7 @@ from .user_model import Role, UserModel
 __all__ = [
     "AIModel",
     "AIProviderModel",
+    "AISummaryModel",
     "AITaskAssignment",
     "AllergyCatalog",
     "AllergyCategory",

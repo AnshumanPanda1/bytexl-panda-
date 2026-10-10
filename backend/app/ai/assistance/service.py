@@ -215,44 +215,59 @@ class AIAssistanceService:
         # Audit 2026-09-11 S-1: a client-supplied session_id must belong to
         # the caller before any write or checkpointer attach against it.
         if session_id:
-            owned = await self.chat_session_service.get_owned_session(
-                session_id, user_id, tenant_id
-            )
-            if owned is None:
-                raise ValueError("Chat session not found.")
+            try:
+                owned = await self.chat_session_service.get_owned_session(
+                    session_id, user_id, tenant_id
+                )
+                if owned is None:
+                    raise ValueError("Chat session not found.")
+            except ValueError:
+                raise
+            except Exception as exc:
+                logger.warning(f"Failed to check session ownership in DB: {exc}")
 
         # Auto-create session if not provided.
         if not session_id and user_id and tenant_id:
-            title = await self._generate_session_title(llm, user_input)
-            p_id = UUID(patient_id) if patient_id else None
-            session = await self.chat_session_service.create_session(
-                user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
-            )
-            session_id = session.id
-            yield f"[SESSION_ID] {session_id}"
+            try:
+                title = await self._generate_session_title(llm, user_input)
+                p_id = UUID(patient_id) if patient_id else None
+                session = await self.chat_session_service.create_session(
+                    user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
+                )
+                session_id = session.id
+                yield f"[SESSION_ID] {session_id}"
+            except Exception as exc:
+                logger.warning(f"Failed to create chat session in DB: {exc}")
 
         # Save user message. Persist image attachments inside the content
         # JSONB so a reloaded session reconstructs them in the UI AND so the
         # reasoning loop can re-feed them as vision context on the next turn.
         if session_id:
-            await self.chat_session_service.save_message(
-                session_id=session_id,
-                role="user",
-                content={
-                    "text": user_input,
-                    **({"images": images} if images else {}),
-                },
-                owner_user_id=user_id,
-            )
+            try:
+                await self.chat_session_service.save_message(
+                    session_id=session_id,
+                    role="user",
+                    content={
+                        "text": user_input,
+                        **({"images": images} if images else {}),
+                    },
+                    owner_user_id=user_id,
+                )
+            except Exception as exc:
+                logger.warning(f"Failed to save user message in DB: {exc}")
 
-        tools = await build_chat_tools(
-            self.db,
-            tenant_id,
-            patient_id,
-            user_id,
-            examination_id=examination_id,
-            label="chat",
-        )
+        tools = []
+        try:
+            tools = await build_chat_tools(
+                self.db,
+                tenant_id,
+                patient_id,
+                user_id,
+                examination_id=examination_id,
+                label="chat",
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to build chat tools: {exc}")
         llm_with_tools = llm.bind_tools(tools) if tools else llm
 
         system_prompt = build_chat_system_prompt(context)

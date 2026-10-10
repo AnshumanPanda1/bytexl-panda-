@@ -5,6 +5,7 @@ from app.api.v1.endpoints.admin_integrations import router as admin_integrations
 from app.api.v1.endpoints.admin_tenants import router as admin_tenants_router
 from app.api.v1.endpoints.ai_assistance import router as ai_assistance_router
 from app.api.v1.endpoints.ai_config import router as ai_config_router
+from app.api.v1.endpoints.ai_summaries import router as ai_summaries_router
 from app.api.v1.endpoints.allergies import router as allergies_router
 from app.api.v1.endpoints.analytics import router as analytics_router
 from app.api.v1.endpoints.anatomy import router as anatomy_router
@@ -88,6 +89,7 @@ session_gated_router.include_router(medications_router)
 session_gated_router.include_router(vaccines_router)
 session_gated_router.include_router(biomarkers_router)
 session_gated_router.include_router(ai_config_router)
+session_gated_router.include_router(ai_summaries_router)
 session_gated_router.include_router(task_monitor_router)
 session_gated_router.include_router(ai_assistance_router)
 session_gated_router.include_router(clinical_events_router)

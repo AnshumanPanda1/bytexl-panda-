@@ -105,30 +105,30 @@ async def reconstruct_history(
     """
     current_history: list[Any] = [SystemMessage(content=system_prompt)]
     if session_id:
-        past_messages = await chat_session_service.get_session_messages(
-            session_id, user_id, tenant_id
-        )
-        # Exclude the message we just saved (which is the driving input) to
-        # avoid duplication; replay the prior 10 turns.
-        for msg in past_messages[:-1][-10:]:
-            if msg.role == "user":
-                # Reconstruct multimodal content when the persisted message
-                # carries image attachments (vision input) so the model keeps
-                # visual context across turns. Plain text stays a plain str.
-                content_json = msg.content if isinstance(msg.content, dict) else {}
-                if has_images(content_json):
-                    current_history.append(
-                        HumanMessage(
-                            content=build_multimodal_content(
-                                content_json.get("text", ""),
-                                content_json.get("images"),
+        try:
+            past_messages = await chat_session_service.get_session_messages(
+                session_id, user_id, tenant_id
+            )
+            # Exclude the message we just saved (which is the driving input) to
+            # avoid duplication; replay the prior 10 turns.
+            for msg in past_messages[:-1][-10:]:
+                if msg.role == "user":
+                    content_json = msg.content if isinstance(msg.content, dict) else {}
+                    if has_images(content_json):
+                        current_history.append(
+                            HumanMessage(
+                                content=build_multimodal_content(
+                                    content_json.get("text", ""),
+                                    content_json.get("images"),
+                                )
                             )
                         )
-                    )
-                else:
-                    current_history.append(HumanMessage(content=content_json.get("text")))
-            elif msg.role == "assistant":
-                _append_assistant_turn_to_history(msg, current_history)
+                    else:
+                        current_history.append(HumanMessage(content=content_json.get("text")))
+                elif msg.role == "assistant":
+                    _append_assistant_turn_to_history(msg, current_history)
+        except Exception as exc:
+            logger.warning(f"Could not load past chat messages from DB: {exc}")
     current_history.append(HumanMessage(content=driving_input))
     return current_history
 
