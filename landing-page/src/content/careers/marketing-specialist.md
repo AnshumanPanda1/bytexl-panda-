@@ -1,6 +1,6 @@
 ---
 title: "Marketing Specialist"
-meta_title: "Marketing Specialist - Automark Careers"
+meta_title: "Marketing Specialist - Tattva Careers"
 description: "Develop and execute marketing campaigns that drive growth and engage our target audience."
 image: ""
 type: "Full time"
@@ -24,7 +24,7 @@ job_info:
 
 ## Job Description
 
-Automark is looking for a Marketing Specialist to join our marketing team and help drive awareness and pipeline for our AI-powered platform. You'll execute across channels — content, email, social, and events — with a bias for speed and experimentation.
+Tattva is looking for a Marketing Specialist to join our marketing team and help drive awareness and pipeline for our AI-powered platform. You'll execute across channels — content, email, social, and events — with a bias for speed and experimentation.
 
 ## Job Responsibilities
 

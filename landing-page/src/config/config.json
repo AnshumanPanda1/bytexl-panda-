@@ -1,6 +1,6 @@
 {
   "site": {
-    "title": "MediBot",
+    "title": "Tattva",
     "base_url": "https://medibot.health",
     "base_path": "/",
     "trailing_slash": false,
@@ -8,7 +8,7 @@
     "logo": "/images/logo.svg",
     "logo_width": "160",
     "logo_height": "45",
-    "logo_text": "MediBot"
+    "logo_text": "Tattva"
   },
   "settings": {
     "sticky_header": true
@@ -17,7 +17,7 @@
     "contact_form_action": "#",
     "checklist_form_action": "#",
     "apply_form_action": "#",
-    "copyright": "Copyright &copy; 2026 <strong>MediBot Team</strong>. All Rights Reserved.",
+    "copyright": "Copyright &copy; 2026 <strong>Tattva Team</strong>. All Rights Reserved.",
     "footer_tagline": "AI-Powered Personal Health Copilot — Clinical Extraction, Bilingual Summaries & FHIR Interoperability.",
     "footer_email": "team@medibot.health",
     "footer_phone": "+91 98765 43210"
@@ -32,7 +32,7 @@
     "gtm_id": "GTM-XXXXXX"
   },
   "metadata": {
-    "meta_author": "MediBot Team",
+    "meta_author": "Tattva Team",
     "meta_image": "/images/og-image.png",
     "meta_description": "AI-Powered Personal Health Copilot with document intelligence, grounded bilingual summaries, and FHIR interoperability."
   }

@@ -1,5 +1,5 @@
 ---
-enable: true
+enable: false
 badge: ""
 title: "But It Used To Be <strong>Difficult</strong>"
 price_suffix: "/Per Month"

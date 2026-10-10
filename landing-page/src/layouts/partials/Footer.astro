@@ -1,92 +1,14 @@
 ---
 import Social from "@/components/Social.astro";
 import config from "@/config/config.json";
-import menu from "@/config/menu.json";
 import social from "@/config/social.json";
-import ImageMod from "@/layouts/components/ImageMod.astro";
 import { markdownify } from "@/lib/utils/textConverter";
-import type { Menu, SocialType } from "@/types";
+import type { SocialType } from "@/types";
 
-const {
-  footer_primary,
-  footer_resource,
-  footer_legal,
-  footer_col_1_title,
-  footer_col_2_title,
-  footer_col_3_title,
-} = menu as Menu;
 const { main: socialLinks } = social as SocialType;
 ---
 
 <footer class="section pb-0 relative overflow-hidden">
-  <div class="container pb-10">
-    <div class="flex lg:justify-between flex-wrap gap-x-10 gap-y-10">
-      <!-- Column 1 - Logo & Contact -->
-      <div class="max-w-95 mb-20 text-lg text-text">
-        <ImageMod
-          src="/images/logo.svg"
-          width={156}
-          height={50}
-          class="h-12.5"
-          alt="logo"
-        />
-        <p class="mt-6">{config.params.footer_tagline}</p>
-        <a
-          class="link mt-6 inline-block underline"
-          href={`mailto:${config.params.footer_email}`}
-          >{config.params.footer_email}</a
-        >
-        <a class="link mt-4 block" href={`tel:${config.params.footer_phone}`}
-          >{config.params.footer_phone}</a
-        >
-      </div>
-      <!-- Column 2 - Primary -->
-      <div>
-        <h3 class="footer-label">{footer_col_1_title}</h3>
-        <ul>
-          {
-            footer_primary?.map((item) => (
-              <li class="mb-5">
-                <a href={item.url} class="footer-link">
-                  {item.name}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-      <!-- Column 3 - Resource -->
-      <div>
-        <h3 class="footer-label">{footer_col_2_title}</h3>
-        <ul>
-          {
-            footer_resource?.map((item) => (
-              <li class="mb-5">
-                <a href={item.url} class="footer-link">
-                  {item.name}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-      <!-- Column 4 - Legal -->
-      <div>
-        <h3 class="footer-label">{footer_col_3_title}</h3>
-        <ul>
-          {
-            footer_legal?.map((item) => (
-              <li class="mb-5">
-                <a href={item.url} class="footer-link">
-                  {item.name}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-    </div>
-  </div>
   <!-- Medical Disclaimer Banner -->
   <div class="container pb-8">
     <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">

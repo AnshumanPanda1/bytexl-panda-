@@ -1,6 +1,6 @@
 ---
 title: "Senior Frontend Developer"
-meta_title: "Senior Frontend Developer - Automark Careers"
+meta_title: "Senior Frontend Developer - Tattva Careers"
 description: "Build and maintain responsive web applications using modern frameworks and best practices."
 image: ""
 type: "Full time"

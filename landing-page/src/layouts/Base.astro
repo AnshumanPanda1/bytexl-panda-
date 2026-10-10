@@ -22,10 +22,22 @@ export interface Props {
   image?: string;
   noindex?: boolean;
   canonical?: string;
+  hideNav?: boolean;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
 }
 
-const { title, meta_title, description, image, noindex, canonical } =
-  Astro.props;
+const {
+  title,
+  meta_title,
+  description,
+  image,
+  noindex,
+  canonical,
+  hideNav,
+  hideHeader,
+  hideFooter,
+} = Astro.props;
 ---
 
 <!doctype html>
@@ -38,7 +50,7 @@ const { title, meta_title, description, image, noindex, canonical } =
       )
     }
     <link rel="shortcut icon" href={config.site.favicon} />
-    <meta name="theme-name" content="automark-astro" />
+    <meta name="theme-name" content="medibot" />
     <meta name="msapplication-TileColor" content="#000000" />
     <meta
       name="theme-color"
@@ -156,10 +168,10 @@ const { title, meta_title, description, image, noindex, canonical } =
     }
 
     {/* <TwSizeIndicator /> */}
-    <Header />
+    {!hideHeader && <Header hideNav={hideNav} />}
     <main id="main-content" class="overflow-x-hidden md:overflow-x-auto">
       <slot />
     </main>
-    <Footer />
+    {!hideFooter && <Footer />}
   </body>
 </html>

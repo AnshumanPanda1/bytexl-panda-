@@ -1,6 +1,6 @@
 ---
 title: "UX/UI Designer"
-meta_title: "UX/UI Designer - Automark Careers"
+meta_title: "UX/UI Designer - Tattva Careers"
 description: "Create intuitive user experiences and beautiful interfaces for our growing product suite."
 image: ""
 type: "Full time"
@@ -24,7 +24,7 @@ job_info:
 
 ## Job Description
 
-We're looking for a talented UX/UI Designer to help us craft exceptional digital experiences for our marketing automation platform. You'll own the visual language and interaction design that makes Automark feel effortless to use.
+We're looking for a talented UX/UI Designer to help us craft exceptional digital experiences for our marketing automation platform. You'll own the visual language and interaction design that makes Tattva feel effortless to use.
 
 ## Job Responsibilities
 

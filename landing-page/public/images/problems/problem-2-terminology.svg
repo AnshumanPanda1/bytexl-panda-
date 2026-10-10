@@ -1,0 +1,18 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Medical Clipboard / Document Base -->
+  <path d="M12 9C12 7.34315 13.3431 6 15 6H33C34.6569 6 36 7.34315 36 9V40C36 41.6569 34.6569 43 33 43H15C13.3431 43 12 41.6569 12 40V9Z" fill="white" fill-opacity="0.12"/>
+  <path d="M12 9C12 7.34315 13.3431 6 15 6H33C34.6569 6 36 7.34315 36 9V40C36 41.6569 34.6569 43 33 43H15C13.3431 43 12 41.6569 12 40V9Z" stroke="white" stroke-width="2"/>
+  <!-- Clipboard clip at top -->
+  <rect x="19" y="4" width="10" height="4" rx="2" fill="white" fill-opacity="0.6"/>
+  <!-- Clinical Rx / Prescription symbol -->
+  <path d="M17 14V22M17 14H20C21.1 14 22 14.9 22 16C22 17.1 21.1 18 20 18H17M19.5 17.5L23 22" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Dense complex medical jargon lines -->
+  <path d="M17 26H28" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M17 30H24" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M17 34H22" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Coral Problem Badge: Hard to read / Clinical terminology question -->
+  <circle cx="34" cy="34" r="8" fill="#FF5353"/>
+  <!-- Question mark / confusion icon inside badge -->
+  <path d="M32.5 31.5C32.5 30.5 33.2 29.8 34.1 29.8C35 29.8 35.7 30.5 35.7 31.4C35.7 32.4 34.7 32.9 34.1 33.6C33.9 33.8 33.9 34.2 33.9 34.2" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="34" cy="36.8" r="0.9" fill="white"/>
+</svg>

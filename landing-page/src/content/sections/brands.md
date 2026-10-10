@@ -1,5 +1,5 @@
 ---
-enable: true
+enable: false
 title: Trusted by <strong class="text-primary">10,000+</strong> local businesses to scale their bookings and growth automatically.
 images:
   - src: "/images/brands/dropbox-logo-svg-150px.svg"

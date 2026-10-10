@@ -1,21 +1,47 @@
 ---
 import ImageMod from "@/layouts/components/ImageMod.astro";
+
 interface Props {
   logo: string;
   title: string;
   is_starred: boolean;
 }
 const { logo, title, is_starred } = Astro.props;
+
+const featureMap: Record<string, string> = {
+  "Drag-and-Drop Ingestion Hub": "/images/features/feature-1-ingestion.svg",
+  "Longitudinal Biomarker Trends": "/images/features/feature-2-biomarker.svg",
+  "Unified Patient Timeline": "/images/features/feature-3-timeline.svg",
+  "Bilingual English/Hindi AI Summary": "/images/features/feature-4-bilingual.svg",
+  "Evidence-Based Fact Review": "/images/features/feature-5-evidence.svg",
+  "HL7 FHIR R4 Bundle Export": "/images/features/feature-6-fhir.svg",
+  "file-up": "/images/features/feature-1-ingestion.svg",
+  "activity": "/images/features/feature-2-biomarker.svg",
+  "calendar-clock": "/images/features/feature-3-timeline.svg",
+  "languages": "/images/features/feature-4-bilingual.svg",
+  "shield-check": "/images/features/feature-5-evidence.svg",
+  "file-json": "/images/features/feature-6-fhir.svg",
+};
+
+const resolvedLogo = featureMap[logo] || featureMap[title] || logo;
 ---
 
 <div
-  class="p-8 xl:px-10 xl:py-11 border-t border-l border-text-light/5 relative"
+  class="group p-8 xl:px-10 xl:py-11 border-t border-l border-text-light/5 relative transition-colors duration-300 hover:bg-white/[0.02]"
 >
-  <ImageMod src={logo} alt={`${title} icon`} class="mb-6 mx-auto" />
+  <div class="mb-6 flex justify-center">
+    <div
+      class="relative flex items-center justify-center size-14 rounded-2xl bg-primary/10 border border-primary/20 transition-all duration-300 group-hover:bg-primary/20 group-hover:border-primary/40 group-hover:shadow-[0_0_20px_rgba(147,122,255,0.35)] group-hover:scale-105"
+    >
+      <ImageMod
+        src={resolvedLogo}
+        alt={`${title} icon`}
+        class="size-8 object-contain transition-transform duration-300"
+      />
+    </div>
+  </div>
   <h3 class="text-h5-sm font-bold mb-4 text-center">{title}</h3>
-  <p class="text-center">
-    Visualize how teams are staffed & what resources are available across.
-  </p>
+
   {
     [
       "top-0 left-0 -translate-x-1/2 -translate-y-1/2",

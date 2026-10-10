@@ -1,30 +1,25 @@
 ---
 title: "Contact Us"
-meta_title: "Contact Us - All-In-One Local Business Software"
-description: "Have a question about streamlining your business? Send us a message."
+meta_title: "Contact MediBot - Health Copilot"
+description: "Get in touch with the MediBot team regarding clinical extraction, bilingual summaries, and FHIR interoperability."
 image: ""
 draft: false
 
 page_header:
-  title: "Have a question? <strong>Send us a message</strong>"
-  subtitle: "Our team is here to help. Whether you want to learn more about the Missed Call Auto-Responder, or how to set up your Unified Inbox, our support team is ready to assist you."
+  title: "Contact <strong>MediBot Team</strong>"
+  subtitle: "Have questions about our clinical extraction, bilingual summaries, or FHIR integration? Reach out to our team."
 
 contact_info:
   enable: true
   items:
     - type: "email"
-      title: "Email Us"
-      detail: "hello@yoursoftware.com"
-      link: "mailto:hello@yoursoftware.com"
+      title: "Contact Email"
+      detail: "team@medibot.health"
+      link: "mailto:team@medibot.health"
       icon: "FaEnvelope"
     - type: "phone"
-      title: "Call or Text Us"
-      detail: "+1 (800) 123-4567"
-      link: "tel:+18001234567"
+      title: "Phone Support"
+      detail: "+91 98765 43210"
+      link: "tel:+919876543210"
       icon: "FaPhone"
-    - type: "calendar"
-      title: "Book A Demo"
-      detail: "Schedule your one-on-one setup call"
-      link: "https://api.leadconnectorhq.com/widget/booking/huqDO6gbH3SQmdp73TjE"
-      icon: "FaCalendarCheck"
 ---
