@@ -314,6 +314,7 @@ function App() {
 
           <Route path="/ai-assistant" element={<AIChatPage />} />
           <Route path="/ai-assistant/:sessionId" element={<AIChatPage />} />
+          <Route path="/export-import" element={<ExportImport />} />
           {/* Pathless shell keeps the settings subnav mounted across ALL its
               tabs — including /profile, which previously sat outside and
               unmounted the whole shell on every Profile visit. */}
@@ -322,7 +323,7 @@ function App() {
             <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
             <Route path="/settings/appearance" element={<AppearanceSettings />} />
             <Route path="/settings/preferences" element={<Preferences />} />
-            <Route path="/settings/export-import" element={<ExportImport />} />
+            <Route path="/settings/export-import" element={<Navigate to="/export-import" replace />} />
           </Route>
           <Route path="/settings/integrations/:id" element={<IntegrationDetail />} />
           <Route path="/integrations/:domain/connected" element={<OAuthConnected />} />

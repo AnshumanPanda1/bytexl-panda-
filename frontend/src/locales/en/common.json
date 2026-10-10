@@ -39,6 +39,7 @@
     "no_notifications": "No notifications yet",
     "view_all_notifications": "View all notifications",
     "documents_explorer": "Documents Explorer",
+    "export_import": "Export & Import",
     "calendar": "Clinical Calendar",
     "medications": "Medications",
     "doctors": "Doctors",
@@ -1796,6 +1797,7 @@
   },
   "settings": {
     "nav_title": "Settings",
+    "export_import_title": "Export & Import",
     "nav_profile": "Profile",
     "nav_preferences": "Preferences",
     "nav_security": "Security",

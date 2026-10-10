@@ -402,7 +402,7 @@ def get_synthetic_samples() -> list[dict[str, Any]]:
                     "coding_system": "SNOMED",
                     "status": "active",
                     "onset_date": "2025-04-10T00:00:00Z",
-                    "evidence": [{"detail": "Elevated HbA1c 6.8%"}],
+                    "evidence": [{"detail": [{"display": "Elevated HbA1c 6.8%"}]}],
                     "confidence": 0.95,
                     "original_text": "Type 2 Diabetes Mellitus with mild hyperglycemia",
                 }

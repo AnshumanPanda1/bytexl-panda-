@@ -5,6 +5,7 @@ import {
   Sparkles,
   Clock,
   Activity,
+  Share2,
   Settings,
 } from 'lucide-react';
 
@@ -68,7 +69,14 @@ export const MAIN_NAV: MainNavItem[] = [
     icon: Activity,
   },
 
-  // 6. Settings (Appearance, Preferences, Export & Import)
+  // 6. FHIR / ABDM Data Interoperability & Export
+  {
+    path: '/export-import',
+    labelKey: 'backup.title',
+    icon: Share2,
+  },
+
+  // 7. Settings (Appearance, Preferences)
   {
     path: '/settings',
     labelKey: 'common.settings',
@@ -124,6 +132,10 @@ export function resolveActiveNavId(
     }
     if (item.path === '/dashboard') {
       if (pathname === '/dashboard' || pathname === '/') return item.path;
+      continue;
+    }
+    if (item.path === '/export-import') {
+      if (pathname === '/export-import' || pathname.startsWith('/export-import') || pathname === '/settings/export-import') return item.path;
       continue;
     }
     if (item.path === '/settings') {

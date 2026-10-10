@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -14,6 +16,72 @@ from app.models.base import (
 )
 from app.models.enums import ClinicalEventStatus, CodingSystem, ScheduleKind
 from app.services.fhir_helpers import build_fhir_resource, build_meta, fhir_isoformat
+
+
+def _normalize_condition_evidence(raw_evidence: Any) -> list[dict[str, Any]]:
+    """Ensure evidence conforms strictly to FHIR R4 Condition.evidence schema:
+    evidence: list[ { code?: list[CodeableConcept], detail?: list[Reference] } ]
+    """
+    if not raw_evidence:
+        return []
+    if isinstance(raw_evidence, dict):
+        raw_evidence = [raw_evidence]
+    elif not isinstance(raw_evidence, list):
+        return []
+
+    normalized = []
+    for item in raw_evidence:
+        if isinstance(item, str):
+            normalized.append({"code": [{"text": item}]})
+            continue
+        if not isinstance(item, dict):
+            continue
+
+        entry: dict[str, Any] = {}
+        # Handle detail: list of References
+        if "detail" in item and item["detail"] is not None:
+            details = item["detail"]
+            if isinstance(details, str):
+                entry["detail"] = [{"display": details}]
+            elif isinstance(details, dict):
+                entry["detail"] = [details]
+            elif isinstance(details, list):
+                norm_details = []
+                for d in details:
+                    if isinstance(d, str):
+                        norm_details.append({"display": d})
+                    elif isinstance(d, dict):
+                        norm_details.append(d)
+                if norm_details:
+                    entry["detail"] = norm_details
+
+        # Handle code: list of CodeableConcepts
+        if "code" in item and item["code"] is not None:
+            codes = item["code"]
+            if isinstance(codes, str):
+                entry["code"] = [{"text": codes}]
+            elif isinstance(codes, dict):
+                entry["code"] = [codes]
+            elif isinstance(codes, list):
+                norm_codes = []
+                for c in codes:
+                    if isinstance(c, str):
+                        norm_codes.append({"text": c})
+                    elif isinstance(c, dict):
+                        norm_codes.append(c)
+                if norm_codes:
+                    entry["code"] = norm_codes
+
+        if not entry:
+            text_val = item.get("text") or item.get("note") or item.get("description")
+            if text_val:
+                entry["code"] = [{"text": str(text_val)}]
+            else:
+                entry["detail"] = [{"display": str(item)}]
+
+        normalized.append(entry)
+
+    return normalized
 
 
 def _enum_values(enum_cls):
@@ -460,12 +528,15 @@ class ClinicalEvent(
             "note": [{"text": self.description}] if self.description else None,
             "meta": build_meta(version_id=str(self.version or 1)),
         }
+        evidence_list = []
         if self.document_id:
-            data["evidence"] = [
+            evidence_list.append(
                 {"detail": [{"reference": f"DocumentReference/{self.document_id}"}]}
-            ]
-        elif self.evidence:
-            data["evidence"] = self.evidence
+            )
+        if self.evidence:
+            evidence_list.extend(_normalize_condition_evidence(self.evidence))
+        if evidence_list:
+            data["evidence"] = evidence_list
         return build_fhir_resource("Condition", data)
 
     def to_fhir_episode_of_care_dict(self) -> dict:

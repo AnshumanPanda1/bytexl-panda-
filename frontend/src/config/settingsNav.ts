@@ -54,7 +54,6 @@ export interface SettingsNavHeader {
 export const userSettingsNav: SettingsNavItem[] = [
   { to: '/settings/appearance', icon: Palette, labelKey: 'settings.appearance_short', labelFallback: 'Appearance & Visualization' },
   { to: '/settings/preferences', icon: SlidersHorizontal, labelKey: 'settings.nav_preferences', labelFallback: 'Preferences' },
-  { to: '/settings/export-import', icon: Download, labelKey: 'backup.title', labelFallback: 'Export & Import' },
   { to: '/profile', icon: UserCircle, labelKey: 'settings.nav_profile', labelFallback: 'Profile', end: true },
 ];
 
