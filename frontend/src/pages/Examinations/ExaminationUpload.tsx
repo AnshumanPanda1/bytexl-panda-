@@ -8,7 +8,7 @@ import { usePatientStore } from '../../store/slices/patientSlice';
 import { useUIStore } from '../../store/slices/uiSlice';
 import { offlineService } from '../../services/offlineService';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
-import { Check, X, FileText, RotateCcw, Sparkles, Plus, Info, Camera } from 'lucide-react';
+import { Check, X, FileText, RotateCcw, Sparkles, Plus, Info, Camera, Upload, AlertCircle } from 'lucide-react';
 import { NoPatientState } from '../../components/ui/NoPatientState';
 import { ActiveTaskBadge } from '../../components/ui/ActiveTaskBadge';
 import { AIMagicFillModal } from '../../components/ui/AIMagicFillModal';
@@ -51,6 +51,11 @@ function ExaminationUpload() {
   const [isMagicFillOpen, setIsMagicFillOpen] = useState(false);
   const [discoveredDoctors, setDiscoveredDoctors] = useState<string[]>([]);
   const [isCreatingDoctor, setIsCreatingDoctor] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [createdExamId, setCreatedExamId] = useState<string | null>(null);
+  const [uploadedFileKeys, setUploadedFileKeys] = useState<Set<string>>(new Set());
+  const [createdBulkExamMap, setCreatedBulkExamMap] = useState<Record<string, string>>({});
 
   // New states for Smart Mode and Bulk Create
   const [isSmartMode, setIsSmartMode] = useState(false);
@@ -159,6 +164,14 @@ function ExaminationUpload() {
   }, [currentPatient]);
 
   useEffect(() => {
+    // Reset partial submission tracking when patient changes
+    setCreatedExamId(null);
+    setUploadedFileKeys(new Set());
+    setCreatedBulkExamMap({});
+    setSaveError(null);
+  }, [patientId]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const [cats, docs, orgs] = await Promise.all([
@@ -177,14 +190,45 @@ function ExaminationUpload() {
     fetchData();
   }, []);
 
+  const ALLOWED_UPLOAD_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.dcm', '.txt', '.md', '.bmp', '.webp', '.tiff', '.tif', '.gif'];
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+  const validateAndAddFiles = (selectedFiles: File[]) => {
+    setFileError(null);
+    const validFiles: File[] = [];
+    const errorMessages: string[] = [];
+
+    for (const file of selectedFiles) {
+      const lastDot = file.name.lastIndexOf('.');
+      const ext = lastDot !== -1 ? file.name.slice(lastDot).toLowerCase() : '';
+      if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) {
+        errorMessages.push(`"${file.name}": Unsupported format. Allowed: PDF, PNG, JPG, JPEG, DICOM, TXT.`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        errorMessages.push(`"${file.name}": Exceeds 50MB maximum size limit.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (errorMessages.length > 0) {
+      setFileError(errorMessages.join(' '));
+    }
+
+    if (validFiles.length > 0) {
+      const newFiles = validFiles.map(file => ({
+        file,
+        include: true,
+        groupIndex: 0
+      }));
+      setFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files).map(file => ({ 
-        file, 
-        include: true, // Default to true if user just wants documents to be analyzed
-        groupIndex: 0 
-      }));
-      setFiles((prev) => [...prev, ...newFiles]);
+      validateAndAddFiles(Array.from(e.target.files));
     }
     // Reset the input value so the same file can be selected again if needed
     e.target.value = '';
@@ -200,7 +244,7 @@ function ExaminationUpload() {
 
   const openPreview = async (file: File) => {
     const isDicom = file.name.toLowerCase().endsWith('.dcm');
-    const isPdf = file.type === 'application/pdf';
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     
     if (isDicom || isPdf) {
       setIsPreviewLoading(true);
@@ -209,7 +253,7 @@ function ExaminationUpload() {
         setActivePreview({ 
           url: result.url, 
           name: file.name, 
-          type: file.type,
+          type: file.type || (isPdf ? 'application/pdf' : 'application/dicom'),
           isBackendProcessed: true,
           localFile: file
         });
@@ -222,7 +266,9 @@ function ExaminationUpload() {
       }
     } else {
       const url = URL.createObjectURL(file);
-      setActivePreview({ url, name: file.name, type: file.type });
+      const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name);
+      const type = file.type || (isImg ? 'image/jpeg' : 'application/octet-stream');
+      setActivePreview({ url, name: file.name, type });
     }
   };
 
@@ -257,36 +303,49 @@ function ExaminationUpload() {
     executeSubmit();
   };
 
+  const getFileKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
+
   const executeSubmit = async () => {
     setUploading(true);
+    setSaveError(null);
     try {
       if (isBulkMode) {
         // Bulk Create: Create multiple examinations based on groups
-        const createdExams = [];
+        const newExamMap = { ...createdBulkExamMap };
+        const newUploadedKeys = new Set(uploadedFileKeys);
 
         for (const group of bulkGroups) {
           const groupFiles = bulkFiles.filter(f => f.groupId === group.id);
           // Only create examination if it has files OR has notes
           if (groupFiles.length === 0 && !group.notes && !group.patientNotes) continue;
 
-          // Create Examination for this group
-          const exam = await createExamination({
-            patient_id: patientId,
-            examination_date: isSmartMode ? undefined : group.date,
-            notes: isSmartMode ? undefined : group.notes || undefined,
-            patient_notes: group.patientNotes || undefined,
-            category: isSmartMode ? 'Clinical' : group.category,
-            doctor_ids: isSmartMode ? [] : group.doctorIds,
-            organization_id: isSmartMode ? undefined : (selectedOrganizationId || undefined),
-            auto_extract_metadata: isSmartMode
-          });
-
-
-          // Upload all files associated with this group's examination
-          for (const { file, includeInExtraction } of groupFiles) {
-            await uploadDocument(file, patientId, exam.id, includeInExtraction);
+          let examId = newExamMap[group.id];
+          if (!examId) {
+            // Create Examination for this group
+            const exam = await createExamination({
+              patient_id: patientId,
+              examination_date: isSmartMode ? undefined : group.date,
+              notes: isSmartMode ? undefined : group.notes || undefined,
+              patient_notes: group.patientNotes || undefined,
+              category: isSmartMode ? 'Clinical' : group.category,
+              doctor_ids: isSmartMode ? [] : group.doctorIds,
+              organization_id: isSmartMode ? undefined : (selectedOrganizationId || undefined),
+              auto_extract_metadata: isSmartMode
+            });
+            examId = exam.id;
+            newExamMap[group.id] = examId;
+            setCreatedBulkExamMap({ ...newExamMap });
           }
-          createdExams.push(exam);
+
+          // Upload all files associated with this group's examination (skip already uploaded)
+          for (const { file, includeInExtraction } of groupFiles) {
+            const key = getFileKey(file);
+            if (!newUploadedKeys.has(key)) {
+              await uploadDocument(file, patientId, examId, includeInExtraction);
+              newUploadedKeys.add(key);
+              setUploadedFileKeys(new Set(newUploadedKeys));
+            }
+          }
         }
         
         // Clear draft
@@ -295,36 +354,55 @@ function ExaminationUpload() {
         // Redirect to the examination list for bulk uploads
         navigate('/examinations');
       } else {
-        // Single Examination Create
-        const exam = await createExamination({
-          patient_id: patientId,
-          examination_date: isSmartMode ? undefined : examinationDate,
-          notes: isSmartMode ? undefined : notes || undefined,
-          patient_notes: patientNotes || undefined, // Patient notes are always sent if present
-          category: isSmartMode ? (category || undefined) : category,
-          doctor_ids: isSmartMode ? [] : selectedDoctorIds,
-          organization_id: isSmartMode ? undefined : (selectedOrganizationId || undefined),
-          auto_extract_metadata: isSmartMode
-        });
+        // Single Examination Create: Reuse already-created exam if retrying after upload failure
+        let examId = createdExamId;
+        if (!examId) {
+          const exam = await createExamination({
+            patient_id: patientId,
+            examination_date: isSmartMode ? undefined : examinationDate,
+            notes: isSmartMode ? undefined : notes || undefined,
+            patient_notes: patientNotes || undefined, // Patient notes are always sent if present
+            category: isSmartMode ? (category || undefined) : category,
+            doctor_ids: isSmartMode ? [] : selectedDoctorIds,
+            organization_id: isSmartMode ? undefined : (selectedOrganizationId || undefined),
+            auto_extract_metadata: isSmartMode
+          });
+          examId = exam.id;
+          setCreatedExamId(examId);
+        }
 
-        // 2. Upload all files associated with this examination
+        // 2. Upload all files associated with this examination (skip already uploaded)
         const filesToUpload = isSmartMode 
           ? bulkFiles.map(f => ({ file: f.file, include: f.includeInExtraction }))
           : files;
 
+        const newUploadedKeys = new Set(uploadedFileKeys);
         for (const { file, include } of filesToUpload) {
-          await uploadDocument(file, patientId, exam.id, include);
+          const key = getFileKey(file);
+          if (!newUploadedKeys.has(key)) {
+            await uploadDocument(file, patientId, examId || undefined, include);
+            newUploadedKeys.add(key);
+            setUploadedFileKeys(new Set(newUploadedKeys));
+          }
         }
         
         // Clear draft
         await offlineService.deleteDraft('new-examination');
         
         // Redirect to the examination detail page
-        navigate(`/examinations/${exam.id}`);
+        navigate(`/examinations/${examId}`);
       }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Upload failed. Please try again.');
+    } catch (error: any) {
+      console.error('Save examination failed:', error);
+      const errorDetail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        (typeof error?.response?.data === 'string' ? error.response.data : null) ||
+        error?.message ||
+        'Upload failed. Please check the network connection and try again.';
+      const displayMsg = typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail);
+      setSaveError(displayMsg);
+      alert(`Save failed: ${displayMsg}`);
     } finally {
       setUploading(false);
     }
@@ -405,7 +483,7 @@ function ExaminationUpload() {
   }
 
   return (
-    <div className={`${isBulkMode ? 'max-w-5xl' : 'max-w-2xl'} mx-auto transition-all duration-500`}>
+    <div className={`${isBulkMode ? 'max-w-5xl' : 'max-w-3xl'} mx-auto transition-all duration-300`}>
       <PageHeader
         title="New Examination"
         subtitle="Upload and analyze clinical documents"
@@ -415,76 +493,95 @@ function ExaminationUpload() {
 
       <StickyToolbar
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {hasDraft && (
               <button 
+                type="button"
                 onClick={restoreDraft}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 rounded-xl text-sm font-bold border border-amber-100 dark:border-amber-800 transition-all hover:bg-amber-100"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 rounded-lg text-xs font-semibold border border-amber-200 dark:border-amber-800 transition-colors hover:bg-amber-100"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-3.5 h-3.5" />
                 <span>Restore Draft</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => setIsMagicFillOpen(true)}
-              className="flex items-center gap-2 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold text-xs transition-colors shadow-xs"
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-3.5 h-3.5" />
               <span>Magic Fill</span>
             </button>
           </div>
         }
       />
 
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-dark-surface rounded-lg shadow-sm p-6 space-y-6">
-        {/* Smart Mode & Bulk Toggle */}
-        <div className="flex flex-col md:flex-row gap-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
-          <div className="flex-1 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-gray-900 dark:text-dark-text flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-500" />
-                {t('ai_labels.smart_extraction_ai', 'Smart Extraction AI')}
-                <ActiveTaskBadge taskType="ocr" className="ml-2" />
-              </span>
-              <span className="text-[10px] text-gray-500 dark:text-dark-muted">{t('ai_labels.smart_extraction_hint', 'AI will auto-fill date, doctors, and notes from documents')}</span>
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-dark-surface rounded-xl border border-gray-200/80 dark:border-dark-border shadow-xs p-4 sm:p-5 space-y-4">
+        {/* Mode Controls Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2.5 px-3 bg-gray-50/80 dark:bg-dark-bg/60 border border-gray-200 dark:border-dark-border rounded-lg">
+          {/* Smart Extraction AI Toggle */}
+          <div className="flex items-center justify-between sm:justify-start gap-3 flex-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-500 shrink-0" />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-gray-900 dark:text-dark-text">
+                    {t('ai_labels.smart_extraction_ai', 'Smart Extraction AI')}
+                  </span>
+                  <ActiveTaskBadge taskType="ocr" className="scale-90 origin-left" />
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-dark-muted hidden sm:block">
+                  {t('ai_labels.smart_extraction_hint', 'Auto-fill date, doctors, and notes from documents')}
+                </p>
+              </div>
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={isSmartMode}
               onClick={() => setIsSmartMode(!isSmartMode)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden ${isSmartMode ? 'bg-blue-600' : 'bg-gray-200 dark:bg-dark-border'}`}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-hidden ${isSmartMode ? 'bg-blue-600' : 'bg-gray-200 dark:bg-dark-border'}`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isSmartMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isSmartMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </button>
           </div>
-          <div className="w-px bg-blue-100 dark:bg-blue-900/30 hidden md:block" />
-          <div className="flex-1 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-gray-900 dark:text-dark-text flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-500" />
-                Bulk Create
-              </span>
-              <span className="text-[10px] text-gray-500 dark:text-dark-muted">Upload and group documents for multiple examinations</span>
+
+          <div className="w-px bg-gray-200 dark:bg-dark-border h-7 hidden sm:block" />
+
+          {/* Bulk Create Toggle */}
+          <div className="flex items-center justify-between sm:justify-start gap-3 flex-1 sm:pl-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+              <div>
+                <span className="text-xs font-semibold text-gray-900 dark:text-dark-text block">
+                  Bulk Create
+                </span>
+                <p className="text-[11px] text-gray-500 dark:text-dark-muted hidden sm:block">
+                  Group documents for multiple visits
+                </p>
+              </div>
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={isBulkMode}
               onClick={() => {
                 const newBulk = !isBulkMode;
                 setIsBulkMode(newBulk);
-                if (newBulk) setIsSmartMode(true); // Bulk usually implies smart mode
+                if (newBulk) setIsSmartMode(true);
               }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden ${isBulkMode ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-dark-border'}`}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-hidden ${isBulkMode ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-dark-border'}`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isBulkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isBulkMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </button>
           </div>
         </div>
 
         {isBulkMode && (
-          <div className="flex items-center gap-2 p-3 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/20 rounded-xl">
+          <div className="flex items-center gap-2 p-2.5 bg-indigo-50/60 dark:bg-indigo-900/15 border border-indigo-100 dark:border-indigo-900/30 rounded-lg">
             <Info className="w-4 h-4 text-indigo-500 shrink-0" />
-            <p className="text-[10px] text-indigo-700 dark:text-indigo-400 font-medium">
-              <strong>Bulk Mode Instructions:</strong> Add documents to the top area, then drag them into examination bubbles below. You can create as many examination bubbles as needed. Each bubble represents a separate clinical visit.
+            <p className="text-xs text-indigo-700 dark:text-indigo-400">
+              <strong>Bulk Mode:</strong> Add documents, then drag them into examination bubbles below.
             </p>
           </div>
         )}
@@ -503,66 +600,72 @@ function ExaminationUpload() {
           />
         ) : (
           <>
-            {!isSmartMode && (
-              <div className="animate-in fade-in duration-300 space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2">
-                    Examination Date
-                  </label>
-                  <DatePicker
-                    placeholder={t('common.select_date', 'Select date')}
-                    required
-                    value={examinationDate}
-                    onChange={setExaminationDate}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted">
-                  Documents
+            {/* 1. Date & Documents first */}
+            <div className="space-y-3">
+              {/* Examination Date */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted mb-1">
+                  Examination Date <span className="text-red-500">*</span>
                 </label>
-                <ActiveTaskBadge workflow="full_reconstruction" size="sm" showText={false} />
+                <DatePicker
+                  placeholder={t('common.select_date', 'Select date')}
+                  required
+                  value={examinationDate}
+                  onChange={setExaminationDate}
+                />
               </div>
-              
-              {files.length > 0 && (
-                <div className="mb-6 flex flex-wrap gap-4">
-                  {files.map((f, i) => (
-                    <DocumentCard 
-                      key={i}
-                      file={f.file}
-                      onRemove={() => removeFile(i)}
-                      onPreview={() => openPreview(f.file)}
-                      onToggleInclusion={() => toggleFileInclusion(i)}
-                      includeInExtraction={f.include}
-                    />
-                  ))}
-                </div>
-              )}
 
-              <div className={`grid grid-cols-1 ${isMobileDevice() ? 'sm:grid-cols-2' : ''} gap-4`}>
-                <div className="relative">
+              {/* Document Upload */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                      Document Upload
+                    </label>
+                    <ActiveTaskBadge workflow="full_reconstruction" size="sm" showText={false} />
+                  </div>
+                  <span className="text-[11px] text-gray-400 dark:text-dark-muted">
+                    PDF, PNG, JPG, JPEG, TXT, DICOM (Max 50MB)
+                  </span>
+                </div>
+
+                {/* File Dropzone */}
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files) {
+                      validateAndAddFiles(Array.from(e.dataTransfer.files));
+                    }
+                  }}
+                  className="relative"
+                >
                   <input
                     type="file"
                     multiple
                     onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    accept=".pdf,.jpg,.jpeg,.png,.docx,.txt,.dcm"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    accept=".pdf,.png,.jpg,.jpeg,.dcm,.txt,.md,image/png,image/jpeg,application/pdf"
                     id="file-upload"
                   />
                   <label
                     htmlFor="file-upload"
-                    className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 dark:border-dark-border rounded-xl hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all cursor-pointer text-blue-600 dark:text-blue-400 font-bold text-sm"
+                    className="flex flex-col sm:flex-row items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 dark:border-dark-border rounded-lg hover:border-blue-500 dark:hover:border-blue-400 bg-gray-50/50 dark:bg-dark-bg/30 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors cursor-pointer text-center"
                   >
-                    <Plus className="h-5 w-5 mr-2" />
-                    {files.length === 0 ? 'Select Documents' : 'Add More'}
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-xs">
+                      <Upload className="w-4 h-4" />
+                      <span>{files.length === 0 ? 'Click to select or drag & drop files' : 'Add More Files'}</span>
+                    </div>
+                    <span className="text-[11px] text-gray-400 dark:text-dark-muted hidden sm:inline">
+                      (PNG, JPG, JPEG, PDF)
+                    </span>
                   </label>
                 </div>
-                
+
+                {/* Mobile Camera Option */}
                 {isMobileDevice() && (
-                  <div className="relative">
+                  <div className="relative mt-2">
                     <input
                       type="file"
                       accept="image/*"
@@ -573,128 +676,158 @@ function ExaminationUpload() {
                     />
                     <label
                       htmlFor="camera-upload"
-                      className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-indigo-200 dark:border-indigo-900/30 rounded-xl hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all cursor-pointer text-indigo-600 dark:text-indigo-400 font-bold text-sm"
+                      className="flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-indigo-200 dark:border-indigo-900/30 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-colors cursor-pointer text-indigo-600 dark:text-indigo-400 font-semibold text-xs"
                     >
-                      <Camera className="h-5 w-5 mr-2" />
-                      Take Photo
+                      <Camera className="h-4 w-4" />
+                      <span>Take Photo</span>
                     </label>
+                  </div>
+                )}
+
+                {/* Format or Size Error Banner */}
+                {fileError && (
+                  <div className="mt-2 flex items-center justify-between p-2 px-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg text-xs text-red-600 dark:text-red-400">
+                    <div className="flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{fileError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFileError(null)}
+                      className="text-red-400 hover:text-red-600 dark:hover:text-red-300 p-0.5 ml-2"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Document Cards */}
+                {files.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {files.map((f, i) => (
+                      <DocumentCard 
+                        key={i}
+                        file={f.file}
+                        onRemove={() => removeFile(i)}
+                        onPreview={() => openPreview(f.file)}
+                        onToggleInclusion={() => toggleFileInclusion(i)}
+                        includeInExtraction={f.include}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
             </div>
 
-            {!isSmartMode && (
-              <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6 mt-6">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted">
-                      Clinical Notes (Optional)
-                    </label>
-                  </div>
-                  <RichTextEditor 
-                    value={notes} 
-                    onChange={setNotes} 
-                    placeholder="Add any clinical notes about this examination" 
-                    minHeight="150px"
-                  />
-                </div>
+            {/* 2. Clinical Notes Next */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted mb-1">
+                Clinical Notes <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
+              </label>
+              <RichTextEditor 
+                value={notes} 
+                onChange={setNotes} 
+                placeholder="Add clinical observations, diagnosis, or treatment notes..." 
+                minHeight="110px"
+              />
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between mb-2 px-1">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">
-                        Category
-                      </label>
-                      <AIAssistButton 
-                        taskType="magic_fill_examination"
-                        context={{ patientId }}
-                        showLabel={false}
-                        placeholder="Describe the visit to categorize..."
-                        onSuggestedData={(data) => {
-                          if (data.category) {
-                            setCategory(data.category);
-                          }
-                        }}
-                      />
-                    </div>
-                    <CategorySelector
-                      categories={dynamicCategories}
-                      selectedName={category}
-                      onSelect={(name) => setCategory(name)}
-                      onCreate={handleCreateCategory}
-                      placeholder={t('examination_detail.header.select_category')}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">{t('organizations.title')}</label>
-                    <OrganizationSelector
-                      organizations={availableOrganizations}
-                      selectedId={selectedOrganizationId}
-                      onSelect={(id) => setSelectedOrganizationId(id)}
-                      onCreate={handleCreateOrganization}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">
-                    Attending Doctors (Optional)
+            {/* 3. Category, Facility, Physician in a Compact Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+              {/* Category */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                    Category <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
                   </label>
-                  
-                  {discoveredDoctors.length > 0 && (
-                    <div className="mb-3 flex flex-wrap gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-                      {discoveredDoctors.map(name => (
-                        <button
-                          key={name}
-                          type="button"
-                          disabled={isCreatingDoctor}
-                          onClick={() => handleCreateDoctor(name)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-100 transition-all shadow-xs"
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          <span>Add suggested: Dr. {name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <DoctorSelector
-                    doctors={availableDoctors}
-                    selectedIds={selectedDoctorIds}
-                    onSelect={(id) => setSelectedDoctorIds(prev => [...prev, id])}
-                    onDeselect={(id) => setSelectedDoctorIds(prev => prev.filter(i => i !== id))}
-                    onCreateDoctor={handleCreateDoctor}
-                    placeholder={t('examinations.attending_physician')}
+                  <AIAssistButton 
+                    taskType="magic_fill_examination"
+                    context={{ patientId }}
+                    showLabel={false}
+                    placeholder="Describe visit to categorize..."
+                    onSuggestedData={(data) => {
+                      if (data.category) setCategory(data.category);
+                    }}
                   />
                 </div>
+                <CategorySelector
+                  categories={dynamicCategories}
+                  selectedName={category}
+                  onSelect={(name) => setCategory(name)}
+                  onCreate={handleCreateCategory}
+                  placeholder={t('examination_detail.header.select_category', 'Select category')}
+                />
               </div>
-            )}
 
-            {(!isBulkMode) && (
-              <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2">
-                    Patient Notes (Optional)
-                  </label>
-                  <textarea
-                    value={patientNotes}
-                    onChange={(e) => setPatientNotes(e.target.value)}
-                    placeholder="How do you feel? Why did you visit the doctor?"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-dark-border dark:text-dark-text outline-hidden min-h-[80px]"
-                  />
-                </div>
+              {/* Facility / Organization */}
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                  Medical Facility <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
+                </label>
+                <OrganizationSelector
+                  organizations={availableOrganizations}
+                  selectedId={selectedOrganizationId}
+                  onSelect={(id) => setSelectedOrganizationId(id)}
+                  onCreate={handleCreateOrganization}
+                />
               </div>
-            )}
+
+              {/* Attending Physician */}
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                  Attending Physician <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
+                </label>
+                
+                {discoveredDoctors.length > 0 && (
+                  <div className="mb-1 flex flex-wrap gap-1">
+                    {discoveredDoctors.map(name => (
+                      <button
+                        key={name}
+                        type="button"
+                        disabled={isCreatingDoctor}
+                        onClick={() => handleCreateDoctor(name)}
+                        className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded text-[11px] font-medium border border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-100 transition-colors"
+                      >
+                        <Sparkles className="w-2.5 h-2.5" />
+                        <span>+ Dr. {name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <DoctorSelector
+                  doctors={availableDoctors}
+                  selectedIds={selectedDoctorIds}
+                  onSelect={(id) => setSelectedDoctorIds(prev => [...prev, id])}
+                  onDeselect={(id) => setSelectedDoctorIds(prev => prev.filter(i => i !== id))}
+                  onCreateDoctor={handleCreateDoctor}
+                  placeholder={t('examinations.attending_physician', 'Select physician')}
+                />
+              </div>
+            </div>
+
+            {/* 4. Patient Notes */}
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                Patient Notes <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
+              </label>
+              <textarea
+                value={patientNotes}
+                onChange={(e) => setPatientNotes(e.target.value)}
+                placeholder="Patient observations, reported symptoms, or reasons for visit..."
+                rows={2}
+                className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 dark:border-dark-border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-bg/50 text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-gray-500 outline-hidden transition-all resize-y min-h-[60px]"
+              />
+            </div>
           </>
         )}
 
         {isSmartMode && !isBulkMode && (
-          <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
-            <div className="space-y-2">
+          <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-dark-border/60">
+            <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                  {t('examination_detail.header.category', 'Category')} <span className="text-gray-300 normal-case font-medium tracking-normal">(Optional — AI will auto-extract if not set)</span>
+                <label className="text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                  {t('examination_detail.header.category', 'Category')} <span className="text-gray-400 font-normal">(Optional — AI auto-extracts)</span>
                 </label>
                 <AIAssistButton
                   taskType="magic_fill_examination"
@@ -713,38 +846,68 @@ function ExaminationUpload() {
                 selectedName={category}
                 onSelect={(name) => setCategory(name)}
                 onCreate={handleCreateCategory}
-                placeholder={t('examination_detail.header.select_category')}
+                placeholder={t('examination_detail.header.select_category', 'Select category')}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2">
-                Patient Notes (Optional)
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                Patient Notes <span className="text-gray-400 font-normal">(Optional)</span>
               </label>
               <textarea
                 value={patientNotes}
                 onChange={(e) => setPatientNotes(e.target.value)}
-                placeholder="How do you feel? Why did you visit the doctor?"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-dark-border dark:text-dark-text outline-hidden min-h-[80px]"
+                placeholder="Patient observations, reported symptoms, or reasons for visit..."
+                rows={2}
+                className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 dark:border-dark-border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-bg/50 text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-gray-500 outline-hidden transition-all resize-y min-h-[60px]"
               />
             </div>
           </div>
         )}
 
-        <div className="flex space-x-4 pt-2">
+        {/* Save Error Alert Banner */}
+        {saveError && (
+          <div className="flex items-start justify-between p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-lg text-xs text-red-600 dark:text-red-400">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+              <div>
+                <p className="font-semibold">Examination Save Failed</p>
+                <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">{saveError}</p>
+                {createdExamId && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                    An examination record was created. Retrying will upload remaining files without duplicating the examination.
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSaveError(null)}
+              className="text-red-400 hover:text-red-600 dark:hover:text-red-300 p-0.5 ml-2 shrink-0"
+              aria-label="Dismiss error"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Action Buttons: Save & Cancel clearly visible */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 dark:border-dark-border/60">
           <button
             type="button"
             onClick={() => navigate('/examinations')}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-bg text-gray-700 dark:text-dark-text transition-colors"
+            className="px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-bg text-gray-700 dark:text-dark-text text-xs sm:text-sm font-medium transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={uploading}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs hover:shadow-md"
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-xs disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
           >
-            {uploading ? ((files.length > 0 || bulkFiles.length > 0) ? 'Creating & Uploading...' : 'Saving...') : (isBulkMode ? 'Save Examinations' : 'Save Examination')}
+            {uploading 
+              ? ((files.length > 0 || bulkFiles.length > 0) ? 'Creating & Uploading...' : 'Saving...') 
+              : (isBulkMode ? 'Save Examinations' : 'Save Examination')}
           </button>
         </div>
       </form>

@@ -142,55 +142,52 @@ function Header() {
   ];
 
   return (
-    <header className="bg-white dark:bg-dark-surface border-b border-gray-100 dark:border-dark-border px-4 md:px-6 py-2 md:py-2.5 safe-top flex items-center justify-between z-500 sticky top-0 shadow-xs transition-all duration-300">
-      <div className="flex items-center space-x-2 md:space-x-4 min-w-0">
+    <header className="bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-gray-200/80 dark:border-dark-border px-4 md:px-6 py-2 safe-top flex items-center justify-between z-500 sticky top-0 shadow-xs transition-colors">
+      <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
         {/* Mobile/Tablet Sidebar Toggle */}
         <button 
           onClick={toggleSidebar}
-          className="lg:hidden p-2 -ml-2 text-gray-400 hover:text-gray-600 dark:text-dark-muted dark:hover:text-dark-text transition-colors shrink-0"
+          className="lg:hidden p-1.5 -ml-1 text-gray-400 hover:text-gray-700 dark:text-dark-muted dark:hover:text-dark-text transition-colors shrink-0 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-bg"
         >
-          {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
         {/* Dynamic Header Section (Title/Icon/Back) */}
-        <div className="flex items-center bg-gray-50/50 dark:bg-dark-bg/30 p-1.5 pr-3 sm:pr-4 rounded-2xl border border-gray-100/50 dark:border-dark-border/20 backdrop-blur-xs shadow-xs min-w-0 max-w-sm sm:max-w-md">
+        <div className="flex items-center min-w-0 gap-2 sm:gap-3">
           {pageHeaderConfig?.showBackButton && (
-            <>
-              <button 
-                onClick={() => navigate(-1)}
-                className="hidden sm:flex w-9 h-9 items-center justify-center text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-all hover:bg-white dark:hover:bg-dark-surface rounded-xl active:scale-90 group/back ml-0.5 shrink-0"
-                title="Go Back"
-              >
-                <ArrowLeft className="w-5 h-5 group-hover/back:-translate-x-1 transition-transform" />
-              </button>
-              <div className="hidden sm:block w-px h-6 bg-gray-200/60 dark:bg-dark-border/60 mx-2 shrink-0" />
-            </>
+            <button 
+              onClick={() => navigate(-1)}
+              className="flex w-8 h-8 items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors hover:bg-gray-100 dark:hover:bg-dark-bg/80 rounded-lg shrink-0"
+              title="Go Back"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
           )}
 
-          <div className="flex items-center space-x-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {pageHeaderConfig?.icon && (
-              <div className={`hidden sm:flex w-9 h-9 ${isValidElement(pageHeaderConfig.icon) && pageHeaderConfig.icon.type === 'img' ? '' : 'bg-blue-600'} rounded-xl items-center justify-center text-white border border-blue-500/20 shadow-md shrink-0 overflow-hidden`}>
+              <div className={`hidden sm:flex w-8 h-8 ${isValidElement(pageHeaderConfig.icon) && pageHeaderConfig.icon.type === 'img' ? '' : 'bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'} rounded-lg items-center justify-center shrink-0 overflow-hidden`}>
                 {isValidElement(pageHeaderConfig.icon) && pageHeaderConfig.icon.type === 'img' ? (
                   pageHeaderConfig.icon
                 ) : (
-                  cloneElement(pageHeaderConfig.icon as ReactElement, { className: "w-5 h-5" })
+                  cloneElement(pageHeaderConfig.icon as ReactElement, { className: "w-4 h-4" })
                 )}
               </div>
             )}
             <div className="flex flex-col min-w-0">
               {pageHeaderConfig?.breadcrumbs && (
-                <div className="hidden lg:block">
+                <div className="hidden lg:block -mb-0.5">
                   <Breadcrumbs 
                     items={pageHeaderConfig.breadcrumbs} 
                     currentLabel={pageHeaderConfig.title}
                   />
                 </div>
               )}
-              <h1 className="text-sm sm:text-base md:text-lg font-black text-brand-navy dark:text-dark-text tracking-tight leading-tight sm:leading-none wrap-break-word">
+              <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-dark-text tracking-tight truncate">
                 {getPageTitle()}
               </h1>
               {pageHeaderConfig?.subtitle && (
-                <div className="hidden md:block text-gray-400 dark:text-dark-muted text-[9px] font-bold uppercase tracking-[0.2em] mt-1 opacity-70 leading-normal" title={typeof pageHeaderConfig.subtitle === 'string' ? pageHeaderConfig.subtitle : undefined}>
+                <div className="hidden md:block text-xs text-gray-500 dark:text-dark-muted font-normal truncate" title={typeof pageHeaderConfig.subtitle === 'string' ? pageHeaderConfig.subtitle : undefined}>
                   {pageHeaderConfig.subtitle}
                 </div>
               )}
@@ -199,20 +196,20 @@ function Header() {
         </div>
       </div>
 
-      {/* Center Section: Removed old global search to save space */}
-      <div className="flex-1 max-w-2xl mx-6 hidden md:flex items-center justify-center">
+      {/* Center Section spacer */}
+      <div className="flex-1 max-w-2xl mx-4 hidden md:flex items-center justify-center">
       </div>
 
-      {/* Right Section: Global Tools ONLY (Actions moved to Toolbar) */}
-      <div className="flex items-center space-x-2 md:space-x-4">
+      {/* Right Section: Global Tools ONLY */}
+      <div className="flex items-center space-x-2 md:space-x-3">
         {/* Mobile Search Toggle */}
         <button 
-          className={`md:hidden p-2 transition-colors relative ${pageSearchTerm && !isSearchLauncherOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-500'}`}
+          className={`md:hidden p-1.5 transition-colors relative rounded-lg hover:bg-gray-100 dark:hover:bg-dark-bg ${pageSearchTerm && !isSearchLauncherOpen ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600'}`}
           onClick={() => useUIStore.getState().setSearchLauncherOpen(true)}
         >
-          <Search className="h-5 w-5" />
+          <Search className="h-4 w-4" />
           {pageSearchTerm && !isSearchLauncherOpen && (
-            <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full border border-white dark:border-dark-surface" />
+            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-blue-500 rounded-full" />
           )}
         </button>
 
@@ -221,18 +218,18 @@ function Header() {
           <PatientSelect />
         </div>
 
-        <div className="flex items-center space-x-1 md:space-x-2">
+        <div className="flex items-center space-x-1.5">
           {/* Desktop Search Launcher Button */}
           <div className="hidden md:flex items-center">
             {pageSearchTerm && !isSearchLauncherOpen ? (
-              <div className="flex items-stretch bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl min-h-[36px]">
+              <div className="flex items-stretch bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg min-h-[32px]">
                 <button
                   onClick={() => useUIStore.getState().setSearchLauncherOpen(true)}
-                  className="flex items-center pl-2 pr-1.5 py-1 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-l-xl transition-colors text-left"
+                  className="flex items-center pl-2 pr-1.5 py-0.5 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-l-lg transition-colors text-left"
                   title={t('common.edit_search', 'Edit search')}
                 >
-                  <Search className="w-3.5 h-3.5 shrink-0 mt-0.5 self-start" />
-                  <span className="text-[10px] sm:text-xs font-bold w-16 sm:w-24 md:w-32 whitespace-normal wrap-break-word line-clamp-2 leading-tight ml-1.5">
+                  <Search className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-xs font-medium w-16 sm:w-24 md:w-28 truncate ml-1.5">
                     {pageSearchTerm}
                   </span>
                 </button>
@@ -242,33 +239,33 @@ function Header() {
                     e.stopPropagation();
                     setPageSearchTerm('');
                   }}
-                  className="flex items-center justify-center px-1.5 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-r-xl transition-colors text-blue-400 shrink-0"
+                  className="flex items-center justify-center px-1.5 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-r-lg transition-colors text-blue-400 shrink-0"
                   title={t('common.clear_search', 'Clear search')}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3 h-3" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => useUIStore.getState().setSearchLauncherOpen(true)}
-                className="flex items-center space-x-2 px-3 h-9 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border hover:border-gray-200 dark:hover:border-gray-700 rounded-xl text-gray-500 dark:text-dark-muted transition-colors active:scale-95 group"
+                className="flex items-center space-x-1.5 px-2.5 h-8 bg-gray-50 dark:bg-dark-bg/60 border border-gray-200 dark:border-dark-border hover:border-gray-300 dark:hover:border-dark-border-strong rounded-lg text-gray-500 dark:text-dark-muted transition-colors group"
                 title={t('common.search', 'Search')}
               >
-                <Search className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
-                <span className="text-xs font-medium mr-1">{t('common.search', 'Search...')}</span>
+                <Search className="w-3.5 h-3.5 group-hover:text-blue-500 transition-colors" />
+                <span className="text-xs font-normal">{t('common.search', 'Search...')}</span>
               </button>
             )}
           </div>
 
           <button 
             onClick={() => isMobile ? navigate('/ai-assistant') : toggleAIDrawer()}
-            className="relative p-2 text-indigo-400 hover:text-indigo-600 dark:text-indigo-500/80 dark:hover:text-indigo-400 transition-all hover:scale-110 active:scale-95"
+            className="relative p-1.5 text-gray-500 hover:text-indigo-600 dark:text-dark-muted dark:hover:text-indigo-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-dark-bg"
             title="AI Assistant"
           >
-            <Sparkles className="h-5 w-5" />
-            <span className="absolute top-0.5 right-0.5 flex h-2 w-2">
+            <Sparkles className="h-4 w-4" />
+            <span className="absolute top-1 right-1 flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
             </span>
           </button>
 

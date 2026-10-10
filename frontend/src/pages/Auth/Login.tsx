@@ -339,23 +339,23 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-bg">
-      <div className="max-w-md w-full bg-white dark:bg-dark-surface rounded-lg shadow-md p-8">
-        <div className="text-center mb-8">
-          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-16 h-16 mx-auto mb-4" alt="MediBot Logo" />
-          <h1 className="text-3xl font-bold text-blue-600">MediBot</h1>
-          <p className="text-gray-600 dark:text-dark-muted mt-2">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-bg p-4">
+      <div className="max-w-md w-full bg-white dark:bg-dark-surface rounded-2xl shadow-xl border border-gray-200/80 dark:border-dark-border p-8 sm:p-10">
+        <div className="text-center mb-7">
+          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-12 h-12 mx-auto mb-3" alt="MediBot Logo" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-dark-text tracking-tight">MediBot</h1>
+          <p className="text-sm text-gray-500 dark:text-dark-muted mt-1.5">
             {t('auth.sign_in_title')}
           </p>
         </div>
 
         {errorBanner}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2"
+              className="block text-xs font-semibold text-gray-700 dark:text-dark-muted uppercase tracking-wider mb-1.5"
             >
               {t('auth.email_label')}
             </label>
@@ -368,7 +368,7 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
                 setEmail(e.target.value);
                 setError(null);
               }}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-dark-border dark:text-dark-text"
+              className="w-full px-3.5 py-2.5 bg-gray-50/50 dark:bg-dark-bg/60 border border-gray-200 dark:border-dark-border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-dark-text text-sm transition-colors"
               placeholder="you@example.com"
             />
           </div>
@@ -376,7 +376,7 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2"
+              className="block text-xs font-semibold text-gray-700 dark:text-dark-muted uppercase tracking-wider mb-1.5"
             >
               {t('auth.password_label')}
             </label>
@@ -389,7 +389,7 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
                 setPassword(e.target.value);
                 setError(null);
               }}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-dark-border dark:text-dark-text"
+              className="w-full px-3.5 py-2.5 bg-gray-50/50 dark:bg-dark-bg/60 border border-gray-200 dark:border-dark-border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-dark-text text-sm transition-colors"
               placeholder="••••••••"
             />
           </div>
@@ -397,22 +397,22 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-xs focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? t('auth.signing_in') : t('auth.sign_in_button')}
           </button>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-500 dark:text-dark-muted">
+          <div className="text-center pt-2">
+            <p className="text-xs text-gray-500 dark:text-dark-muted">
               {t('auth.no_account', 'Need an account?')}
               <br />
-              <span className="text-xs">
+              <span className="text-[11px] opacity-80">
                 {t('auth.invite_only_hint', 'Ask your administrator for an invite, or set up a new install.')}
               </span>
             </p>
           </div>
 
-          <div className="text-center border-t border-gray-100 dark:border-white/5 pt-4">
+          <div className="text-center border-t border-gray-100 dark:border-dark-border pt-4">
             <AppVersion />
           </div>
         </form>

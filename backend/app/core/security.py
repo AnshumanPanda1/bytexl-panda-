@@ -316,9 +316,9 @@ async def authenticate_session_token(token: str) -> TokenData:
         and not verify_access_token(token)
     ):
         return TokenData(
-            sub="dev-admin@healthassistant.local",
-            user_id=UUID("00000000-0000-0000-0000-000000000001"),
-            tenant_id=UUID("00000000-0000-0000-0000-000000000001"),
+            sub="admin@healthassistant.local",
+            user_id=UUID("0a2a337a-b275-4ce6-9c21-576d48b12c52"),
+            tenant_id=UUID("11111111-1111-4111-8111-111111111111"),
             role=Role.SYSTEM_ADMIN.value,
             auth_mode=AUTH_MODE_LOCAL_BOOT,
             token_kind=SESSION_TOKEN_KIND,

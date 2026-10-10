@@ -33,7 +33,7 @@ from app.models.user_model import UserModel
 from app.models.fhir.patient import Patient, Observation
 from app.models.fhir.medication import Medication, MedicationStatus
 from app.models.clinical_event import ClinicalEvent
-from app.models.enums import ClinicalEventStatus, CodingSystem
+from app.models.enums import ClinicalEventStatus, CodingSystem, Gender
 from app.models.health_summary_model import PatientHealthSummary
 
 
@@ -72,6 +72,7 @@ async def seed_test_patients():
 
             # Check existing patient
             p_res = await session.execute(select(Patient).where(Patient.id == pid))
+            gender_val = Gender(p_info.get("gender", "unknown").upper()) if p_info.get("gender") else Gender.UNKNOWN
             patient = p_res.scalar_one_or_none()
             if not patient:
                 patient = Patient(
@@ -79,9 +80,8 @@ async def seed_test_patients():
                     tenant_id=tenant_id,
                     mrn=p_info.get("mrn"),
                     name=p_info["name"],
-                    gender=p_info.get("gender"),
+                    gender=gender_val,
                     birth_date=date.fromisoformat(p_info["birth_date"]) if p_info.get("birth_date") else None,
-                    age=p_info.get("age"),
                     deceased_boolean=False,
                     address=p_info.get("address"),
                     telecom=p_info.get("telecom"),
@@ -91,8 +91,7 @@ async def seed_test_patients():
             else:
                 patient.name = p_info["name"]
                 patient.mrn = p_info.get("mrn")
-                patient.age = p_info.get("age")
-                patient.gender = p_info.get("gender")
+                patient.gender = gender_val
 
             await session.flush()
 
@@ -100,7 +99,7 @@ async def seed_test_patients():
             await session.execute(delete(Observation).where(Observation.patient_id == pid))
             await session.execute(delete(Medication).where(Medication.patient_id == pid))
             await session.execute(delete(ClinicalEvent).where(ClinicalEvent.patient_id == pid))
-            await session.execute(delete(HealthSummaryModel).where(HealthSummaryModel.patient_id == pid))
+            await session.execute(delete(PatientHealthSummary).where(PatientHealthSummary.patient_id == pid))
 
             # Add Conditions
             for c in p_info.get("conditions", []):
@@ -109,7 +108,7 @@ async def seed_test_patients():
                     tenant_id=tenant_id,
                     title=c["title"],
                     code=c.get("code"),
-                    coding_system=CodingSystem.ICD10 if c.get("code") else None,
+                    coding_system=CodingSystem.CUSTOM if c.get("code") else None,
                     status=ClinicalEventStatus.ACTIVE if c.get("status") == "active" else ClinicalEventStatus.RESOLVED,
                     review_status="verified",
                     confidence=0.99,
@@ -146,6 +145,7 @@ async def seed_test_patients():
                 obs = Observation(
                     patient_id=pid,
                     tenant_id=tenant_id,
+                    subject={"reference": f"Patient/{pid}"},
                     status="final",
                     code={"text": b["name"]},
                     value_quantity={"value": b["value"], "unit": b["unit"]},

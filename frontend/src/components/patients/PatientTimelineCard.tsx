@@ -91,15 +91,15 @@ export function PatientTimelineCard({ patientId }: PatientTimelineCardProps) {
   ];
 
   return (
-    <div className="bg-white dark:bg-dark-surface rounded-3xl shadow-xs border border-gray-100 dark:border-dark-border p-6 lg:p-8 space-y-6">
+    <div className="bg-white dark:bg-dark-surface rounded-xl shadow-xs border border-gray-200/80 dark:border-dark-border p-5 lg:p-6 space-y-5">
       {/* Header & Filter Pills */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-dark-border pb-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-gradient-to-tr from-blue-500 to-cyan-500 rounded-2xl text-white shadow-md shadow-blue-500/20">
-            <Clock className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-dark-border pb-4">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-dark-text tracking-tight">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-dark-text tracking-tight">
               Chronological Health Timeline
             </h3>
             <p className="text-xs text-gray-500 dark:text-dark-muted">
@@ -109,15 +109,15 @@ export function PatientTimelineCard({ patientId }: PatientTimelineCardProps) {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-gray-100 dark:bg-dark-bg p-1 rounded-xl text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-1 bg-gray-100 dark:bg-dark-bg p-0.5 rounded-lg border border-gray-200 dark:border-dark-border text-xs font-medium">
           {categories.map((c) => (
             <button
               key={c.id}
               onClick={() => setSelectedCategory(c.id)}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-md transition-colors ${
                 selectedCategory === c.id
-                  ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white shadow-xs'
-                  : 'text-gray-600 dark:text-dark-muted hover:text-gray-900'
+                  ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white shadow-xs font-semibold'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-dark-muted'
               }`}
             >
               {c.label}
@@ -128,24 +128,24 @@ export function PatientTimelineCard({ patientId }: PatientTimelineCardProps) {
 
       {/* Timeline Stream */}
       {loading ? (
-        <div className="py-12 flex items-center justify-center space-x-3 text-gray-400">
-          <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
-          <span className="text-sm font-medium">Loading chronological timeline...</span>
+        <div className="py-10 flex items-center justify-center space-x-2.5 text-gray-400">
+          <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+          <span className="text-xs font-medium">Loading chronological timeline...</span>
         </div>
       ) : error ? (
-        <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 text-red-600 text-xs">
+        <div className="p-3.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 text-red-600 text-xs">
           {error}
         </div>
       ) : items.length === 0 ? (
-        <div className="py-12 text-center text-gray-400 space-y-2">
-          <Calendar className="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600" />
+        <div className="py-10 text-center text-gray-400 space-y-1.5">
+          <Calendar className="w-7 h-7 mx-auto text-gray-300 dark:text-gray-600" />
           <p className="text-sm font-medium">No timeline events recorded yet.</p>
           <p className="text-xs text-gray-400">
             Uploaded clinical documents and imported records will appear here automatically.
           </p>
         </div>
       ) : (
-        <div className="relative pl-6 space-y-6 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200 dark:before:bg-dark-border">
+        <div className="relative pl-6 space-y-4 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-px before:bg-gray-200 dark:before:bg-dark-border">
           {items.map((item) => {
             const isExpanded = expandedId === item.id;
             return (
@@ -160,18 +160,18 @@ export function PatientTimelineCard({ patientId }: PatientTimelineCardProps) {
                 </div>
 
                 {/* Event Card */}
-                <div className="ml-3 p-4 rounded-2xl border border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-dark-bg/30 hover:border-blue-200 dark:hover:border-blue-900/50 transition-all space-y-2">
+                <div className="ml-3 p-3.5 rounded-xl border border-gray-200/60 dark:border-dark-border bg-gray-50/50 dark:bg-dark-bg/30 hover:border-blue-200 dark:hover:border-blue-900/50 transition-colors space-y-1.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider capitalize">
+                      <span className="text-[11px] font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider capitalize">
                         {item.event_type}
                       </span>
                       {item.review_status && (
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md uppercase ${
                             item.review_status === 'verified'
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                              : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                           }`}
                         >
                           {item.review_status}
@@ -183,7 +183,7 @@ export function PatientTimelineCard({ patientId }: PatientTimelineCardProps) {
                     </span>
                   </div>
 
-                  <h4 className="text-sm font-bold text-gray-900 dark:text-dark-text leading-tight">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-dark-text leading-tight">
                     {item.title}
                   </h4>
 
@@ -193,17 +193,17 @@ export function PatientTimelineCard({ patientId }: PatientTimelineCardProps) {
 
                   {/* Expand details trigger */}
                   {item.details && Object.keys(item.details).length > 0 && (
-                    <div className="pt-1">
+                    <div className="pt-0.5">
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                        className="flex items-center space-x-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                        className="flex items-center space-x-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         <span>{isExpanded ? 'Hide details' : 'View details'}</span>
                         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
 
                       {isExpanded && (
-                        <div className="mt-2 p-3 rounded-xl bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border text-xs space-y-1">
+                        <div className="mt-2 p-2.5 rounded-lg bg-white dark:bg-dark-surface border border-gray-200/60 dark:border-dark-border text-xs space-y-1">
                           {Object.entries(item.details).map(([k, v]) => (
                             <div key={k} className="flex justify-between text-gray-600 dark:text-dark-muted">
                               <span className="font-medium capitalize">{k.replace('_', ' ')}:</span>

@@ -369,7 +369,7 @@ function DocumentList() {
         )}
         
         <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-xs text-white px-4 py-2 rounded-lg max-w-[60%] pointer-events-none">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
             {new Date(selectedDoc.created_at).toLocaleDateString()}
           </p>
           <p className="font-bold truncate">{selectedDoc.filename}</p>
@@ -392,13 +392,13 @@ function DocumentList() {
           <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center bg-black/60 backdrop-blur-xs rounded-full p-1 border border-white/10 z-10">
             <button className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"><ChevronLeft className="w-5 h-5" /></button>
             <div className="px-6 text-center">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('documents_explorer.scan')}</p>
+              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">{t('documents_explorer.scan')}</p>
               <p className="font-bold text-white text-sm">01/01</p>
             </div>
             <button className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"><ChevronRight className="w-5 h-5" /></button>
             <div className="w-px h-8 bg-white/20 mx-2"></div>
             <div className="px-4 text-center min-w-[100px]">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('documents_explorer.status')}</p>
+              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">{t('documents_explorer.status')}</p>
               <div className="flex flex-col items-center">
                 <p className="font-bold text-white text-sm uppercase">
                   {selectedDoc.status}
@@ -437,7 +437,7 @@ function DocumentList() {
             className="flex-1 min-w-[200px] flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 p-5 rounded-2xl border border-blue-100 dark:border-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all group text-left active:scale-95"
           >
             <div>
-              <p className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-1">{t('common.details')}</p>
+              <p className="text-[10px] font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wide mb-1">{t('common.details')}</p>
               <p className="font-bold text-blue-700 dark:text-blue-300">{t('documents_explorer.full_details')}</p>
             </div>
             <ExternalLink className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
@@ -445,11 +445,11 @@ function DocumentList() {
 
           <button 
             onClick={(e) => handleDownload(e, selectedDoc.id, selectedDoc.filename)}
-            className="flex-1 min-w-[200px] flex items-center justify-between bg-gray-50 dark:bg-dark-bg p-5 rounded-2xl border border-gray-100 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-border transition-all group text-left active:scale-95"
+            className="flex-1 min-w-[200px] flex items-center justify-between bg-gray-50 dark:bg-dark-bg p-5 rounded-xl border border-gray-200/80 dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-border transition-all group text-left active:scale-95"
             title={t('documents_explorer.download_file')}
           >
             <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest mb-1">{t('common.download')}</p>
+              <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase tracking-wide mb-1">{t('common.download')}</p>
               <p className="font-bold text-gray-700 dark:text-dark-text">{t('documents_explorer.download_file')}</p>
             </div>
             <Download className="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
@@ -462,7 +462,7 @@ function DocumentList() {
        <div className="w-20 h-20 bg-gray-100 dark:bg-dark-bg rounded-full flex items-center justify-center mb-6">
           <FileText className="w-10 h-10" />
        </div>
-       <p className="text-lg font-black uppercase tracking-widest">{t('documents_explorer.select_to_view')}</p>
+       <p className="text-sm font-medium text-gray-400 dark:text-dark-muted">{t('documents_explorer.select_to_view')}</p>
     </div>
   );
 
@@ -489,7 +489,7 @@ function DocumentList() {
                >
                   <div className="flex items-center space-x-2">
                      <Filter className={`w-4 h-4 ${!fileTypeFilters.includes('All') ? 'text-blue-500' : 'text-gray-400'}`} />
-                     <span className="text-sm font-bold text-gray-700 dark:text-dark-text whitespace-nowrap hidden sm:inline-block">
+                     <span className="text-xs font-medium text-gray-700 dark:text-dark-text whitespace-nowrap hidden sm:inline-block">
                         {fileTypeFilters.includes('All') ? t('common.file_type') : `${fileTypeFilters.length} Types`}
                      </span>
                   </div>
@@ -500,14 +500,14 @@ function DocumentList() {
                  <>
                    {/* Removed the fixed inset-0 overlay in favor of document click listener */}
                    <div 
-                     className="absolute top-full left-0 sm:right-0 sm:left-auto mt-2 w-full sm:w-48 bg-white dark:bg-dark-surface rounded-2xl border border-gray-100 dark:border-dark-border shadow-xl z-30 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                     className="absolute top-full left-0 sm:right-0 sm:left-auto mt-2 w-full sm:w-48 bg-white dark:bg-dark-surface rounded-xl border border-gray-200 dark:border-dark-border shadow-xl z-30 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                      onClick={(e) => e.stopPropagation()} // Prevent clicking inside the menu from closing it
                    >
                       {['All', 'PDF', 'Images', 'DICOM', 'Text'].map((type) => (
                         <button
                           key={type}
                           onClick={() => toggleFileType(type)}
-                          className={`w-full flex items-center justify-between px-4 py-3 text-sm font-bold transition-colors ${fileTypeFilters.includes(type) ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-bg'}`}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium transition-colors ${fileTypeFilters.includes(type) ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-gray-600 dark:text-dark-muted hover:bg-gray-50 dark:hover:bg-dark-bg'}`}
                         >
                           <div className="flex items-center space-x-3">
                             {type === 'All' && <Grid className="w-4 h-4" />}
