@@ -77,6 +77,29 @@ _INLINE_BLOCKED_EXTENSIONS: frozenset[str] = frozenset(
 )
 
 
+def _sanitize_filename(filename: str | None) -> str:
+    """Sanitize client-supplied filename to prevent path traversal, control chars,
+    and DB column overflow (>255 chars).
+    """
+    if not filename:
+        return "unnamed_document"
+    # Take only the final path component after slashes and backslashes (prevents path traversal)
+    clean = filename.replace("\\", "/").split("/")[-1].strip()
+    # Strip null bytes and non-printable characters
+    clean = "".join(c for c in clean if c.isprintable() and c != "\x00")
+    if not clean:
+        return "unnamed_document"
+
+    # Enforce 255 character limit while preserving the extension
+    if len(clean) > 255:
+        ext = Path(clean).suffix
+        stem = Path(clean).stem
+        max_stem_len = 255 - len(ext)
+        clean = f"{stem[:max_stem_len]}{ext}"
+
+    return clean
+
+
 def _validate_upload_extension(filename: str | None) -> str:
     """Return the lowercased extension if allowed, else raise 400."""
     name = filename or "unknown"
@@ -267,12 +290,38 @@ async def ingest_document_bytes(
             )
             return existing
 
-    doc_id = uuid4()
-    file_extension = _validate_upload_extension(filename)
-    safe_filename = f"{doc_id}{file_extension}"
+    # Reject empty / 0-byte uploads
+    if not content or len(content) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty (0 bytes).")
 
-    tenant_dir = HA_UPLOAD_DIR / str(tenant_id)
+    # Enforce maximum upload size cap
+    max_bytes = settings.MAX_UPLOAD_SIZE * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum allowed size is {settings.MAX_UPLOAD_SIZE} MB.",
+        )
+
+    clean_filename = _sanitize_filename(filename)
+    file_extension = _validate_upload_extension(clean_filename)
+
+    # Validate tenant ID format and ensure storage path stays within upload root
+    try:
+        tenant_uuid = tenant_id if isinstance(tenant_id, UUID) else UUID(str(tenant_id))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid tenant ID format.")
+
+    tenant_dir = (HA_UPLOAD_DIR / str(tenant_uuid)).resolve()
+    upload_root = HA_UPLOAD_DIR.resolve()
+    try:
+        tenant_dir.relative_to(upload_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tenant storage path escapes upload root.")
+
     tenant_dir.mkdir(parents=True, exist_ok=True)
+
+    doc_id = uuid4()
+    safe_filename = f"{doc_id}{file_extension}"
     file_path = tenant_dir / safe_filename
 
     try:
@@ -284,15 +333,40 @@ async def ingest_document_bytes(
         logger.error(f"Failed to save file: {e}")
         raise HTTPException(status_code=500, detail="Failed to save uploaded file")
 
+    patient_uuid = None
+    if patient_id and str(patient_id).strip():
+        try:
+            patient_uuid = patient_id if isinstance(patient_id, UUID) else UUID(str(patient_id))
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid patient ID format.")
+
+    exam_uuid = None
+    if examination_id and str(examination_id).strip():
+        try:
+            exam_uuid = examination_id if isinstance(examination_id, UUID) else UUID(str(examination_id))
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid examination ID format.")
+
+    category_uuid = None
+    if category_concept_id and str(category_concept_id).strip():
+        try:
+            category_uuid = (
+                category_concept_id
+                if isinstance(category_concept_id, UUID)
+                else UUID(str(category_concept_id))
+            )
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid category concept ID format.")
+
     document = DocumentModel(
         id=doc_id,
-        filename=filename,
+        filename=clean_filename,
         file_path=str(file_path),
         owner_id=owner_id,
-        tenant_id=tenant_id,
-        patient_id=UUID(str(patient_id)) if patient_id else None,
-        examination_id=UUID(str(examination_id)) if examination_id else None,
-        category_concept_id=(UUID(str(category_concept_id)) if category_concept_id else None),
+        tenant_id=tenant_uuid,
+        patient_id=patient_uuid,
+        examination_id=exam_uuid,
+        category_concept_id=category_uuid,
         include_in_extraction=include_in_extraction,
         status="uploaded",
         progress=0,
@@ -522,7 +596,7 @@ async def trigger_extraction(document_id: str, db: AsyncSession) -> str:
     document = await get_document(document_id, db)
 
     if not document:
-        raise ValueError(f"Document {document_id} not found")
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
 
     cast(Any, document).status = "processing"
     cast(Any, document).progress = 10
@@ -546,6 +620,16 @@ async def trigger_extraction(document_id: str, db: AsyncSession) -> str:
 
         logger = logging.getLogger(__name__)
         logger.error(f"Could not trigger Celery task: {e}")
+        cast(Any, document).status = "failed"
+        cast(Any, document).progress = 0
+        cast(Any, document).error_message = (
+            f"Task queue unavailable. Failed to schedule extraction: {e}"
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=503,
+            detail="Task queue unavailable. Failed to schedule extraction.",
+        )
 
     return f"ocr-{document_id}"
 
