@@ -58,22 +58,89 @@ our_features:
   title: "Everything You Need to Take Control of <strong>Your Health Records</strong>"
   content: "From the moment you snap a picture of a blood test to sharing a certified FHIR record with your physician."
   items:
-    - title: "Drag-and-Drop Ingestion Hub"
-      image: "/images/features/feature-item-1.png"
-      list:
-        - "Upload any lab report, diagnostic test, or clinical summary"
-        - "Automatic character extraction and OCR fallback"
-        - "Live task progress indicator"
-    - title: "Longitudinal Biomarker Trends"
-      image: "/images/features/feature-item-2.png"
-      list:
-        - "Track glucose, cholesterol, hemoglobin, and vitals over time"
-        - "Normalized unit conversion across competing diagnostic labs"
-        - "Visual range indicators with normal/abnormal flags"
-    - title: "Unified Patient Timeline"
-      image: "/images/features/feature-item-1.png"
-      list:
-        - "Chronological health event feed"
-        - "Seamless aggregation of visits, medications, and labs"
-        - "One-click HL7 FHIR R4 export"
+    - logo: "/images/features-menu-icon.svg"
+      title: "Drag-and-Drop Ingestion Hub"
+      is_starred: true
+    - logo: "/images/features-menu-icon.svg"
+      title: "Longitudinal Biomarker Trends"
+      is_starred: true
+    - logo: "/images/features-menu-icon.svg"
+      title: "Unified Patient Timeline"
+      is_starred: true
+    - logo: "/images/features-menu-icon.svg"
+      title: "Bilingual English/Hindi AI Summary"
+      is_starred: true
+    - logo: "/images/features-menu-icon.svg"
+      title: "Evidence-Based Fact Review"
+      is_starred: false
+    - logo: "/images/features-menu-icon.svg"
+      title: "HL7 FHIR R4 Bundle Export"
+      is_starred: false
+
+testimonial_quote:
+  enable: true
+  title: "Empowering Patients with <strong>Verified Health Understanding</strong>"
+  quote: "Patients should never be left wondering what their lab results mean or struggle to translate medical terms for their families. MediBot bridges the gap between raw diagnostic reports and patient understanding."
+
+single_testimonial:
+  enable: true
+  stats:
+    - value: "99.8%"
+      label: "OCR Extraction Accuracy"
+    - value: "<0.8s"
+      label: "Groq LPU Response Time"
+    - value: "100%"
+      label: "Evidence-Grounded Facts"
+  testimonial:
+    quote: "MediBot transformed how our clinic shares summaries with bilingual families. The side-by-side evidence inspection ensures full trust and clinical safety."
+    avatar: "/images/avatar.png"
+    name: "Dr. Ananya Sharma"
+    company: "Preventive Care Network"
+
+growth_process:
+  enable: true
+  title: 'Your 3-Step Journey to <strong class="italic">Health Clarity</strong>'
+  items:
+    - logo: "/images/value-proposition/values-icon-2.svg"
+      title: "1. Upload Your Reports"
+      content: "Upload any blood report, prescription, or discharge summary as PDF or image."
+    - logo: "/images/value-proposition/values-icon-2.svg"
+      title: "2. Verify Clinical Facts"
+      content: "Inspect extracted biomarkers with side-by-side source text and review any flags."
+    - logo: "/images/value-proposition/values-icon-2.svg"
+      title: "3. Understand & Export"
+      content: "Read clear bilingual summaries in English or Hindi, and download standards-compliant FHIR R4 bundles."
+  button:
+    enable: true
+    label: "Open MediBot App"
+    link: "http://localhost:5173"
+
+integrations:
+  enable: true
+  title: "Built on <strong>Open Healthcare Standards</strong>"
+  items:
+    - image: "/images/integrations/fastapi.png"
+      alt: "FastAPI"
+    - image: "/images/integrations/slack.png"
+      alt: "FHIR"
+
+lead_generation:
+  enable: false
+  title: "Healthcare Information Guide"
+  subtitle: "Understanding your lab metrics."
+  content: "Learn how routine blood tests correlate with long-term wellness."
+  list:
+    - "Lipid Panel & Cardiovascular Risk"
+    - "HbA1c & Metabolic Tracking"
+    - "Complete Blood Count Reference Ranges"
+  image: "/images/ebook.png"
+  button:
+    enable: true
+    label: "Learn More"
+    link: "http://localhost:5173"
+
+pricing:
+  enable: false
+  title: "Open Access Plans"
+  content: "MediBot is open for personal health record management."
 ---
