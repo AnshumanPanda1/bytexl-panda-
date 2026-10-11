@@ -236,12 +236,6 @@ class MedicalProcessingService:
                                 metadata.examination_date, "%Y-%m-%d"
                             ).date()
 
-        # Fallback to today only if still missing
-        if not exam.examination_date:
-            exam.examination_date = today
-            await self.db.commit()
-            await self.db.refresh(exam)
-
                     if metadata.category:
                         category_entity = await self.resolve_category(
                             metadata.category, exam.tenant_id
@@ -307,6 +301,12 @@ class MedicalProcessingService:
             except Exception as e:
                 logger.error(f"Failed to auto-extract metadata: {e}")
                 await task_logger.log_error(e, "metadata_extraction")
+
+        # Fallback to today only if still missing
+        if not exam.examination_date:
+            exam.examination_date = today
+            await self.db.commit()
+            await self.db.refresh(exam)
 
         # 2. Get Context & NLP Extractor
         context = await self.get_clinical_context(exam)
