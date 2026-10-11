@@ -143,6 +143,21 @@ docker compose -f docker/docker-compose.yml up -d
 
 ---
 
+## Cloud Deployment & Live URLs
+
+- **Production Frontend / App**: [https://tattva-frontend.livelycliff-59816b1f.eastasia.azurecontainerapps.io](https://tattva-frontend.livelycliff-59816b1f.eastasia.azurecontainerapps.io)
+- **Infrastructure**: Azure Container Apps (`rg-tattva-prod`)
+  - `tattva-backend`: FastAPI backend + Alembic migrations + FHIR Engine
+  - `tattva-frontend`: React 18 + Vite PWA + TailwindCSS
+  - `tattva-worker`: Celery background worker for asynchronous OCR and NLP extraction
+  - `tattva-db`: Managed PostgreSQL 16
+  - `tattva-redis`: Redis message broker and caching layer
+- **Demo Credentials**:
+  - Admin Email: `admin@tattva.local`
+  - Password: `TattvaAdmin2026!`
+
+---
+
 ## Live Demo Golden Path
 
 1. **Upload**: Drop a synthetic lab report (PDF/image) into the upload dropzone.
@@ -151,6 +166,7 @@ docker compose -f docker/docker-compose.yml up -d
 4. **Timeline**: Navigate to the patient timeline to visualize the chronological observation history.
 5. **FHIR Export**: Click **Export FHIR Bundle** to download standard HL7 FHIR JSON.
 6. **Mock ABHA**: Open the simulated ABHA workflow to preview and import records with audit deduplication.
+7. **Hero Patient Story**: One-click demo seed button (`/api/v1/admin/seed-hero-patient`) populating Rajesh Kumar Sharma's longitudinal clinical data across Apollo, Fortis, and Manipal hospitals.
 
 ---
 
@@ -162,4 +178,4 @@ MediBot is developed for hackathon demonstration, research, and informational we
 
 ## Team & Credits
 
-Developed with by **Anshuman, Tanish & Team**.
+Developed by **Anshuman, Tanish & Team**.
