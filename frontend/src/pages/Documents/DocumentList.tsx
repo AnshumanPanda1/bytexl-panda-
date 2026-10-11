@@ -292,7 +292,9 @@ function DocumentList() {
         {filteredDocuments.map((doc) => {
           const category = getDocCategory(doc);
           const catObj = dbCategories.find(c => c.name === category);
-          
+          const exam = doc.examination_id ? examMap[doc.examination_id] : null;
+          const docDate = doc.document_date || doc.entities?.document_date || exam?.examination_date;
+
           return (
             <DocumentCard
               key={doc.id}
@@ -302,6 +304,7 @@ function DocumentList() {
               viewMode={isLargeScreen ? 'list' : viewMode}
               category={category}
               categoryDetails={catObj}
+              documentDate={docDate}
             />
           );
         })}

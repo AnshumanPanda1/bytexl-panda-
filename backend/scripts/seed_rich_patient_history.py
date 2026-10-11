@@ -303,7 +303,72 @@ async def run_seed():
         print("Ensured standard biometric units and definitions.")
 
         # 4. Helper function to copy fixture file to storage
-        def copy_sample_file(fixture_name: str, doc_uuid: UUID, preferred_ext: str = ".pdf") -> tuple[Path, str, int]:
+        def _build_valid_pdf_bytes(title: str, text: str) -> bytes:
+            lines = [title, "=" * min(len(title), 50), ""]
+            for l in (text or "").splitlines():
+                clean_line = "".join(c if 32 <= ord(c) < 127 else " " for c in l).strip()
+                if clean_line:
+                    lines.append(clean_line[:75])
+
+            stream_ops = ["BT", "/F1 12 Tf", "50 740 Td", "18 TL"]
+            for idx, line in enumerate(lines[:38]):
+                escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+                if idx == 0:
+                    stream_ops.append(f"({escaped}) Tj")
+                else:
+                    stream_ops.append(f"T* ({escaped}) Tj")
+            stream_ops.append("ET")
+            stream_data = "\n".join(stream_ops).encode("latin-1", "replace")
+            stream_len = len(stream_data)
+
+            obj1 = b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+            obj2 = b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+            obj3 = b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
+            obj4 = f"4 0 obj\n<< /Length {stream_len} >>\nstream\n".encode() + stream_data + b"\nendstream\nendobj\n"
+            obj5 = b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+
+            header = b"%PDF-1.4\n"
+            offset1 = len(header)
+            offset2 = offset1 + len(obj1)
+            offset3 = offset2 + len(obj2)
+            offset4 = offset3 + len(obj3)
+            offset5 = offset4 + len(obj4)
+            xref_offset = offset5 + len(obj5)
+
+            xref = (
+                f"xref\n0 6\n0000000000 65535 f \n"
+                f"{offset1:010d} 00000 n \n"
+                f"{offset2:010d} 00000 n \n"
+                f"{offset3:010d} 00000 n \n"
+                f"{offset4:010d} 00000 n \n"
+                f"{offset5:010d} 00000 n \n"
+            ).encode()
+            trailer = f"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n".encode()
+            return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
+
+        def _build_valid_png_bytes(title: str, text: str) -> bytes:
+            from PIL import Image, ImageDraw
+            img = Image.new("RGB", (800, 1000), color=(255, 255, 255))
+            draw = ImageDraw.Draw(img)
+            draw.text((40, 40), title[:60], fill=(20, 30, 80))
+            draw.line([(40, 65), (760, 65)], fill=(180, 180, 180), width=2)
+            y = 90
+            for line in (text or "").splitlines()[:35]:
+                clean = "".join(c if 32 <= ord(c) < 127 else " " for c in line).strip()
+                if clean:
+                    draw.text((40, y), clean[:70], fill=(40, 40, 40))
+                    y += 24
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+
+        def copy_sample_file(
+            fixture_name: str,
+            doc_uuid: UUID,
+            preferred_ext: str = ".pdf",
+            title: str = "Clinical Document",
+            doc_text: str = "",
+        ) -> tuple[Path, str, int]:
             source_file = None
             candidates = [
                 fixtures_35_dir / fixture_name,
@@ -311,27 +376,31 @@ async def run_seed():
                 Path(backend_dir) / "data" / "seeds" / fixture_name,
             ]
             for c in candidates:
-                if c.exists():
+                if c.exists() and c.stat().st_size > 100:
                     source_file = c
                     break
 
             if not source_file:
                 # Fallback to any existing fixture
                 for alt in (fixtures_35_dir, fixtures_basic_dir):
-                    matched = list(alt.glob(f"*{preferred_ext}"))
-                    if matched:
-                        source_file = matched[0]
-                        break
+                    if alt.exists():
+                        matched = [f for f in alt.glob(f"*{preferred_ext}") if f.stat().st_size > 100]
+                        if matched:
+                            source_file = matched[0]
+                            break
 
             ext = source_file.suffix if source_file else preferred_ext
             dest_file = tenant_upload_dir / f"{doc_uuid}{ext}"
 
-            if source_file and source_file.exists():
+            if source_file and source_file.exists() and source_file.stat().st_size > 100:
                 shutil.copyfile(source_file, dest_file)
             else:
-                # Create minimal text/pdf payload
+                if ext.lower() in (".png", ".jpg", ".jpeg"):
+                    payload = _build_valid_png_bytes(title, doc_text)
+                else:
+                    payload = _build_valid_pdf_bytes(title, doc_text)
                 with open(dest_file, "wb") as f:
-                    f.write(b"%PDF-1.4 Minimal MediBot Test Document\n%%EOF")
+                    f.write(payload)
 
             file_size = dest_file.stat().st_size
             content_type = "application/pdf" if ext == ".pdf" else ("image/png" if ext == ".png" else "image/jpeg")
@@ -977,7 +1046,12 @@ async def run_seed():
                 # Document entity and file
                 doc_id = uuid4()
                 fixture_file = enc.get("fixture", "clean_digital.pdf")
-                dest_file, ctype, fsize = copy_sample_file(fixture_file, doc_id)
+                dest_file, ctype, fsize = copy_sample_file(
+                    fixture_file,
+                    doc_id,
+                    title=enc["doc_filename"],
+                    doc_text=enc.get("doc_text", ""),
+                )
 
                 doc = DocumentModel(
                     id=doc_id,
@@ -989,6 +1063,7 @@ async def run_seed():
                     file_path=str(dest_file),
                     status="completed",
                     extracted_text=enc["doc_text"],
+                    entities={"document_date": enc["date"].isoformat()},
                     created_at=datetime.combine(enc["date"], datetime.min.time(), tzinfo=UTC),
                 )
                 session.add(doc)

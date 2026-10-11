@@ -505,6 +505,9 @@ export default function DocumentDetail() {
             <div>
               <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest">{t('documents_explorer.audit_info')}</p>
               <div className="mt-1 space-y-0.5">
+                {(docData?.document_date || docData?.entities?.document_date) && (
+                  <p className="text-xs text-gray-600 dark:text-dark-text">Document Date: <span className="font-bold text-indigo-600 dark:text-indigo-400">{new Date(docData.document_date || docData.entities.document_date).toLocaleDateString()}</span></p>
+                )}
                 <p className="text-xs text-gray-600 dark:text-dark-text">{t('documents_explorer.created')}: <span className="font-bold">{docData?.created_at ? new Date(docData.created_at).toLocaleString() : '-'}</span></p>
                 <p className="text-xs text-gray-600 dark:text-dark-text">{t('documents_explorer.updated')}: <span className="font-bold">{docData?.updated_at ? new Date(docData.updated_at).toLocaleString() : '-'}</span></p>
               </div>

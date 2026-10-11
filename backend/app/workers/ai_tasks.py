@@ -89,11 +89,48 @@ async def ocr_document(
             )
             raw_text = page_aware_doc.to_consolidated_text(include_page_markers=True)
 
-            # 4. Success Persistence
+            # 4. Success Persistence (with clinical date extraction from OCR text)
+            from app.utils.clinical_date_parser import parse_clinical_date
+
+            extracted_doc_date = parse_clinical_date(raw_text)
+
+            doc_row_res = await db.execute(
+                select(DocumentModel).where(DocumentModel.id == doc_uuid)
+            )
+            doc_row = doc_row_res.scalar_one_or_none()
+            doc_entities = dict(doc_row.entities or {}) if doc_row else {}
+
+            if extracted_doc_date:
+                doc_entities["document_date"] = extracted_doc_date.isoformat()
+                if doc_row and doc_row.examination_id:
+                    exam_res = await db.execute(
+                        select(ExaminationModel).where(ExaminationModel.id == doc_row.examination_id)
+                    )
+                    exam_obj = exam_res.scalar_one_or_none()
+                    if exam_obj:
+                        today = datetime.datetime.now(UTC).date()
+                        if (
+                            not exam_obj.examination_date
+                            or exam_obj.examination_date == today
+                            or exam_obj.auto_extract_metadata
+                        ):
+                            exam_obj.examination_date = extracted_doc_date
+                            logger.info(
+                                "Propagated OCR date %s from document %s to examination %s",
+                                extracted_doc_date,
+                                doc_uuid,
+                                exam_obj.id,
+                            )
+
             await db.execute(
                 update(DocumentModel)
                 .where(DocumentModel.id == doc_uuid)
-                .values(status="completed", progress=100, extracted_text=raw_text)
+                .values(
+                    status="completed",
+                    progress=100,
+                    extracted_text=raw_text,
+                    entities=doc_entities,
+                )
             )
             await db.commit()
             await task_logger.log_success()

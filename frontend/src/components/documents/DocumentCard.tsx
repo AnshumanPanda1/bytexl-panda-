@@ -12,6 +12,7 @@ interface Props {
   viewMode?: 'grid' | 'list';
   category?: string;
   categoryDetails?: any;
+  documentDate?: string;
   className?: string;
 }
 
@@ -22,9 +23,13 @@ export const DocumentCard: React.FC<Props> = ({
   viewMode = 'list',
   category,
   categoryDetails,
+  documentDate,
   className = ''
 }) => {
   const { t } = useTranslation();
+
+  const rawDate = documentDate || doc.document_date || doc.entities?.document_date || doc.created_at;
+  const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString() : '';
 
   const getFileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -70,7 +75,7 @@ export const DocumentCard: React.FC<Props> = ({
             {doc.filename}
           </h4>
           <div className="flex items-center justify-center space-x-2 mt-1">
-            <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted">{new Date(doc.created_at).toLocaleDateString()}</p>
+            <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted">{formattedDate}</p>
             <span className="text-[10px] text-gray-300 dark:text-dark-border">•</span>
             <span className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase">{doc.filename.split('.').pop()}</span>
           </div>
@@ -114,7 +119,7 @@ export const DocumentCard: React.FC<Props> = ({
                 <span className="flex h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse shadow-xs shadow-blue-500/50"></span>
               )}
               <span className={CardStyles.date(isSelected)}>
-                {new Date(doc.created_at).toLocaleDateString()}
+                {formattedDate}
               </span>
             </div>
           </div>

@@ -58,7 +58,7 @@ function ExaminationUpload() {
   const [createdBulkExamMap, setCreatedBulkExamMap] = useState<Record<string, string>>({});
 
   // New states for Smart Mode and Bulk Create
-  const [isSmartMode, setIsSmartMode] = useState(false);
+  const [isSmartMode, setIsSmartMode] = useState(true);
   const [isBulkMode, setIsBulkMode] = useState(false);
   
   // States for new Bulk Upload Manager

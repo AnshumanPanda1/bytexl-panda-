@@ -190,22 +190,35 @@ class MedicalProcessingService:
 
         tenant_id = exam.tenant_id
 
-        # 0. Ensure examination has a date (fallback to today if missing)
-        if not exam.examination_date:
-            exam.examination_date = datetime.date.today()
-            await self.db.commit()
-            await self.db.refresh(exam)
-            logger.info(f"Initialized missing date for exam {exam.id} to today.")
-
         # 1. Aggregate Text
         cumulative_text, docs_with_text = await self.aggregate_examination_text(examination_id)
         if not cumulative_text:
+            if not exam.examination_date:
+                exam.examination_date = datetime.date.today()
+                await self.db.commit()
+                await self.db.refresh(exam)
             await progress_tracker.update_examination_status("completed", 100)
             await task_logger.log_success(message="No text found for analysis")
             return {"status": "completed", "message": "No text found"}
 
         await progress_tracker.update_examination_status("clinical_analysis", 10)
         await task_logger.log_progress("text_aggregated", 10, num_docs=len(docs_with_text))
+
+        # 1.2. Parse report date from document text
+        from app.utils.clinical_date_parser import parse_clinical_date
+
+        parsed_report_date = parse_clinical_date(cumulative_text)
+        today = datetime.date.today()
+        if parsed_report_date:
+            if not exam.examination_date or exam.examination_date == today or exam.auto_extract_metadata:
+                logger.info(
+                    "Setting examination %s date to document report date: %s",
+                    exam.id,
+                    parsed_report_date,
+                )
+                exam.examination_date = parsed_report_date
+                await self.db.commit()
+                await self.db.refresh(exam)
 
         # 1.5. Check if we need to auto-extract metadata (only if the exam is marked or has placeholders)  # noqa: E501 -- long template/message string; reflow when touched
         if exam.auto_extract_metadata:
@@ -222,6 +235,12 @@ class MedicalProcessingService:
                             exam.examination_date = datetime.datetime.strptime(
                                 metadata.examination_date, "%Y-%m-%d"
                             ).date()
+
+        # Fallback to today only if still missing
+        if not exam.examination_date:
+            exam.examination_date = today
+            await self.db.commit()
+            await self.db.refresh(exam)
 
                     if metadata.category:
                         category_entity = await self.resolve_category(
