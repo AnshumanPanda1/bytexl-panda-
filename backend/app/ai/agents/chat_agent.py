@@ -44,6 +44,81 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+def prune_tools_for_query(
+    tools: list[Any],
+    user_input: str | None = None,
+) -> list[Any]:
+    """Prune tools down to an optimal, context-aware subset.
+    Prevents token bloat (especially with rate-limited or bounded-window LLM endpoints).
+    """
+    if not tools:
+        return []
+
+    text = (user_input or "").lower()
+
+    # Core baseline clinical retrieval tools
+    core_names = {
+        "get_patient_summary",
+        "get_patient_alerts",
+        "get_recent_biomarkers",
+        "get_biomarker_history",
+        "search_available_biomarkers",
+        "get_current_medications",
+        "get_patient_medication_history",
+        "search_medications",
+        "get_current_allergies",
+        "search_allergens",
+        "get_recent_examinations",
+        "get_examination_details",
+        "get_system_time",
+    }
+
+    selected_names = set(core_names)
+
+    # Telemetry
+    if any(k in text for k in ["trend", "telemetry", "heart rate", "pulse", "step", "device", "continuous", "monitor"]):
+        selected_names.add("get_aggregated_biomarker_trends")
+
+    # Documents
+    if any(k in text for k in ["doc", "pdf", "file", "report", "scan", "upload", "attachment", "note"]):
+        selected_names.update(["get_patient_documents", "get_document_content"])
+
+    # Clinical Events / Health Journey
+    if any(k in text for k in ["event", "journey", "timeline", "surgery", "hospital", "history"]):
+        selected_names.update(["get_clinical_events", "get_clinical_event_details"])
+
+    # Catalogs / Relations
+    if any(k in text for k in ["relation", "affect", "treat", "contraindicat", "graph", "anatomy"]):
+        selected_names.update(["search_catalogs", "explore_catalog_relations"])
+
+    # Proposals / Actions (Write-intent)
+    has_write = any(k in text for k in [
+        "propose", "prescribe", "record", "add", "create", "new", "log", "draft",
+        "order", "dose", "start", "stop", "assign", "schedule", "define"
+    ]) or "[hitl" in text or "resume" in text
+
+    if has_write:
+        if any(k in text for k in ["med", "drug", "prescribe", "pill", "tablet", "aspirin", "metformin", "dose", "rx"]):
+            selected_names.update(["propose_prescribe_medication", "propose_define_medication"])
+        elif any(k in text for k in ["biomarker", "lab", "result", "level", "blood", "glucose", "hba1c", "cholesterol", "test", "metric"]):
+            selected_names.update(["propose_record_biomarker_result", "propose_define_biomarker"])
+        elif any(k in text for k in ["allergy", "allergic", "reaction"]):
+            selected_names.update(["propose_record_allergy", "propose_define_allergy"])
+        elif any(k in text for k in ["event", "journey", "surgery", "pregnancy"]):
+            selected_names.add("propose_create_clinical_event")
+        else:
+            selected_names.update([
+                "propose_prescribe_medication",
+                "propose_record_biomarker_result",
+                "propose_record_allergy",
+            ])
+
+    pruned = [t for t in tools if t.name in selected_names]
+    if not pruned:
+        pruned = tools[:15]
+    return pruned
+
+
 async def build_chat_tools(
     db: AsyncSession,
     tenant_id: UUID | None,
@@ -51,6 +126,7 @@ async def build_chat_tools(
     user_id: UUID | None,
     examination_id: str | None = None,
     label: str = "chat",
+    user_input: str | None = None,
 ) -> list[Any]:
     """Assemble the built-in chatbot tools + any integration tools.
 
@@ -62,7 +138,11 @@ async def build_chat_tools(
         return []
 
     exam_id = UUID(examination_id) if examination_id else None
-    tools = get_tools(db, tenant_id, UUID(patient_id), examination_id=exam_id, user_id=user_id)
+    try:
+        tools = get_tools(db, tenant_id, UUID(patient_id), examination_id=exam_id, user_id=user_id)
+    except Exception as e:
+        logger.warning(f"Failed to load built-in tools for {label}: {e}")
+        tools = []
     try:
         from app.ai.tools.aggregator import aggregate as integration_aggregate
 
@@ -72,7 +152,7 @@ async def build_chat_tools(
         logger.warning(
             f"Failed to load integration tools for {label} (continuing with built-ins): {e}"
         )
-    return tools
+    return prune_tools_for_query(tools, user_input=user_input)
 
 
 # ---------------------------------------------------------------------------
@@ -105,30 +185,30 @@ async def reconstruct_history(
     """
     current_history: list[Any] = [SystemMessage(content=system_prompt)]
     if session_id:
-        past_messages = await chat_session_service.get_session_messages(
-            session_id, user_id, tenant_id
-        )
-        # Exclude the message we just saved (which is the driving input) to
-        # avoid duplication; replay the prior 10 turns.
-        for msg in past_messages[:-1][-10:]:
-            if msg.role == "user":
-                # Reconstruct multimodal content when the persisted message
-                # carries image attachments (vision input) so the model keeps
-                # visual context across turns. Plain text stays a plain str.
-                content_json = msg.content if isinstance(msg.content, dict) else {}
-                if has_images(content_json):
-                    current_history.append(
-                        HumanMessage(
-                            content=build_multimodal_content(
-                                content_json.get("text", ""),
-                                content_json.get("images"),
+        try:
+            past_messages = await chat_session_service.get_session_messages(
+                session_id, user_id, tenant_id
+            )
+            # Exclude the message we just saved (which is the driving input) to
+            # avoid duplication; replay the prior 10 turns.
+            for msg in past_messages[:-1][-10:]:
+                if msg.role == "user":
+                    content_json = msg.content if isinstance(msg.content, dict) else {}
+                    if has_images(content_json):
+                        current_history.append(
+                            HumanMessage(
+                                content=build_multimodal_content(
+                                    content_json.get("text", ""),
+                                    content_json.get("images"),
+                                )
                             )
                         )
-                    )
-                else:
-                    current_history.append(HumanMessage(content=content_json.get("text")))
-            elif msg.role == "assistant":
-                _append_assistant_turn_to_history(msg, current_history)
+                    else:
+                        current_history.append(HumanMessage(content=content_json.get("text")))
+                elif msg.role == "assistant":
+                    _append_assistant_turn_to_history(msg, current_history)
+        except Exception as exc:
+            logger.warning(f"Could not load past chat messages from DB: {exc}")
     current_history.append(HumanMessage(content=driving_input))
     return current_history
 

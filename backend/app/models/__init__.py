@@ -1,6 +1,7 @@
 from app.models.enums import ImmunizationStatus
 
 from .ai_provider_model import AIModel, AIProviderModel, AITaskAssignment
+from .ai_summary_model import AISummaryModel
 from .anatomy_model import AnatomyFigure, AnatomyStructure
 from .associations import examination_doctors, organization_doctors
 from .audit_model import AuditEvent
@@ -45,8 +46,10 @@ from .fhir.communication import CommunicationModel
 from .fhir.device import DeviceModel
 from .fhir.organization import OrganizationModel
 from .fhir.provenance import ProvenanceModel
+from .health_summary_model import PatientHealthSummary
 from .instance_setting_model import InstanceSettingModel
 from .integration_proposal import IntegrationProposal
+from .mock_abdm_model import MockAbdmImportRecord
 from .notification import (
     Notification,
     NotificationCategory,
@@ -81,6 +84,7 @@ from .user_model import Role, UserModel
 __all__ = [
     "AIModel",
     "AIProviderModel",
+    "AISummaryModel",
     "AITaskAssignment",
     "AllergyCatalog",
     "AllergyCategory",
@@ -122,6 +126,7 @@ __all__ = [
     "IntegrationProposal",
     "Laboratory",
     "Medication",
+    "MockAbdmImportRecord",
     "Notification",
     "NotificationCategory",
     "NotificationChannel",
@@ -139,6 +144,7 @@ __all__ = [
     "Observation",
     "OrganizationModel",
     "Patient",
+    "PatientHealthSummary",
     "PatientImmunization",
     "PatientLayoutModel",
     "ProvenanceModel",

@@ -5,6 +5,7 @@ from app.api.v1.endpoints.admin_integrations import router as admin_integrations
 from app.api.v1.endpoints.admin_tenants import router as admin_tenants_router
 from app.api.v1.endpoints.ai_assistance import router as ai_assistance_router
 from app.api.v1.endpoints.ai_config import router as ai_config_router
+from app.api.v1.endpoints.ai_summaries import router as ai_summaries_router
 from app.api.v1.endpoints.allergies import router as allergies_router
 from app.api.v1.endpoints.analytics import router as analytics_router
 from app.api.v1.endpoints.anatomy import router as anatomy_router
@@ -22,6 +23,7 @@ from app.api.v1.endpoints.doctors import router as doctors_router
 from app.api.v1.endpoints.documents import router as documents_router
 from app.api.v1.endpoints.examinations import router as examinations_router
 from app.api.v1.endpoints.export import router as export_router
+from app.api.v1.endpoints.facts import router as facts_router
 from app.api.v1.endpoints.fhir_r4 import router as fhir_r4_router
 from app.api.v1.endpoints.import_data import router as import_router
 from app.api.v1.endpoints.instances import router as instances_router
@@ -29,6 +31,7 @@ from app.api.v1.endpoints.integrations import router as integrations_router
 from app.api.v1.endpoints.me_mfa import router as me_mfa_router
 from app.api.v1.endpoints.me_sessions import router as me_sessions_router
 from app.api.v1.endpoints.medications import router as medications_router
+from app.api.v1.endpoints.mock_abdm import router as mock_abdm_router
 from app.api.v1.endpoints.notification_rules import router as notification_rules_router
 from app.api.v1.endpoints.notifications import router as notifications_router
 from app.api.v1.endpoints.oauth import router as oauth_router
@@ -40,9 +43,11 @@ from app.api.v1.endpoints.public_config import router as public_config_router
 from app.api.v1.endpoints.search import router as search_router
 from app.api.v1.endpoints.settings import router as settings_router
 from app.api.v1.endpoints.setup_checklist import router as setup_checklist_router
+from app.api.v1.endpoints.summaries import router as summaries_router
 from app.api.v1.endpoints.task_monitor import router as task_monitor_router
 from app.api.v1.endpoints.telemetry import router as telemetry_router
 from app.api.v1.endpoints.tenants import router as tenants_router
+from app.api.v1.endpoints.timeline import router as timeline_router
 from app.api.v1.endpoints.users import router as users_router
 from app.api.v1.endpoints.vaccines import router as vaccines_router
 from app.api.v1.endpoints.websockets import router as websockets_router
@@ -88,6 +93,7 @@ session_gated_router.include_router(medications_router)
 session_gated_router.include_router(vaccines_router)
 session_gated_router.include_router(biomarkers_router)
 session_gated_router.include_router(ai_config_router)
+session_gated_router.include_router(ai_summaries_router)
 session_gated_router.include_router(task_monitor_router)
 session_gated_router.include_router(ai_assistance_router)
 session_gated_router.include_router(clinical_events_router)
@@ -107,6 +113,10 @@ session_gated_router.include_router(concept_edges_router)
 session_gated_router.include_router(catalogs_router)
 session_gated_router.include_router(settings_router)
 session_gated_router.include_router(setup_checklist_router)
+session_gated_router.include_router(timeline_router)
+session_gated_router.include_router(summaries_router)
+session_gated_router.include_router(facts_router)
+session_gated_router.include_router(mock_abdm_router)
 
 api_router.include_router(session_gated_router)
 api_router.include_router(websockets_router)

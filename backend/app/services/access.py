@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AuthorizationError, NotFoundError, ValidationError
 from app.models.clinical_event import ClinicalEvent
+from app.models.document_model import DocumentModel
 from app.models.enums import Role
 from app.models.examination_model import ExaminationModel
 from app.models.fhir.allergy import AllergyIntolerance
@@ -226,3 +227,32 @@ async def check_observation_access(
     await check_patient_access(patient_id, current_user, db)
 
     return observation
+
+
+async def check_document_access(
+    document_id: str | UUID, current_user: TokenData, db: AsyncSession
+) -> DocumentModel:
+    """Verify if the current user has access to the specified document record."""
+    if isinstance(document_id, str):
+        try:
+            document_id = UUID(document_id)
+        except ValueError:
+            raise ValidationError("Invalid document ID format")
+
+    result = await db.execute(
+        select(DocumentModel).where(
+            DocumentModel.id == document_id,
+            DocumentModel.tenant_id == current_user.tenant_id,
+            DocumentModel.deleted_at.is_(None),
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise NotFoundError("Document not found")
+
+    if doc.patient_id:
+        await check_patient_access(doc.patient_id, current_user, db)
+    elif current_user.role == Role.USER.value and str(doc.owner_id) != str(current_user.user_id):
+        raise AuthorizationError("Access denied to this document")
+
+    return doc

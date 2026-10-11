@@ -539,7 +539,7 @@ const ExaminationBubble: React.FC<{
             <div className="flex items-center justify-between gap-2 px-4 py-3 bg-blue-50/50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 rounded-2xl border border-blue-100 dark:border-blue-900/20 text-xs font-bold animate-in fade-in duration-300">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4" />
-                <span>Health Assistant AI will automatically extract examination date, category, doctors, and clinical notes from these documents.</span>
+                <span>Tattva AI will automatically extract examination date, category, doctors, and clinical notes from these documents.</span>
               </div>
               <ActiveTaskBadge workflow="full_reconstruction" size="sm" showText={false} className="shrink-0" />
             </div>

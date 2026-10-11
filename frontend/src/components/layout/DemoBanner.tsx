@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { FlaskConical, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../store/slices/authSlice';
 
-const MAIN_SITE_URL = 'https://health-assistant.io';
+const MAIN_SITE_URL = '/';
 
 /**
  * A fixed banner that appears at the top of the screen while the instance is

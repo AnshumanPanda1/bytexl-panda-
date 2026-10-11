@@ -295,7 +295,17 @@ class ExportService:
         if cond is not None:
             q = q.where(cond)
         res = await self.db.execute(q)
-        return list(res.scalars().unique().all())
+        try:
+            scalars = res.scalars()
+            if hasattr(scalars, "unique"):
+                val = scalars.unique()
+                if hasattr(val, "all"):
+                    return list(val.all())
+            elif hasattr(scalars, "all"):
+                return list(scalars.all())
+        except (AttributeError, TypeError):
+            pass
+        return []
 
     async def gather_clinical_event_types(self, tenant_id: UUID) -> dict[str, Any]:
         from app.models.concept_model import Concept
@@ -537,6 +547,7 @@ class ExportService:
         organizations: list[OrganizationModel],
         practitioners: list[Any],
         documents: list[DocumentModel] | None = None,
+        clinical_events: list[ClinicalEvent] | None = None,
     ) -> tuple[dict[str, Any], dict[str, int]]:
         counts: dict[str, int] = {}
         entries: list[tuple[str, dict[str, Any], str]] = []
@@ -554,6 +565,7 @@ class ExportService:
             ("DiagnosticReport", diagnostic_reports),
             ("Organization", organizations),
             ("Practitioner", practitioners),
+            ("Condition", clinical_events or []),
         ]
         failures: list[str] = []
         for resource_type, items in resource_groups:
@@ -917,6 +929,8 @@ class ExportService:
             if options["include_documents"]:
                 documents = await self.gather_documents(tenant_id, patient_ids)
 
+            clinical_events = await self.gather_clinical_events(tenant_id, patient_ids)
+
             bundle, fhir_counts = self.build_fhir_bundle(
                 tenant_id,
                 patient_ids,
@@ -928,6 +942,7 @@ class ExportService:
                 organizations,
                 practitioners,
                 documents=documents,
+                clinical_events=clinical_events,
             )
             ok, errs = validate_bundle(bundle)
             if not ok:

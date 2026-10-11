@@ -1,0 +1,17 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left Speech Bubble: English "A" -->
+  <path d="M7 11C7 8.23858 9.23858 6 12 6H24C26.7614 6 29 8.23858 29 11V21C29 23.7614 26.7614 26 24 26H17L11 31V26H12C9.23858 26 7 23.7614 7 21V11Z" fill="white" fill-opacity="0.15" stroke="white" stroke-width="2"/>
+  <!-- Latin "A" inside left bubble -->
+  <path d="M18 10.5L14.5 20H16.8L17.5 18H20.5L21.2 20H23.5L20 10.5H18ZM18.2 16.2L19 13.8L19.8 16.2H18.2Z" fill="white"/>
+  
+  <!-- Right Speech Bubble: Hindi "अ" -->
+  <path d="M21 19C21 16.7909 22.7909 15 25 15H37C39.2091 15 41 16.7909 41 19V29C41 31.2091 39.2091 33 37 33H36V38L31 33H25C22.7909 33 21 31.2091 21 29V19Z" fill="white" fill-opacity="0.15" stroke="white" stroke-width="2"/>
+  <!-- Hindi "अ" glyph inside right bubble -->
+  <text x="31" y="27" font-size="12" font-family="'Urbanist', 'Segoe UI', 'Noto Sans Devanagari', sans-serif" font-weight="bold" fill="white" text-anchor="middle">अ</text>
+
+  <!-- Coral Problem Badge: Translation Barrier / Disconnect in the center overlap -->
+  <circle cx="25" cy="22" r="8" fill="#FF5353"/>
+  <!-- Barrier / Cancel line inside badge -->
+  <circle cx="25" cy="22" r="5" stroke="white" stroke-width="1.6"/>
+  <line x1="21.5" y1="18.5" x2="28.5" y2="25.5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

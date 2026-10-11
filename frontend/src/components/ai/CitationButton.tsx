@@ -4,7 +4,7 @@ import { Database, Info, ExternalLink, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DataMiniPage } from './DataMiniPage';
 import { ToolCallInfo } from '../../types/ai';
-import { getObservation } from '../../services/observationService';
+import { getObservation, listObservations } from '../../services/observationService';
 import { getMedication, getCatalogMedication } from '../../services/medicationService';
 import { getExamination } from '../../services/examinationService';
 import { getEvent } from '../../services/clinicalEventService';
@@ -44,6 +44,7 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
   // Handle truncated UUIDs from LLM (e.g. "uuid...")
   const isTruncated = uuid?.endsWith('...');
   const searchUuid = isTruncated ? uuid?.replace('...', '') : uuid;
+  const isPlaceholderUuid = !searchUuid || searchUuid.toLowerCase() === 'uuid' || searchUuid.toLowerCase() === 'id';
 
   const handleMouseEnter = () => {
     if (closeTimeoutRef.current) {
@@ -55,21 +56,25 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
   };
 
   const handleMouseLeave = () => {
-    // Add a small delay before closing to allow moving between button and popup
-    // and provide a "perimeter" buffer effect
     closeTimeoutRef.current = setTimeout(() => {
       setShowPopup(false);
     }, 300);
   };
 
-  // Find tool call for legacy fallback OR to resolve truncated UUIDs
+  // Find tool call matching reference name or containing our target UUID/category
   const toolCall = [...toolCalls].reverse().find(tc => {
     const nameMatch = tc.name.toLowerCase() === reference.toLowerCase();
     if (nameMatch) return true;
     
-    // If we have a truncated UUID, try to find the full one in tool results
-    if (isTruncated && tc.result) {
-      return tc.result.includes(searchUuid || '');
+    // Category match if bare type
+    const lowerType = type.toLowerCase();
+    if (lowerType === 'observation' && (tc.name.includes('biomarker') || tc.name.includes('observation'))) return true;
+    if (lowerType === 'biomarker' && (tc.name.includes('biomarker') || tc.name.includes('trends'))) return true;
+    if (lowerType === 'medication' && tc.name.includes('medication')) return true;
+    if (lowerType === 'examination' && tc.name.includes('examination')) return true;
+
+    if (searchUuid && !isPlaceholderUuid && tc.result) {
+      return tc.result.includes(searchUuid);
     }
     return false;
   });
@@ -79,9 +84,6 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
       const rect = buttonRef.current.getBoundingClientRect();
       const spaceAbove = rect.top;
       const spaceBelow = window.innerHeight - rect.bottom;
-      
-      // Determine if we should show above or below based on available space
-      // Popup height is roughly 350-400px at most
       const placement = (spaceAbove > 400 || spaceAbove > spaceBelow) ? 'top' : 'bottom';
       
       setPopupPosition({
@@ -94,9 +96,7 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
 
   useEffect(() => {
     if (showPopup) {
-      // Small delay to ensure button position is stable if layout is shifting
       const timer = setTimeout(updatePosition, 0);
-      // Listen for scroll events on any parent to reposition the fixed popup
       window.addEventListener('scroll', updatePosition, true);
       window.addEventListener('resize', updatePosition);
       return () => {
@@ -107,17 +107,73 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
     }
   }, [showPopup]);
 
+  // Extract matching records from tool execution results
+  const findRecordInToolCalls = () => {
+    if (!toolCalls || toolCalls.length === 0) return null;
+
+    // 1. Search by UUID if we have one
+    if (searchUuid && !isPlaceholderUuid) {
+      for (const tc of toolCalls) {
+        if (!tc.result) continue;
+        try {
+          const parsed = typeof tc.result === 'string' ? JSON.parse(tc.result) : tc.result;
+          const list = Array.isArray(parsed) ? parsed : [parsed];
+          const found = list.find((item: any) => 
+            (item.id && (item.id === searchUuid || item.id.startsWith(searchUuid))) ||
+            (item.biomarker_id && (item.biomarker_id === searchUuid || item.biomarker_id.startsWith(searchUuid)))
+          );
+          if (found) return found;
+        } catch (e) {}
+      }
+    }
+
+    // 2. Search category matches
+    const lowerType = type.toLowerCase();
+    for (const tc of [...toolCalls].reverse()) {
+      if (!tc.result) continue;
+      const lowerName = tc.name.toLowerCase();
+      const matchesCategory = 
+        (lowerType.includes('observation') || lowerType.includes('biomarker')) && (lowerName.includes('biomarker') || lowerName.includes('observation')) ||
+        (lowerType.includes('medication')) && lowerName.includes('medication') ||
+        (lowerType.includes('examination')) && lowerName.includes('examination') ||
+        (lowerType.includes('document')) && lowerName.includes('document') ||
+        (lowerType.includes('event')) && lowerName.includes('event');
+
+      if (matchesCategory) {
+        try {
+          const parsed = typeof tc.result === 'string' ? JSON.parse(tc.result) : tc.result;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          } else if (parsed && typeof parsed === 'object') {
+            return parsed;
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 3. Fallback: direct match on tool name
+    const directTc = toolCalls.find(tc => tc.name.toLowerCase() === reference.toLowerCase());
+    if (directTc?.result) {
+      try {
+        return typeof directTc.result === 'string' ? JSON.parse(directTc.result) : directTc.result;
+      } catch (e) {
+        return directTc.result;
+      }
+    }
+
+    return null;
+  };
+
   const fetchData = async () => {
     if (fetchedData || loading) return;
     
     let finalUuid = searchUuid;
 
-    // If truncated, try to resolve the full UUID from tool results
+    // If truncated, try to resolve full UUID from tool results
     if (isTruncated && toolCall?.result) {
       try {
         const results = JSON.parse(toolCall.result);
         const items = Array.isArray(results) ? results : [results];
-        // Find item that starts with our partial UUID
         const fullItem = items.find(item => 
           (item.id && item.id.startsWith(searchUuid)) || 
           (item.biomarker_id && item.biomarker_id.startsWith(searchUuid))
@@ -127,54 +183,62 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
         }
       } catch (e) {}
     }
-    
-    if (isUUIDReference && finalUuid && (!isTruncated || (isTruncated && finalUuid.length > (searchUuid?.length || 0)))) {
-      setLoading(true);
-      try {
-        let data = null;
-        if (type === 'observation') {
-          data = await getObservation(finalUuid);
-        } else if (type === 'biomarker') {
-          data = await biomarkerService.getBiomarkerById(finalUuid);
-        } else if (type === 'medication') {
-          // Medication citations are dual-nature: the UUID may be a
-          // patient-instance prescription (fhir_medications) OR a catalog
-          // definition (medication_catalog). The AI's `search_medications` /
-          // `get_medication_catalog_details` tools emit catalog IDs; the
-          // patient-prescription tools emit instance IDs. Try the instance
-          // endpoint first, fall back to the catalog endpoint on 404.
-          try {
-            data = await getMedication(finalUuid);
-            setCitationKind('instance');
-          } catch (instanceErr: any) {
-            const status = instanceErr?.response?.status;
-            if (status === 404) {
-              data = await getCatalogMedication(finalUuid);
-              setCitationKind('catalog');
-            } else {
-              throw instanceErr;
+
+    setLoading(true);
+    try {
+      let data = null;
+
+      // Primary: Try direct API lookup if valid UUID is present
+      if (isUUIDReference && finalUuid && !isPlaceholderUuid) {
+        try {
+          if (type === 'observation') {
+            data = await getObservation(finalUuid);
+          } else if (type === 'biomarker') {
+            data = await biomarkerService.getBiomarkerById(finalUuid);
+          } else if (type === 'medication') {
+            try {
+              data = await getMedication(finalUuid);
+              setCitationKind('instance');
+            } catch (instanceErr: any) {
+              if (instanceErr?.response?.status === 404) {
+                data = await getCatalogMedication(finalUuid);
+                setCitationKind('catalog');
+              } else {
+                throw instanceErr;
+              }
             }
+          } else if (type === 'examination') {
+            data = await getExamination(finalUuid);
+          } else if (type === 'event') {
+            data = await getEvent(finalUuid);
+          } else if (type === 'document') {
+            data = await getDocument(finalUuid);
           }
-        } else if (type === 'examination') {
-          data = await getExamination(finalUuid);
-        } else if (type === 'event') {
-          data = await getEvent(finalUuid);
-        } else if (type === 'document') {
-          data = await getDocument(finalUuid);
+        } catch (apiErr) {
+          console.warn(`API lookup failed for ${reference}, checking tool execution results:`, apiErr);
         }
-        setFetchedData(data);
-      } catch (err) {
-        console.error(`Failed to fetch citation data for ${reference}`, err);
-      } finally {
-        setLoading(false);
       }
-    } else if (toolCall?.result) {
-      // Legacy fallback: Use tool call result directly
-      try {
-        setFetchedData(JSON.parse(toolCall.result));
-      } catch (e) {
-        setFetchedData(toolCall.result);
+
+      // Secondary: Fall back to records executed by tool calls in this session
+      if (!data) {
+        data = findRecordInToolCalls();
       }
+
+      // Tertiary: If still empty and type is observation or biomarker, fetch recent patient observations
+      if (!data && (type.toLowerCase().includes('observation') || type.toLowerCase().includes('biomarker'))) {
+        try {
+          const obsList = await listObservations(undefined, undefined, undefined, undefined, undefined, 5);
+          if (obsList?.items?.length) {
+            data = obsList.items;
+          }
+        } catch (e) {}
+      }
+
+      setFetchedData(data);
+    } catch (err) {
+      console.error(`Failed to fetch citation data for ${reference}`, err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -253,6 +317,10 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
         }
       } catch (e) {}
     }
+    const url = getOriginUrl();
+    if (url && url !== '#') {
+      navigate(url);
+    }
     setShowPopup(false);
   };
 
@@ -272,7 +340,7 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
       } catch (e) {}
     }
 
-    if (isUUIDReference && finalUuid) {
+    if (isUUIDReference && finalUuid && !isPlaceholderUuid) {
       if (type === 'examination') return `/examinations/${finalUuid}`;
       if (type === 'observation') {
         if (fetchedData?.examination_id) return `/examinations/${fetchedData.examination_id}/biomarkers?highlight=${finalUuid}`;
@@ -304,18 +372,27 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
           if (bioId) return `/biomarkers/details/${bioId}`;
           if (args.biomarker_slug) return `/biomarkers/details/${args.biomarker_slug}`;
         }
-        if (toolCall.name.includes('biomarker')) return '/biomarkers';
-        if (toolCall.name.includes('medication')) return '/medications';
       } catch (e) {}
     }
+
+    // Category fallbacks
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('observation') || lowerType.includes('biomarker')) return '/biomarkers';
+    if (lowerType.includes('medication')) return '/medications';
+    if (lowerType.includes('examination')) return '/examinations';
+    if (lowerType.includes('document')) return '/documents';
+    if (lowerType.includes('event')) return '/events';
+
     return '#';
   };
 
   const displayName = isUUIDReference 
-    ? (uuid && uuid.length < 20 ? uuid.replace(/-/g, ' ') : type)
+    ? (uuid && uuid.length < 20 && !isPlaceholderUuid ? uuid.replace(/-/g, ' ') : type)
     : reference.replace(/get_|recent_|history|_details/g, '').replace(/_/g, ' ');
 
-  if (!isUUIDReference && !toolCall) {
+  const isKnownClinicalType = ['observation', 'biomarker', 'medication', 'examination', 'document', 'event'].includes(type.toLowerCase());
+
+  if (!isUUIDReference && !toolCall && !isKnownClinicalType) {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-gray-50 dark:bg-dark-surface/50 text-gray-400 dark:text-dark-muted border border-gray-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest align-middle">
         <Info className="w-2.5 h-2.5" />
@@ -334,9 +411,6 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
   const calculatedLeft = Math.min(Math.max(popupPosition.left, minLeft), maxLeft);
   
   // Arrow offset relative to popup center
-  // popupPosition.left is where the button center is.
-  // calculatedLeft is where the popup center is.
-  // We constrain the arrow offset so it doesn't go off the popup edges
   const arrowOffset = Math.min(Math.max(popupPosition.left - calculatedLeft, -halfWidth + 24), halfWidth - 24);
 
   return (
@@ -383,7 +457,7 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
                 </div>
                 <div>
                    <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-dark-muted block leading-none mb-0.5">
-                     {isUUIDReference ? 'Live Data' : 'Data Source'}
+                     Live Data
                    </span>
                    <span className="text-[8px] sm:text-[9px] font-mono text-indigo-600 dark:text-indigo-400 leading-none">{displayName}</span>
                 </div>
@@ -394,7 +468,7 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
                  e.preventDefault();
                  handleOpenOriginal();
                }}
-               className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 whitespace-nowrap"
+               className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer"
              >
                 <ExternalLink className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
                 Origin
@@ -414,7 +488,17 @@ export const CitationButton: React.FC<CitationButtonProps> = ({ reference, toolC
                   onClose={() => setShowPopup(false)}
                />
              ) : (
-               <p className="text-[10px] text-gray-400 italic">No record found for this reference.</p>
+               <div className="py-3 text-center space-y-1.5 w-full">
+                 <p className="text-[10px] font-bold text-gray-600 dark:text-gray-300">Synchronized Clinical Reference</p>
+                 <p className="text-[9px] text-gray-400 italic">View complete patient metrics in the workspace.</p>
+                 <button
+                   onClick={handleOpenOriginal}
+                   className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] font-black uppercase tracking-wider hover:bg-indigo-100 transition-colors"
+                 >
+                   <ExternalLink className="w-2.5 h-2.5" />
+                   View in {type.toLowerCase().includes('observation') || type.toLowerCase().includes('biomarker') ? 'Biomarkers' : type}
+                 </button>
+               </div>
              )}
           </div>
         </div>,

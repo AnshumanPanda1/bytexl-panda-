@@ -3,6 +3,7 @@ mypy_report.txt
 
 # MCP / browser-debug artifacts
 .playwright-mcp/
+.chronos/
 # Python
 __pycache__/
 *.py[cod]
@@ -70,6 +71,7 @@ uploads/
 # Docker
 
 # Celery
+celerybeat-schedule*
 celerybeat-schedule
 celerybeat-schedule.db
 celerybeat-schedule.bak
@@ -119,6 +121,8 @@ htmlcov/
 *.p12
 credentials.json
 secrets.json
+secrets/
+!secrets/secrets.json.example
 
 # assistant-ui dev-link state (never commit)
 .assistant-ui-dev-link.json

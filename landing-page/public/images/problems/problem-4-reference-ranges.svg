@@ -1,0 +1,21 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Biomarker Trend / Bell curve graph backdrop -->
+  <path d="M7 26C11 25 15 14 22 14C29 14 31 26 41 26" stroke="white" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round"/>
+  <!-- Base track for biomarker scale -->
+  <rect x="7" y="28" width="34" height="6" rx="3" fill="white" fill-opacity="0.12"/>
+  <!-- Normal reference range zone (central clear zone) -->
+  <rect x="15" y="28" width="16" height="6" rx="1.5" fill="white" fill-opacity="0.4"/>
+  <!-- Lower limit boundary tick -->
+  <line x1="15" y1="25" x2="15" y2="37" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Upper limit boundary tick -->
+  <line x1="31" y1="25" x2="31" y2="37" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Out-of-bounds measurement marker on far right -->
+  <circle cx="37" cy="31" r="3.5" fill="#FF5353"/>
+  <!-- Upward spike arrow from out-of-bounds dot -->
+  <path d="M37 25V18M34.5 20.5L37 18L39.5 20.5" stroke="#FF5353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Coral Problem Badge: Out of reference range / alert -->
+  <circle cx="34" cy="14" r="8" fill="#FF5353"/>
+  <!-- Exclamation mark inside badge -->
+  <rect x="33" y="9.5" width="2" height="5" rx="1" fill="white"/>
+  <circle cx="34" cy="17" r="1.1" fill="white"/>
+</svg>

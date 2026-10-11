@@ -150,6 +150,11 @@ class DocumentModel(Base, UUIDMixin, AuditMixin, VersionedMixin, TimestampMixin,
             if getattr(self, "source_integration_id", None)
             else None,
             "external_id": getattr(self, "external_id", None),
+            "document_date": (
+                self.entities.get("document_date")
+                if isinstance(self.entities, dict) and self.entities.get("document_date")
+                else None
+            ),
             "created_at": created_at_value.isoformat()
             if created_at_value is not None
             else (updated_at_value.isoformat() if updated_at_value else None),

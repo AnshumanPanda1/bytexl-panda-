@@ -1,0 +1,20 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Document base with folded corner -->
+  <path d="M11 8C11 6.34315 12.3431 5 14 5H27L37 15V39C37 40.6569 35.6569 42 34 42H14C12.3431 42 11 40.6569 11 39V8Z" fill="white" fill-opacity="0.12"/>
+  <path d="M11 8C11 6.34315 12.3431 5 14 5H27L37 15V39C37 40.6569 35.6569 42 34 42H14C12.3431 42 11 40.6569 11 39V8Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Folded corner tab -->
+  <path d="M27 5V15H37" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white" fill-opacity="0.2"/>
+  <!-- Image/Photo preview box inside representing unstructured photo report -->
+  <rect x="16" y="18" width="16" height="12" rx="2" fill="white" fill-opacity="0.15" stroke="white" stroke-width="1.5"/>
+  <!-- Mountain graphic -->
+  <path d="M19 27L22.5 22.5L25 25.5L27.5 22L29.5 27H19Z" fill="white" fill-opacity="0.7"/>
+  <!-- Sun dot -->
+  <circle cx="21" cy="21" r="1.2" fill="white"/>
+  <!-- Scanning/unstructured wavy lines -->
+  <path d="M16 34H26" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 2"/>
+  <!-- Coral Problem Badge: Unstructured/Warning -->
+  <circle cx="34" cy="34" r="8" fill="#FF5353"/>
+  <!-- Warning exclamation mark inside badge -->
+  <rect x="33" y="29.5" width="2" height="5" rx="1" fill="white"/>
+  <circle cx="34" cy="37" r="1.1" fill="white"/>
+</svg>

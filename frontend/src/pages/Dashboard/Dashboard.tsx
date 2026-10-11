@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
 import { useDashboardStore } from '../../store/slices/dashboardSlice';
@@ -29,6 +30,7 @@ import {
 import { getBestIcon } from '../../components/dashboard';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StickyToolbar } from '../../components/ui/StickyToolbar';
+import { HeroPatientBanner } from '../../components/dashboard/HeroPatientBanner';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -229,6 +231,7 @@ const generateSmartLayout = (
 
 function Dashboard() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { 
     setDashboardData, 
     activeLayout, 
@@ -738,10 +741,20 @@ function Dashboard() {
     let cardData = undefined;
     if (cardBiomarker) {
       const keys = Object.keys(cardsData);
+      const target = cardBiomarker.toLowerCase().replace(/[^a-z0-9]/g, '');
       const exactKey = keys.find(k => k === cardBiomarker);
       const lowerKey = keys.find(k => k.toLowerCase() === cardBiomarker.toLowerCase());
-      const slugKey = keys.find(k => k === cardBiomarker.toLowerCase().replace(/\s+/g, '-'));
-      const keyToUse = exactKey || lowerKey || slugKey;
+      const slugKey = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === target);
+      const aliasKey = keys.find(k => {
+        const kNorm = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if ((target.includes('systolic') || target.includes('bloodpressure')) && (kNorm.includes('systolic') || kNorm.includes('sbp') || kNorm.includes('bloodpressuresystolic'))) return true;
+        if (target.includes('diastolic') && (kNorm.includes('diastolic') || kNorm.includes('dbp') || kNorm.includes('bloodpressurediastolic'))) return true;
+        if ((target.includes('heart') || target.includes('pulse') || target.includes('hr')) && (kNorm.includes('heart') || kNorm.includes('pulse') || kNorm.includes('hr'))) return true;
+        if (target.includes('temp') && kNorm.includes('temp')) return true;
+        if ((target.includes('sugar') || target.includes('glucose')) && (kNorm.includes('glucose') || kNorm.includes('sugar'))) return true;
+        return false;
+      });
+      const keyToUse = exactKey || lowerKey || slugKey || aliasKey;
       if (keyToUse) cardData = cardsData[keyToUse];
     }
 
@@ -775,6 +788,8 @@ function Dashboard() {
         subtitle={currentPatient ? `${currentPatient.name?.given?.join(' ')} ${currentPatient.name?.family}` : t('dashboard.all_patients')}
         icon={<img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-6 h-6" alt="Dashboard" />}
       />
+
+      <HeroPatientBanner />
 
       <StickyToolbar
         details={
@@ -875,12 +890,29 @@ function Dashboard() {
         }
         actions={
           <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto overflow-x-auto sm:overflow-visible no-scrollbar pb-1 sm:pb-0">
-            {isEditMode && (
+            {!isEditMode ? (
+              <>
+                <button
+                  onClick={() => navigate('/examinations/upload')}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-xs transition-all active:scale-95 shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Upload Record</span>
+                </button>
+                <button 
+                  onClick={() => setIsEditMode(true)}
+                  className="shrink-0 p-2.5 rounded-xl transition-all shadow-xs border bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-dark-border text-gray-500 dark:text-dark-muted border-gray-200 dark:border-dark-border"
+                  title={t('dashboard.edit_layout')}
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
               <>
                 <div ref={addCardMenuRef} className="relative shrink-0">
                   <button 
                     onClick={() => setIsAddCardMenuOpen(!isAddCardMenuOpen)}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95 shadow-xs border border-blue-100 dark:border-blue-900/30"
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95 shadow-xs border border-blue-100 dark:border-blue-900/30"
                   >
                     <Plus className="w-4 h-4" />
                     <span className="hidden xs:inline">{t('dashboard.add_card')}</span>
@@ -901,20 +933,20 @@ function Dashboard() {
                 </div>
                 <button 
                   onClick={saveCurrentLayout}
-                  className="shrink-0 flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200/50 dark:shadow-none active:scale-95"
+                  className="shrink-0 flex items-center space-x-2 px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-xs active:scale-95"
                 >
                   <Save className="w-4 h-4" />
                   <span className="hidden xs:inline">{t('dashboard.save_layout')}</span>
                 </button>
+                <button 
+                  onClick={() => setIsEditMode(false)}
+                  className="shrink-0 p-2.5 rounded-xl transition-all shadow-xs border bg-orange-600 text-white border-orange-700"
+                  title="Done Editing"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
               </>
             )}
-            <button 
-              onClick={() => setIsEditMode(!isEditMode)}
-              className={`shrink-0 p-2.5 rounded-xl transition-all shadow-xs border ${isEditMode ? 'bg-orange-600 text-white border-orange-700' : 'bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-dark-border text-gray-500 dark:text-dark-muted border-gray-200 dark:border-dark-border'}`}
-              title={t('dashboard.edit_layout')}
-            >
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
         }
       />

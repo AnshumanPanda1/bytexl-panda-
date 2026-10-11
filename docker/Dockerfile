@@ -40,6 +40,7 @@ COPY backend/scripts /app/backend/scripts
 # behind GET /setup/extension-catalog, demo mode's sample PDF) — omitting
 # this dir shipped images whose wizard dropdowns and seed stages ran empty.
 COPY backend/data /app/backend/data
+COPY backend/tests/ocr_benchmark /app/backend/tests/ocr_benchmark
 COPY integrations /app/integrations
 
 # Non-root runtime user (audit 2026-08 CFG-M5).

@@ -25,9 +25,12 @@ Family contract (identity-auth §7/§8/§12) on the Class S base (§17):
    login errors per §7.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select, text
@@ -180,35 +183,38 @@ def _set_auth_cookies(response: Response, issued) -> None:
 
 async def _is_initialized(db: AsyncSession) -> bool:
     """True once at least one user row exists."""
-    result = await db.execute(select(func.count()).select_from(UserModel))
-    return (result.scalar() or 0) > 0
+    try:
+        result = await db.execute(select(func.count()).select_from(UserModel))
+        return (result.scalar() or 0) > 0
+    except Exception as exc:
+        logger.warning(f"Could not query database initialization: {exc}")
+        return True
 
 
 @router.get("/setup-status", response_model=SetupStatus)
 async def setup_status(request: Request, db: AsyncSession = Depends(get_db)):
-    """First-run status — drives the frontend's login-vs-setup decision.
+    """First-run status — drives the frontend's login-vs-setup decision."""
+    try:
+        initialized = await _is_initialized(db)
+    except Exception as exc:
+        logger.warning(f"Could not determine DB initialization status: {exc}")
+        initialized = True
 
-    No auth: the frontend must be able to call this before any user exists.
-    ``initialized`` reflects whether a SYSTEM_ADMIN has been created (via
-    the wizard, the CLI script, or the legacy register path).
-    ``setup_token_required`` tells the wizard whether to collect the
-    one-time setup token (per-mode: see ``app/core/setup_token.py``).
-
-    SECURITY: this endpoint never returns the setup token itself. In
-    ``env`` mode the launcher already holds the token (it set it); it
-    composes the one-click URL itself. Echoing the token here let any
-    anonymous caller bootstrap the instance (audit 2026-08 C-1).
-    """
-    initialized = await _is_initialized(db)
     mode = setup_token.current_mode()
     token_required = False if initialized else setup_token.is_setup_token_required(request)
+
+    try:
+        demo_mode = await instance_state.demo_mode_enabled()
+    except Exception as exc:
+        logger.warning(f"Could not check demo_mode: {exc}")
+        demo_mode = False
+
     return SetupStatus(
         initialized=initialized,
         setup_token_required=token_required,
         token_mode=mode,
         setup_url_hint=None,
-        # DB fact (init-only HA_DEMO_MODE) — never the raw env (§4/§13).
-        demo_mode=await instance_state.demo_mode_enabled(),
+        demo_mode=demo_mode,
     )
 
 

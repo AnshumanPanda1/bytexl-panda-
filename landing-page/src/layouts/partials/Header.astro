@@ -1,0 +1,42 @@
+---
+import Logo from "@/components/Logo.astro";
+import config from "@/config/config.json";
+
+export interface Props {
+  hideNav?: boolean;
+}
+
+const { navigation_button, settings } = config;
+---
+
+<header
+  class={`header z-50 w-full transition-all duration-300 ${settings.sticky_header ? "fixed top-0" : ""}`}
+>
+  <nav class="navbar container relative z-30">
+    <!-- logo -->
+    <div class="order-0">
+      <Logo />
+    </div>
+
+    <div class="order-1 ml-auto flex items-center md:order-2 lg:ml-0">
+      {
+        navigation_button.enable && (
+          <a
+            class="btn btn-primary inline-block"
+            href={navigation_button.link}
+            target={
+              navigation_button.link.startsWith("http") ? "_blank" : "_self"
+            }
+            rel={
+              navigation_button.link.startsWith("http")
+                ? "noopener noreferrer"
+                : ""
+            }
+          >
+            {navigation_button.label}
+          </a>
+        )
+      }
+    </div>
+  </nav>
+</header>

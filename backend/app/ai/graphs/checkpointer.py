@@ -21,6 +21,8 @@ from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import settings
 
@@ -46,7 +48,8 @@ def get_checkpoint_conninfo() -> str:
         f"port={settings.POSTGRES_PORT} "
         f"user={settings.POSTGRES_USER} "
         f"password={settings.POSTGRES_PASSWORD} "
-        f"dbname={settings.POSTGRES_DB}"
+        f"dbname={settings.POSTGRES_DB} "
+        f"keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=5"
     )
 
 
@@ -57,7 +60,7 @@ async def _checkpoint_tables_exist(saver: AsyncPostgresSaver) -> bool:
     (the DML-only runtime role) can still verify the tables the migrate
     step prepared — no DDL is attempted when they all exist.
     """
-    async with saver.conn.cursor() as cur:
+    async with saver._cursor() as cur:
         await cur.execute(
             "SELECT COUNT(*) AS n FROM information_schema.tables "
             "WHERE table_schema = current_schema() "
@@ -114,12 +117,22 @@ class CheckpointStore:
         if self._saver is not None:
             return
         stack = AsyncExitStack()
-        saver = await stack.enter_async_context(AsyncPostgresSaver.from_conn_string(self._conninfo))
+        pool = AsyncConnectionPool(
+            self._conninfo,
+            min_size=1,
+            max_size=10,
+            max_idle=300,
+            check=AsyncConnectionPool.check_connection,
+            kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
+            open=False,
+        )
+        await stack.enter_async_context(pool)
+        saver = AsyncPostgresSaver(conn=pool)
         if not await _checkpoint_tables_exist(saver):
             await saver.setup()
         self._stack = stack
         self._saver = saver
-        logger.info("Checkpoint store open (checkpoint tables ready)")
+        logger.info("Checkpoint store open (checkpoint tables ready with AsyncConnectionPool)")
 
     async def close(self) -> None:
         """Drain in-flight graph runs, then close the pool."""

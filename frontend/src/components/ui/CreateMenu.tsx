@@ -69,14 +69,6 @@ export const DEFAULT_CREATE_ITEMS: CreateMenuItem[] = [
     category: 'clinical',
   },
   {
-    id: 'medication',
-    labelKey: 'common.new_medication',
-    icon: Pill,
-    to: '/medications?new=medication',
-    requiresPatient: true,
-    category: 'clinical',
-  },
-  {
     id: 'event',
     labelKey: 'common.new_clinical_event',
     icon: Activity,
@@ -85,33 +77,10 @@ export const DEFAULT_CREATE_ITEMS: CreateMenuItem[] = [
     category: 'clinical',
   },
   {
-    id: 'allergy',
-    labelKey: 'common.new_allergy',
-    icon: ShieldAlert,
-    toBuilder: ({ currentPatient }) =>
-      currentPatient ? `/patients/${currentPatient.id}?new=allergy` : '/patients',
-    requiresPatient: true,
-    category: 'clinical',
-  },
-  {
     id: 'patient',
     labelKey: 'common.new_patient',
     icon: User,
     to: '/patients?new=patient',
-    category: 'demographics',
-  },
-  {
-    id: 'doctor',
-    labelKey: 'common.new_doctor',
-    icon: Stethoscope,
-    to: '/doctors?new=doctor',
-    category: 'demographics',
-  },
-  {
-    id: 'organization',
-    labelKey: 'common.new_organization',
-    icon: Building2,
-    to: '/organizations?new=organization',
     category: 'demographics',
   },
 ];

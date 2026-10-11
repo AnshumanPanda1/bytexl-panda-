@@ -2,8 +2,6 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.main import app
-
 
 @pytest.fixture(scope="session", autouse=True)
 def run_migrations():
@@ -28,8 +26,12 @@ def run_migrations():
     # Load alembic configuration from the backend root
     alembic_cfg = Config("alembic.ini")
 
-    # Run migrations
-    command.upgrade(alembic_cfg, "head")
+    # Run migrations if database is available
+    try:
+        command.upgrade(alembic_cfg, "head")
+    except Exception as e:
+        logging.getLogger("alembic").warning("Database not available for migrations during test session: %s", e)
+        return
 
     # Wipe all data tables (keep alembic_version so migrations aren't rerun).
     # We only do this for the *_test database to avoid nuking a dev DB if the
@@ -69,6 +71,8 @@ def anyio_backend():
 
 @pytest_asyncio.fixture
 async def async_client():
+    from app.main import app
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client

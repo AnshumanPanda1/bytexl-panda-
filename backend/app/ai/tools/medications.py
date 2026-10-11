@@ -99,7 +99,8 @@ def build(ctx: ToolContext) -> list[Any]:
 
     @tool
     async def search_medications(
-        search_term: str,
+        search_term: str | None = None,
+        query: str | None = None,
         limit: int = 10,
     ) -> str:
         """Search the medication catalog (tenant-scoped + globals).
@@ -113,6 +114,7 @@ def build(ctx: ToolContext) -> list[Any]:
 
         Args:
             search_term: Drug name, generic name, symptom, or indication.
+            query: Alias for search_term.
             limit: Max results (default 10).
 
         Returns JSON: [{id, name, description, indications, side_effects,
@@ -120,13 +122,22 @@ def build(ctx: ToolContext) -> list[Any]:
         """
         from app.services.catalog_search_service import search_catalogs as _search
 
-        results = await _search(
-            ctx.db,
-            ctx.tenant_id,
-            search_term,
-            types=["medication"],
-            limit_total=limit,
-        )
+        term = search_term or query or ""
+        if not ctx.db:
+            return json.dumps([])
+
+        try:
+            results = await _search(
+                ctx.db,
+                ctx.tenant_id,
+                term,
+                types=["medication"],
+                limit_total=limit,
+            )
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"search_medications failed: {exc}")
+            return json.dumps([])
         # Project to a stable shape — the dispatcher payload already
         # contains everything from MedicationCatalog.to_dict(); we just
         # normalise the type/id/label keys.

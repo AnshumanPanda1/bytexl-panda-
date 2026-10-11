@@ -83,8 +83,8 @@ function Sidebar() {
 
           <div className={`p-6 flex items-center ${effectiveCollapsed ? 'justify-center' : 'justify-start'} mt-2 mb-4`}>
             <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-              <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-9 h-9 shrink-0" alt="Health Assistant Logo" />
-              {!effectiveCollapsed && <h1 className="text-xl font-bold text-brand-navy dark:text-white truncate">Health Assistant</h1>}
+              <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-9 h-9 shrink-0" alt="Tattva Logo" />
+              {!effectiveCollapsed && <h1 className="text-xl font-bold text-brand-navy dark:text-white truncate">Tattva</h1>}
             </Link>
           </div>
 

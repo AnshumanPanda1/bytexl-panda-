@@ -190,22 +190,35 @@ class MedicalProcessingService:
 
         tenant_id = exam.tenant_id
 
-        # 0. Ensure examination has a date (fallback to today if missing)
-        if not exam.examination_date:
-            exam.examination_date = datetime.date.today()
-            await self.db.commit()
-            await self.db.refresh(exam)
-            logger.info(f"Initialized missing date for exam {exam.id} to today.")
-
         # 1. Aggregate Text
         cumulative_text, docs_with_text = await self.aggregate_examination_text(examination_id)
         if not cumulative_text:
+            if not exam.examination_date:
+                exam.examination_date = datetime.date.today()
+                await self.db.commit()
+                await self.db.refresh(exam)
             await progress_tracker.update_examination_status("completed", 100)
             await task_logger.log_success(message="No text found for analysis")
             return {"status": "completed", "message": "No text found"}
 
         await progress_tracker.update_examination_status("clinical_analysis", 10)
         await task_logger.log_progress("text_aggregated", 10, num_docs=len(docs_with_text))
+
+        # 1.2. Parse report date from document text
+        from app.utils.clinical_date_parser import parse_clinical_date
+
+        parsed_report_date = parse_clinical_date(cumulative_text)
+        today = datetime.date.today()
+        if parsed_report_date:
+            if not exam.examination_date or exam.examination_date == today or exam.auto_extract_metadata:
+                logger.info(
+                    "Setting examination %s date to document report date: %s",
+                    exam.id,
+                    parsed_report_date,
+                )
+                exam.examination_date = parsed_report_date
+                await self.db.commit()
+                await self.db.refresh(exam)
 
         # 1.5. Check if we need to auto-extract metadata (only if the exam is marked or has placeholders)  # noqa: E501 -- long template/message string; reflow when touched
         if exam.auto_extract_metadata:
@@ -289,6 +302,12 @@ class MedicalProcessingService:
                 logger.error(f"Failed to auto-extract metadata: {e}")
                 await task_logger.log_error(e, "metadata_extraction")
 
+        # Fallback to today only if still missing
+        if not exam.examination_date:
+            exam.examination_date = today
+            await self.db.commit()
+            await self.db.refresh(exam)
+
         # 2. Get Context & NLP Extractor
         context = await self.get_clinical_context(exam)
         nlp_extractor = await self.ai_provider_service.get_nlp_extractor(tenant_id, user_id)
@@ -303,6 +322,20 @@ class MedicalProcessingService:
             reference_data=context["reference_data"],
         )
         await task_logger.log_progress("nlp_pass_1_completed", 45)
+
+        # 3.5. Evidence Grounding & Provenance Validation (Phase 5)
+        from app.ai.pipeline.evidence_validator import EvidenceValidator
+
+        validator = EvidenceValidator()
+        validation_report = validator.validate_document_entities(
+            parsed_data, cumulative_text=cumulative_text, docs=docs_with_text
+        )
+        await task_logger.log_progress(
+            "evidence_validation_completed",
+            48,
+            valid_count=validation_report.valid_count,
+            flagged_count=validation_report.flagged_count,
+        )
 
         # 4. Pass 2: Ontology Generation for Unknowns
         raw_to_slug_map = {}

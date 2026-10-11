@@ -1,7 +1,7 @@
 {
-  "name": "health-assistant",
-  "version": "0.8.0",
-  "description": "Universal Health Data Platform",
+  "name": "tattva-frontend",
+  "version": "1.0.0",
+  "description": "Tattva - AI-Powered Personal Health Copilot",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

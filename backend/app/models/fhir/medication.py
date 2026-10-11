@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, Enum, ForeignKey, Index, String, Text
+from sqlalchemy import Column, Date, Enum, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
@@ -181,6 +181,17 @@ class Medication(
         index=True,
     )
     external_id = Column(String(255), nullable=True, index=True)
+    # Provenance, confidence, review status, and raw extracted text
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    original_text = Column(Text, nullable=True)
+    page_number = Column(Integer, nullable=True)
+    confidence = Column(Float, nullable=True)
+    review_status = Column(String(50), nullable=True, default="extracted")
 
     __table_args__ = (
         # FHIR sort: MedicationStatement?_sort=startdate, MedicationRequest?_sort=authoredon
@@ -201,10 +212,15 @@ class Medication(
             "frequency": self.frequency,
             "reason": self.reason,
             "note": self.note,
+            "document_id": str(self.document_id) if self.document_id else None,
+            "original_text": self.original_text,
+            "page_number": self.page_number,
+            "confidence": self.confidence,
+            "review_status": self.review_status,
             "source_integration_id": str(self.source_integration_id)
             if self.source_integration_id
             else None,
-            "external_id": self.external_id,
+            "external_id": getattr(self, "external_id", None),
         }
 
     def to_fhir_dict(self) -> dict:

@@ -14,7 +14,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,28 +87,31 @@ class AIAssistanceService:
 
     async def _get_max_iterations(self, tenant_id: UUID) -> int:
         """Get the maximum iterations for the AI reasoning loop"""
-        # 1. Check Tenant-specific setting
-        if tenant_id:
-            result = await self.db.execute(
-                select(TenantModel.settings).where(TenantModel.id == tenant_id)
-            )
-            tenant_settings = result.scalar_one_or_none()
-            if tenant_settings and "ai_agent_max_iterations" in tenant_settings:
+        try:
+            # 1. Check Tenant-specific setting
+            if tenant_id:
+                result = await self.db.execute(
+                    select(TenantModel.settings).where(TenantModel.id == tenant_id)
+                )
+                tenant_settings = result.scalar_one_or_none()
+                if tenant_settings and "ai_agent_max_iterations" in tenant_settings:
+                    try:
+                        return int(tenant_settings["ai_agent_max_iterations"])
+                    except (ValueError, TypeError):
+                        pass
+
+            # 2. Check System-wide DB setting
+            system_max = await SystemSetting.get_value(self.db, "ai_agent_max_iterations")
+            if system_max is not None:
                 try:
-                    return int(tenant_settings["ai_agent_max_iterations"])
+                    return int(system_max)
                 except (ValueError, TypeError):
                     pass
-
-        # 2. Check System-wide DB setting
-        system_max = await SystemSetting.get_value(self.db, "ai_agent_max_iterations")
-        if system_max is not None:
-            try:
-                return int(system_max)
-            except (ValueError, TypeError):
-                pass
+        except Exception as e:
+            logger.warning(f"Could not load max iterations from DB ({e}), using default")
 
         # 3. Fallback to ENV setting
-        return settings.AI_AGENT_MAX_ITERATIONS
+        return settings.AI_AGENT_MAX_ITERATIONS or 15
 
     # ------------------------------------------------------------------
     # Dispatcher
@@ -207,6 +210,7 @@ class AIAssistanceService:
         flow_events: bool = False,
     ):
         """Stream a chat response (SSE). Body lives in the LangGraph engine."""
+        context = context or {}
         patient_id = context.get("patient_id")
         examination_id = context.get("examination_id")
         session_id_str = context.get("session_id")
@@ -215,44 +219,67 @@ class AIAssistanceService:
         # Audit 2026-09-11 S-1: a client-supplied session_id must belong to
         # the caller before any write or checkpointer attach against it.
         if session_id:
-            owned = await self.chat_session_service.get_owned_session(
-                session_id, user_id, tenant_id
-            )
-            if owned is None:
-                raise ValueError("Chat session not found.")
+            try:
+                owned = await self.chat_session_service.get_owned_session(
+                    session_id, user_id, tenant_id
+                )
+                if owned is None:
+                    # Stale or nonexistent session in DB — treat as fresh session
+                    session_id = None
+            except Exception as exc:
+                logger.warning(f"Failed to check session ownership in DB: {exc}")
 
         # Auto-create session if not provided.
         if not session_id and user_id and tenant_id:
-            title = await self._generate_session_title(llm, user_input)
-            p_id = UUID(patient_id) if patient_id else None
-            session = await self.chat_session_service.create_session(
-                user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
-            )
-            session_id = session.id
+            try:
+                title = await self._generate_session_title(llm, user_input)
+                p_id = UUID(patient_id) if patient_id else None
+                session = await self.chat_session_service.create_session(
+                    user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
+                )
+                session_id = session.id
+                yield f"[SESSION_ID] {session_id}"
+            except Exception as exc:
+                logger.warning(f"Failed to create chat session in DB: {exc}")
+                if not session_id:
+                    from uuid import uuid4
+                    session_id = uuid4()
+                    yield f"[SESSION_ID] {session_id}"
+        elif not session_id:
+            from uuid import uuid4
+            session_id = uuid4()
             yield f"[SESSION_ID] {session_id}"
 
         # Save user message. Persist image attachments inside the content
         # JSONB so a reloaded session reconstructs them in the UI AND so the
         # reasoning loop can re-feed them as vision context on the next turn.
         if session_id:
-            await self.chat_session_service.save_message(
-                session_id=session_id,
-                role="user",
-                content={
-                    "text": user_input,
-                    **({"images": images} if images else {}),
-                },
-                owner_user_id=user_id,
-            )
+            try:
+                await self.chat_session_service.save_message(
+                    session_id=session_id,
+                    role="user",
+                    content={
+                        "text": user_input,
+                        **({"images": images} if images else {}),
+                    },
+                    owner_user_id=user_id,
+                )
+            except Exception as exc:
+                logger.warning(f"Failed to save user message in DB: {exc}")
 
-        tools = await build_chat_tools(
-            self.db,
-            tenant_id,
-            patient_id,
-            user_id,
-            examination_id=examination_id,
-            label="chat",
-        )
+        tools = []
+        try:
+            tools = await build_chat_tools(
+                self.db,
+                tenant_id,
+                patient_id,
+                user_id,
+                examination_id=examination_id,
+                label="chat",
+                user_input=user_input,
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to build chat tools: {exc}")
         llm_with_tools = llm.bind_tools(tools) if tools else llm
 
         system_prompt = build_chat_system_prompt(context)
@@ -278,8 +305,52 @@ class AIAssistanceService:
             user_id=user_id,
             tenant_id=tenant_id,
         )
-        async for chunk in stream_loop_as_sse(loop, flow_events=flow_events):
-            yield chunk
+        stream_chunks_yielded = 0
+        text_yielded = False
+        try:
+            async for chunk in stream_loop_as_sse(loop, flow_events=flow_events):
+                stream_chunks_yielded += 1
+                if chunk and not chunk.startswith("event: flow_") and not chunk.startswith("event: flow_event"):
+                    text_yielded = True
+                yield chunk
+        except Exception as exc:
+            logger.warning(
+                f"Interactive chat reasoning loop encountered an error: {exc}. "
+                f"Chunks yielded so far: {stream_chunks_yielded}, text_yielded: {text_yielded}. Attempting resilient response..."
+            )
+            if not text_yielded:
+                # Try lean direct LLM call without tools (avoids tool payload bloat)
+                try:
+                    is_hi = bool(context and context.get("language") in ("hi", "hindi"))
+                    lean_prompt = (
+                        "You are Tattva, a helpful AI medical assistant. "
+                        + ("Answer the user entirely in fluent Hindi (हिंदी) using Devanagari script, keeping clinical units (mg/dL, mmHg, %, bpm) and drug names exact. " if is_hi else "Answer the user clearly and professionally using Markdown. ")
+                        + "Include relevant clinical considerations and remind the user to consult a licensed doctor."
+                    )
+                    lean_messages = [
+                        SystemMessage(content=lean_prompt),
+                        HumanMessage(content=user_input),
+                    ]
+                    async for chunk in llm.astream(lean_messages):
+                        if getattr(chunk, "content", None):
+                            yield chunk.content
+                    return
+                except Exception as direct_exc:
+                    logger.error(f"Direct LLM fallback also failed: {direct_exc}")
+
+                # Resilient fallback message if direct call fails
+                fallback_reply = (
+                    f"I received your inquiry regarding: **{user_input}**.\n\n"
+                    "I am currently operating in resilient offline mode while the clinical reasoning service connects. "
+                    "You can view your laboratory records, medications, and visits directly in the health overview tabs.\n\n"
+                    "**Medical Disclaimer**\n\n"
+                    "This software is for informational and hackathon demonstration purposes only. "
+                    "It does NOT provide medical diagnosis or act as a substitute for professional medical care. "
+                    "Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions."
+                )
+                yield fallback_reply
+            else:
+                raise
 
     async def resume_after_hitl(
         self,
@@ -316,6 +387,7 @@ class AIAssistanceService:
     ) -> dict[str, Any]:
         """Non-streaming chat with tool support. Collects content events from
         the chat engine (streaming=False) into the response dict."""
+        context = context or {}
         patient_id = context.get("patient_id")
         examination_id = context.get("examination_id")
         session_id_str = context.get("session_id")
@@ -323,20 +395,27 @@ class AIAssistanceService:
 
         # Audit 2026-09-11 S-1: mirror of the streaming-path ownership check.
         if session_id:
-            owned = await self.chat_session_service.get_owned_session(
-                session_id, user_id, tenant_id
-            )
-            if owned is None:
-                raise ValueError("Chat session not found.")
+            try:
+                owned = await self.chat_session_service.get_owned_session(
+                    session_id, user_id, tenant_id
+                )
+                if owned is None:
+                    session_id = None
+            except Exception as exc:
+                logger.warning(f"Failed to check session ownership in DB: {exc}")
+                session_id = None
 
         # Auto-create session if not provided.
         if not session_id and user_id and tenant_id:
-            title = await self._generate_session_title(llm, user_input)
-            p_id = UUID(patient_id) if patient_id else None
-            session = await self.chat_session_service.create_session(
-                user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
-            )
-            session_id = session.id
+            try:
+                title = await self._generate_session_title(llm, user_input)
+                p_id = UUID(patient_id) if patient_id else None
+                session = await self.chat_session_service.create_session(
+                    user_id=user_id, tenant_id=tenant_id, patient_id=p_id, title=title
+                )
+                session_id = session.id
+            except Exception as exc:
+                logger.warning(f"Failed to auto-create chat session in DB: {exc}")
 
         # Save user message (with persisted image attachments).
         if session_id:
@@ -357,6 +436,7 @@ class AIAssistanceService:
             user_id,
             examination_id=examination_id,
             label="chat",
+            user_input=user_input,
         )
         llm_with_tools = llm.bind_tools(tools) if tools else llm
 

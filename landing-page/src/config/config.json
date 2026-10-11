@@ -1,0 +1,39 @@
+{
+  "site": {
+    "title": "Tattva",
+    "base_url": "https://tattva.health",
+    "base_path": "/",
+    "trailing_slash": false,
+    "favicon": "/images/favicon.png",
+    "logo": "/images/logo.svg",
+    "logo_width": "160",
+    "logo_height": "45",
+    "logo_text": "Tattva"
+  },
+  "settings": {
+    "sticky_header": true
+  },
+  "params": {
+    "contact_form_action": "#",
+    "checklist_form_action": "#",
+    "apply_form_action": "#",
+    "copyright": "Copyright &copy; 2026 <strong>Tattva Team</strong>. All Rights Reserved.",
+    "footer_tagline": "AI-Powered Personal Health Copilot — Clinical Extraction, Bilingual Summaries & FHIR Interoperability.",
+    "footer_email": "team@tattva.health",
+    "footer_phone": "+91 98765 43210"
+  },
+  "navigation_button": {
+    "enable": true,
+    "label": "Launch Copilot",
+    "link": "/dashboard"
+  },
+  "google_tag_manager": {
+    "enable": false,
+    "gtm_id": "GTM-XXXXXX"
+  },
+  "metadata": {
+    "meta_author": "Tattva Team",
+    "meta_image": "/images/og-image.png",
+    "meta_description": "AI-Powered Personal Health Copilot with document intelligence, grounded bilingual summaries, and FHIR interoperability."
+  }
+}

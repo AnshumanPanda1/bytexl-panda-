@@ -437,23 +437,26 @@ def _chat_graph_nodes():
         # Final save: streaming always (matches prior behaviour);
         # non-streaming only on a clean no-tool-calls break.
         if session_id and chat_session_service is not None and (streaming or clean_break):
-            if proactive_message is not None:
-                await chat_session_service.update_message_fields(
-                    proactive_message,
-                    content={"text": state["total_content"]},
-                    tool_calls=state["all_tool_calls"],
-                    citations=state["all_citations"],
-                    tasks=state["all_tasks"] or None,
-                )
-            else:
-                await chat_session_service.save_message(
-                    session_id=session_id,
-                    role="assistant",
-                    content={"text": state["total_content"]},
-                    tool_calls=state["all_tool_calls"],
-                    citations=state["all_citations"],
-                    tasks=state["all_tasks"] or None,
-                )
+            try:
+                if proactive_message is not None:
+                    await chat_session_service.update_message_fields(
+                        proactive_message,
+                        content={"text": state["total_content"]},
+                        tool_calls=state["all_tool_calls"],
+                        citations=state["all_citations"],
+                        tasks=state["all_tasks"] or None,
+                    )
+                else:
+                    await chat_session_service.save_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content={"text": state["total_content"]},
+                        tool_calls=state["all_tool_calls"],
+                        citations=state["all_citations"],
+                        tasks=state["all_tasks"] or None,
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to persist final assistant message: {e}")
         emit("done", not clean_break)
         return {}
 

@@ -157,7 +157,8 @@ def _create_generic_cagg(
 
 
 def upgrade() -> None:
-    _drop_old_caggs()
+    if _has_timescaledb():
+        _drop_old_caggs()
     # CASCADE drops the hypertable + compression/retention policies in one go.
     op.execute("DROP TABLE IF EXISTS telemetry_data CASCADE")
 

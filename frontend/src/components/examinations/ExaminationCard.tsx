@@ -231,12 +231,12 @@ export const ExaminationCard: React.FC<Props> = ({
           {examination.diagnoses && examination.diagnoses.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1 mb-2">
               {examination.diagnoses.slice(0, 2).map((diagnosis, idx) => (
-                <span key={idx} className="inline-block px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] font-bold rounded-md border border-red-100 dark:border-red-800">
+                <span key={idx} className="inline-block px-2 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] font-medium rounded-md border border-red-200/50 dark:border-red-900/40">
                   {diagnosis}
                 </span>
               ))}
               {examination.diagnoses.length > 2 && (
-                <span className="inline-block px-2 py-0.5 bg-gray-50 dark:bg-dark-bg text-gray-500 dark:text-dark-muted text-[10px] font-bold rounded-md border border-gray-100 dark:border-dark-border">
+                <span className="inline-block px-2 py-0.5 bg-gray-50 dark:bg-dark-bg text-gray-500 dark:text-dark-muted text-[10px] font-medium rounded-md border border-gray-200/60 dark:border-dark-border">
                   +{examination.diagnoses.length - 2}
                 </span>
               )}
@@ -256,19 +256,19 @@ export const ExaminationCard: React.FC<Props> = ({
           {hasData && (
             <div className="mt-3 flex items-center space-x-2">
               {examination.observations && examination.observations.length > 0 && (
-                <span className="flex items-center text-[10px] font-bold text-gray-500 dark:text-dark-muted bg-gray-50 dark:bg-dark-bg px-2 py-1 rounded-md border border-gray-100 dark:border-dark-border">
+                <span className="flex items-center text-[10px] font-medium text-gray-600 dark:text-dark-muted bg-gray-50/80 dark:bg-dark-bg/80 px-2 py-0.5 rounded-md border border-gray-200/50 dark:border-dark-border">
                   <FlaskConical className="w-3 h-3 mr-1 text-blue-500" />
                   {examination.observations.length} Biomarkers
                 </span>
               )}
               {examination.medications && examination.medications.length > 0 && (
-                <span className="flex items-center text-[10px] font-bold text-gray-500 dark:text-dark-muted bg-gray-50 dark:bg-dark-bg px-2 py-1 rounded-md border border-gray-100 dark:border-dark-border">
+                <span className="flex items-center text-[10px] font-medium text-gray-600 dark:text-dark-muted bg-gray-50/80 dark:bg-dark-bg/80 px-2 py-0.5 rounded-md border border-gray-200/50 dark:border-dark-border">
                   <Pill className="w-3 h-3 mr-1 text-purple-500" />
                   {examination.medications.length} Medications
                 </span>
               )}
               {examination.document_statuses && examination.document_statuses.length > 0 && (
-                <span className="flex items-center text-[10px] font-bold text-gray-500 dark:text-dark-muted bg-gray-50 dark:bg-dark-bg px-2 py-1 rounded-md border border-gray-100 dark:border-dark-border">
+                <span className="flex items-center text-[10px] font-medium text-gray-600 dark:text-dark-muted bg-gray-50/80 dark:bg-dark-bg/80 px-2 py-0.5 rounded-md border border-gray-200/50 dark:border-dark-border">
                   <FileText className="w-3 h-3 mr-1 text-orange-500" />
                   {examination.document_statuses.length} Files
                 </span>

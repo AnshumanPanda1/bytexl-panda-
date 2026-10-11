@@ -366,6 +366,17 @@ const ExportImport: React.FC = () => {
         showBackButton
       />
 
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-500/20 text-purple-900 dark:text-purple-200">
+        <div className="flex items-center space-x-3">
+          <span className="px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-600 text-white shadow-xs">
+            Simulated Demo · Synthetic Cohort
+          </span>
+          <p className="text-xs font-medium text-gray-700 dark:text-dark-text">
+            Standard FHIR R4 JSON Bundle Export & Simulated ABHA Interoperability Gateway
+          </p>
+        </div>
+      </div>
+
       <StickyToolbar
         actions={
           <button

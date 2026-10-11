@@ -228,24 +228,93 @@ def _clean_quantity(q: Any) -> dict[str, Any] | None:
 
 
 def _normalize_timing(timing: Any) -> Any:
-    """Normalize a FHIR Timing dict: expand short ``timeOfDay`` ("HH:MM")
-    values into full ISO ("HH:MM:SS"). Non-dict values pass through."""
+    """Normalize a timing representation into a strictly valid FHIR R4 Timing dict.
+
+    Handles:
+    - String descriptions -> Timing(code=CodeableConcept(text=...))
+    - FHIR Timing dicts -> normalizes short "HH:MM" in repeat.timeOfDay to "HH:MM:SS"
+    - Internal app timing models (e.g., {'type': 'daily', 'times': ['08:00', '20:00'], 'frequency': 1})
+      -> builds a valid Timing object with repeat block and code.
+    """
+    if not timing:
+        return None
+    if isinstance(timing, str):
+        return {"code": {"text": timing}}
     if not isinstance(timing, dict):
         return timing
-    repeat = timing.get("repeat")
-    if not isinstance(repeat, dict):
-        return timing
-    tod = repeat.get("timeOfDay")
-    if isinstance(tod, list):
-        normalized = []
-        for t in tod:
-            if isinstance(t, str) and len(t) == 5 and t.count(":") == 1:
-                normalized.append(f"{t}:00")
-            else:
-                normalized.append(t)
-        repeat = {**repeat, "timeOfDay": normalized}
-        timing = {**timing, "repeat": repeat}
-    return timing
+
+    # If it's already a FHIR Timing structure (has repeat, code, or event) and no extraneous keys
+    if any(k in timing for k in ("repeat", "code", "event")):
+        res = dict(timing)
+        if "text" in res and "code" not in res:
+            res["code"] = {"text": res.pop("text")}
+        repeat = res.get("repeat")
+        if isinstance(repeat, dict):
+            repeat_copy = dict(repeat)
+            tod = repeat_copy.get("timeOfDay")
+            if isinstance(tod, list):
+                repeat_copy["timeOfDay"] = [
+                    f"{t}:00" if (isinstance(t, str) and len(t) == 5 and t.count(":") == 1) else t
+                    for t in tod
+                ]
+            res["repeat"] = repeat_copy
+        # Clean out any non-FHIR timing fields
+        allowed_timing_keys = {"id", "extension", "modifierExtension", "event", "repeat", "code"}
+        return {k: v for k, v in res.items() if k in allowed_timing_keys and v is not None}
+
+    # Otherwise it's an internal application frequency/timing schema:
+    # e.g. {'type': 'daily', 'frequency': 1, 'times': [...], 'time_of_day': [...]}
+    repeat: dict[str, Any] = {}
+    freq = timing.get("frequency")
+    if isinstance(freq, int) and freq > 0:
+        repeat["frequency"] = freq
+
+    period = timing.get("period")
+    if isinstance(period, (int, float)) and period > 0:
+        repeat["period"] = float(period)
+
+    period_unit = timing.get("period_unit")
+    unit_map = {
+        "s": "s", "second": "s", "seconds": "s",
+        "min": "min", "minute": "min", "minutes": "min",
+        "h": "h", "hour": "h", "hours": "h",
+        "d": "d", "day": "d", "days": "d",
+        "wk": "wk", "week": "wk", "weeks": "wk",
+        "mo": "mo", "month": "mo", "months": "mo",
+        "a": "a", "year": "a", "years": "a",
+    }
+    if period_unit in unit_map:
+        repeat["periodUnit"] = unit_map[period_unit]
+    elif timing.get("type") == "daily" and "periodUnit" not in repeat:
+        repeat["period"] = 1.0
+        repeat["periodUnit"] = "d"
+    elif timing.get("type") == "weekly" and "periodUnit" not in repeat:
+        repeat["period"] = 1.0
+        repeat["periodUnit"] = "wk"
+
+    days = timing.get("days_of_week")
+    if isinstance(days, list) and days:
+        day_map = {
+            "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu",
+            "fri": "fri", "sat": "sat", "sun": "sun",
+        }
+        valid_days = [day_map[d.lower()[:3]] for d in days if isinstance(d, str) and d.lower()[:3] in day_map]
+        if valid_days:
+            repeat["dayOfWeek"] = valid_days
+
+    times = timing.get("time_of_day") or timing.get("times")
+    if isinstance(times, list) and times:
+        repeat["timeOfDay"] = [
+            f"{t}:00" if (isinstance(t, str) and len(t) == 5 and t.count(":") == 1) else t
+            for t in times
+            if isinstance(t, str)
+        ]
+
+    code_text = timing.get("display") or timing.get("type") or "Medication Schedule"
+    fhir_timing: dict[str, Any] = {"code": {"text": code_text}}
+    if repeat:
+        fhir_timing["repeat"] = repeat
+    return fhir_timing
 
 
 def build_meta(

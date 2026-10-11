@@ -12,6 +12,7 @@ interface Props {
   viewMode?: 'grid' | 'list';
   category?: string;
   categoryDetails?: any;
+  documentDate?: string;
   className?: string;
 }
 
@@ -22,9 +23,13 @@ export const DocumentCard: React.FC<Props> = ({
   viewMode = 'list',
   category,
   categoryDetails,
+  documentDate,
   className = ''
 }) => {
   const { t } = useTranslation();
+
+  const rawDate = documentDate || doc.document_date || doc.entities?.document_date || doc.created_at;
+  const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString() : '';
 
   const getFileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -59,7 +64,7 @@ export const DocumentCard: React.FC<Props> = ({
         <div className="overflow-hidden w-full flex-1 flex flex-col justify-center">
           <div className="flex items-center justify-center mb-1">
             <span 
-              className="text-[9px] font-black uppercase tracking-widest truncate flex items-center gap-1"
+              className="text-[10px] font-semibold tracking-wide truncate flex items-center gap-1"
               style={{ color: categoryDetails?.color || '#9ca3af' }}
             >
                {categoryDetails?.icon && <DynamicIcon icon={categoryDetails.icon as any} className="w-2 h-2" />}
@@ -70,9 +75,9 @@ export const DocumentCard: React.FC<Props> = ({
             {doc.filename}
           </h4>
           <div className="flex items-center justify-center space-x-2 mt-1">
-            <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted">{new Date(doc.created_at).toLocaleDateString()}</p>
+            <p className="text-[10px] font-medium text-gray-400 dark:text-dark-muted">{formattedDate}</p>
             <span className="text-[10px] text-gray-300 dark:text-dark-border">•</span>
-            <span className="text-[10px] font-black text-gray-400 dark:text-dark-muted uppercase tracking-tighter">{doc.filename.split('.').pop()}</span>
+            <span className="text-[10px] font-medium text-gray-400 dark:text-dark-muted uppercase">{doc.filename.split('.').pop()}</span>
           </div>
         </div>
       </div>
@@ -103,7 +108,7 @@ export const DocumentCard: React.FC<Props> = ({
         <div className="overflow-hidden flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
             <span 
-              className="text-[9px] font-black uppercase tracking-widest truncate pr-2 flex items-center gap-1"
+              className="text-[10px] font-semibold tracking-wide truncate pr-2 flex items-center gap-1"
               style={{ color: categoryDetails?.color || '#9ca3af' }}
             >
                {categoryDetails?.icon && <DynamicIcon icon={categoryDetails.icon as any} className="w-2 h-2" />}
@@ -114,7 +119,7 @@ export const DocumentCard: React.FC<Props> = ({
                 <span className="flex h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse shadow-xs shadow-blue-500/50"></span>
               )}
               <span className={CardStyles.date(isSelected)}>
-                {new Date(doc.created_at).toLocaleDateString()}
+                {formattedDate}
               </span>
             </div>
           </div>

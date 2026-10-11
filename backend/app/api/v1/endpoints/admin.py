@@ -338,3 +338,19 @@ async def export_seeds_zip(
             "Content-Disposition": 'attachment; filename="health-assistant-seeds.zip"',
         },
     )
+
+
+@router.post("/seed-hero-patient")
+async def seed_hero_patient_endpoint(
+    current_user: TokenData = Depends(RoleChecker([Role.SYSTEM_ADMIN, Role.ADMIN])),
+    db: AsyncSession = Depends(get_db),
+):
+    """Seed comprehensive hero patient Rajesh Kumar Sharma and demo cohort."""
+    try:
+        from scripts.seed_rich_patient_history import run_seed
+
+        await run_seed()
+        return {"status": "success", "message": "Demo hero patient seeded successfully"}
+    except Exception as e:
+        logger.exception("Failed to seed hero patient: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))

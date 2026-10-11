@@ -875,14 +875,14 @@ const ExaminationDetail = () => {
 
        {/* 2. SUMMARY HIGHLIGHTS GRID */}
  
-       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12">
+       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
             {/* Examination Info Card */}
-            <div className="xl:col-span-1 bg-white dark:bg-dark-surface rounded-4xl p-8 border border-gray-100 dark:border-dark-border shadow-xs flex flex-col">
-               <div className="flex items-center space-x-3 mb-8">
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                     <ClipboardList className="w-5 h-5 text-blue-500" />
+            <div className="xl:col-span-1 bg-white dark:bg-dark-surface rounded-xl p-5 border border-gray-200/80 dark:border-dark-border shadow-xs flex flex-col">
+               <div className="flex items-center space-x-2.5 mb-5">
+                  <div className="w-8 h-8 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center shrink-0">
+                     <ClipboardList className="w-4 h-4" />
                   </div>
-                  <h3 className="text-lg font-black text-brand-navy dark:text-dark-text tracking-tight uppercase">{t('common.info')}</h3>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-dark-text">{t('common.info')}</h3>
                </div>
  
                <div className="space-y-6">
@@ -996,31 +996,31 @@ const ExaminationDetail = () => {
             </div>
 
             {/* Key Biomarkers Widget */}
-            <div className="xl:col-span-2 bg-white dark:bg-dark-surface rounded-4xl p-8 border border-gray-100 dark:border-dark-border shadow-xs flex flex-col">
-               <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center space-x-3">
-                     <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-xl">
-                        <Activity className="w-5 h-5 text-red-500" />
+            <div className="xl:col-span-2 bg-white dark:bg-dark-surface rounded-xl p-5 border border-gray-200/80 dark:border-dark-border shadow-xs flex flex-col">
+               <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center space-x-2.5">
+                     <div className="w-8 h-8 bg-red-500/10 text-red-500 rounded-lg flex items-center justify-center shrink-0">
+                        <Activity className="w-4 h-4" />
                      </div>
-                     <h3 className="text-lg font-black text-brand-navy dark:text-dark-text tracking-tight uppercase">{t('examination_detail.widgets.critical_biomarkers')}</h3>
+                     <h3 className="text-base font-semibold text-gray-900 dark:text-dark-text">{t('examination_detail.widgets.critical_biomarkers')}</h3>
                   </div>
                   
-                  <div className="flex items-center space-x-6">
-                    <div className="flex bg-gray-100 dark:bg-dark-bg p-1 rounded-xl border border-gray-200 dark:border-dark-border">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex bg-gray-100 dark:bg-dark-bg p-0.5 rounded-lg border border-gray-200 dark:border-dark-border">
                         <button 
                           onClick={() => setBiomarkerDataMode('normalized')}
-                          className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${biomarkerDataMode === 'normalized' ? 'bg-white dark:bg-dark-surface text-indigo-600 shadow-xs' : 'text-gray-400 hover:text-gray-600'}`}
+                          className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${biomarkerDataMode === 'normalized' ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                           {t('biomarkers.data_modes.normalized')}
                         </button>
                         <button 
                           onClick={() => setBiomarkerDataMode('raw')}
-                          className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${biomarkerDataMode === 'raw' ? 'bg-white dark:bg-dark-surface text-amber-600 shadow-xs' : 'text-gray-400 hover:text-gray-600'}`}
+                          className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${biomarkerDataMode === 'raw' ? 'bg-white dark:bg-dark-surface text-amber-600 dark:text-amber-400 shadow-xs font-semibold' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                           {t('biomarkers.data_modes.raw')}
                         </button>
                     </div>
-                    <button onClick={() => handleTabChange('biomarkers')} className="text-xs font-bold text-blue-600 uppercase hover:underline">{t('examination_detail.widgets.full_report')} &rarr;</button>
+                    <button onClick={() => handleTabChange('biomarkers')} className="text-xs font-medium text-blue-600 hover:underline">{t('examination_detail.widgets.full_report')} &rarr;</button>
                   </div>
                </div>
                
@@ -1045,7 +1045,7 @@ const ExaminationDetail = () => {
 
 
       {/* 3. MAIN TABBED CONTENT AREA */}
-      <div ref={tabsRef} className="bg-white dark:bg-dark-surface rounded-[2.5rem] border border-gray-100 dark:border-dark-border shadow-2xl shadow-blue-900/5 overflow-hidden scroll-mt-32">
+      <div ref={tabsRef} className="bg-white dark:bg-dark-surface rounded-xl border border-gray-200/80 dark:border-dark-border shadow-xs overflow-hidden scroll-mt-32">
          <div className="px-8 border-b border-gray-50 dark:border-dark-border bg-gray-50/30 dark:bg-dark-bg/20">
           <nav className="flex items-center space-x-10 overflow-x-auto no-scrollbar">
              {[
@@ -1057,7 +1057,7 @@ const ExaminationDetail = () => {
                <button 
                  key={tab.id}
                  onClick={() => handleTabChange(tab.id as any)}
-                 className={`flex items-center space-x-2 py-6 border-b-4 transition-all whitespace-nowrap ${
+                 className={`flex items-center space-x-2 py-3.5 border-b-2 transition-colors whitespace-nowrap text-xs font-semibold ${
                    activeMainTab === tab.id 
                      ? 'border-blue-600 text-blue-600 dark:text-blue-400' 
                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
@@ -1065,23 +1065,23 @@ const ExaminationDetail = () => {
                >
 
                    <tab.icon className={`w-4 h-4 ${activeMainTab === tab.id ? 'text-blue-600' : 'text-gray-300'}`} />
-                   <span className="text-xs font-black uppercase tracking-widest">{tab.label}</span>
+                   <span>{tab.label}</span>
                  </button>
                ))}
             </nav>
          </div>
 
-         <div className="p-8 lg:p-12">
+         <div className="p-5 sm:p-6">
             {/* OVERVIEW TAB */}
             {activeMainTab === 'overview' && (
-              <div className="space-y-12 animate-in fade-in duration-500">
+              <div className="space-y-6 animate-in fade-in duration-300">
                 {/* Notes Row: Physician and Patient Notes side-by-side on lg+ */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {/* Doctor's Notes */}
                     <div className="space-y-6">
                        <div className="flex items-center justify-between">
                            <div className="flex items-center space-x-3">
-                              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">{t('examination_detail.overview.physician_notes')}</h3>
+                              <h3 className="text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider">{t('examination_detail.overview.physician_notes')}</h3>
                               {hasNotesDraft && !isGlobalEditing && (
                                  <button 
                                     onClick={applyNotesDraft} 
@@ -1109,7 +1109,7 @@ const ExaminationDetail = () => {
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">{t('examination_detail.overview.patient_notes_title')}</h3>
+                               <h3 className="text-xs font-semibold text-gray-500 dark:text-dark-muted uppercase tracking-wider">{t('examination_detail.overview.patient_notes_title')}</h3>
                                {hasPatientNotesDraft && !isGlobalEditing && (
                                   <button 
                                      onClick={applyPatientNotesDraft} 
@@ -1136,14 +1136,14 @@ const ExaminationDetail = () => {
 
                 {/* Additional Clinical Data Section (Impressions, Diagnoses, Meds) */}
                 {!isGlobalEditing && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="space-y-8">
                        {examination?.impressions && (
                          <div className="bg-white dark:bg-dark-surface/40 p-8 rounded-4xl border border-gray-100 dark:border-dark-border shadow-xs animate-in slide-in-from-bottom-4 duration-500">
                            <div className="flex items-center justify-between mb-6">
                              <div className="flex items-center space-x-2">
                                <BriefcaseMedical className="w-4 h-4 text-blue-500" />
-                               <p className="text-xs font-black text-gray-900 dark:text-dark-text uppercase tracking-widest">{t('examination_detail.overview.clinical_impression')}</p>
+                               <p className="text-xs font-semibold text-gray-900 dark:text-dark-text">{t('examination_detail.overview.clinical_impression')}</p>
                              </div>
                              <ActiveTaskBadge />
                            </div>
@@ -1158,7 +1158,7 @@ const ExaminationDetail = () => {
                            <div className="flex items-center justify-between mb-6">
                              <div className="flex items-center space-x-2">
                                <Bookmark className="w-4 h-4 text-blue-500" />
-                               <p className="text-xs font-black text-gray-900 dark:text-dark-text uppercase tracking-widest">{t('examination_detail.overview.extracted_diagnoses')}</p>
+                               <p className="text-xs font-semibold text-gray-900 dark:text-dark-text">{t('examination_detail.overview.extracted_diagnoses')}</p>
                              </div>
                              <ActiveTaskBadge />
                            </div>
@@ -1177,7 +1177,7 @@ const ExaminationDetail = () => {
                             <div className="flex items-center justify-between mb-6">
                               <div className="flex items-center space-x-2">
                                 <Pill className="w-4 h-4 text-indigo-500" />
-                                <p className="text-xs font-black text-gray-900 dark:text-dark-text uppercase tracking-widest">{t('examination_detail.overview.identified_medications')}</p>
+                                <p className="text-xs font-semibold text-gray-900 dark:text-dark-text">{t('examination_detail.overview.identified_medications')}</p>
                               </div>
                               <ActiveTaskBadge />
                             </div>

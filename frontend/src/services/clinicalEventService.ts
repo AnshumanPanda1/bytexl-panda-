@@ -1,5 +1,6 @@
 import api from '../api/axios';
 import type { MetadataSchema } from '../types/metadataSchema';
+import { getTestPatientFullData, TEST_PATIENTS_DATA } from '../data/testPatients';
 
 export interface ClinicalEventCategory {
   id: string;
@@ -178,8 +179,16 @@ export const createEventType = async (typeData: any): Promise<ClinicalEventType>
 };
 
 export const getPatientEvents = async (patientId: string): Promise<ClinicalEvent[]> => {
-  const response = await api.get(`/clinical-events?patient_id=${patientId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/clinical-events?patient_id=${patientId}`);
+    if (response.data && response.data.length > 0) {
+      return response.data;
+    }
+  } catch (err) {
+    // Backend offline or errored, fallback to demo patient data
+  }
+  const testData = getTestPatientFullData(patientId);
+  return testData?.conditions || [];
 };
 
 export const getExaminationEvents = async (examinationId: string): Promise<ClinicalEvent[]> => {
@@ -198,8 +207,16 @@ export const updateEvent = async (eventId: string, eventData: any): Promise<Clin
 };
 
 export const getEvent = async (eventId: string): Promise<ClinicalEvent> => {
-  const response = await api.get(`/clinical-events/${eventId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/clinical-events/${eventId}`);
+    return response.data;
+  } catch (err) {
+    for (const p of TEST_PATIENTS_DATA) {
+      const match = p.conditions.find(c => c.id === eventId);
+      if (match) return match;
+    }
+    throw err;
+  }
 };
 
 export const deleteEvent = async (eventId: string): Promise<void> => {

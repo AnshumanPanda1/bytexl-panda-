@@ -1,8 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import TenantSwitchBanner from './TenantSwitchBanner';
-import DemoBanner from './DemoBanner';
 import { AIDrawer } from './AIDrawer';
 import { SetupWizardDrawer } from '../setup/SetupWizardDrawer';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
@@ -96,14 +94,19 @@ function Layout() {
       </div>
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden relative">
-        <DemoBanner />
-        <TenantSwitchBanner />
         <Header />
         <main className={`flex-1 flex flex-col min-w-0 relative ${isAiPage ? 'bg-white dark:bg-dark-bg p-0 overflow-hidden' : 'overflow-y-auto overflow-x-hidden pt-1 sm:pt-2 md:pt-3 lg:pt-4 pb-4 sm:pb-6 md:pb-8 lg:pb-10 px-2 sm:px-4 md:px-6 lg:px-8 safe-bottom'}`}>
           <div className="flex-1 flex flex-col min-h-0 relative w-full">
             <Outlet />
           </div>
         </main>
+        {!isAiPage && (
+          <footer className="py-1.5 px-4 bg-amber-500/10 dark:bg-amber-950/30 border-t border-amber-500/20 text-center shrink-0 z-10">
+            <p className="text-[10px] md:text-xs text-amber-900/80 dark:text-amber-200/80 font-medium">
+              <span className="font-bold">Medical Disclaimer:</span> This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
+            </p>
+          </footer>
+        )}
       </div>
 
       <AIDrawer 

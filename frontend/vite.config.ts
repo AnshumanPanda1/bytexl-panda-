@@ -147,7 +147,7 @@ export default defineConfig({
     })
   ],
   server: {
-    port: 3000,
+    port: 5173,
     proxy: {
       '/api': {
         target: process.env.VITE_BACKEND_URL || 'http://localhost:8000',
@@ -162,7 +162,7 @@ export default defineConfig({
     }
   },
   preview: {
-    port: 3000,
+    port: 5173,
     allowedHosts: true
   }
 })

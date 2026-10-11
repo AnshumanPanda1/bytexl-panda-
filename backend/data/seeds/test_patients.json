@@ -1,0 +1,1487 @@
+{
+  "patients": [
+    {
+      "id": "33333333-3333-4333-8333-333333333301",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100234",
+      "name": {
+        "given": [
+          "Rajesh",
+          "Kumar"
+        ],
+        "family": "Sharma"
+      },
+      "gender": "MALE",
+      "birth_date": "1974-05-12",
+      "address": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "India",
+          "line": [
+            "B-42 Hauz Khas"
+          ]
+        }
+      ],
+      "telecom": [
+        {
+          "system": "phone",
+          "value": "+91 98765 43210"
+        }
+      ],
+      "emergency_contact": {
+        "name": "Sunita Sharma",
+        "relationship": "Spouse",
+        "phone": "+91 98765 43211"
+      },
+      "conditions": [
+        {
+          "title": "Type 2 Diabetes Mellitus without complications",
+          "code": "E11.9",
+          "status": "active",
+          "onset_date": "2022-04-10"
+        },
+        {
+          "title": "Essential (Primary) Hypertension",
+          "code": "I10",
+          "status": "active",
+          "onset_date": "2021-08-15"
+        },
+        {
+          "title": "Mixed Hyperlipidemia",
+          "code": "E78.2",
+          "status": "active",
+          "onset_date": "2023-01-20"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Metformin Hydrochloride 500mg",
+          "dosage": "500 mg",
+          "status": "active",
+          "start_date": "2025-10-15",
+          "end_date": "2026-01-20"
+        },
+        {
+          "name": "Telmisartan 40mg",
+          "dosage": "40 mg",
+          "status": "active",
+          "start_date": "2025-10-15",
+          "end_date": null
+        },
+        {
+          "name": "Metformin Hydrochloride 1000mg",
+          "dosage": "1000 mg",
+          "status": "active",
+          "start_date": "2026-01-20",
+          "end_date": null
+        },
+        {
+          "name": "Atorvastatin 10mg",
+          "dosage": "10 mg",
+          "status": "active",
+          "start_date": "2026-01-20",
+          "end_date": "2026-07-22"
+        },
+        {
+          "name": "Atorvastatin 20mg",
+          "dosage": "20 mg",
+          "status": "active",
+          "start_date": "2026-07-22",
+          "end_date": null
+        }
+      ],
+      "biomarkers": [
+        {
+          "name": "HbA1c",
+          "value": 8.6,
+          "unit": "%",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 184.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Glucose",
+          "value": 184.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Post-Prandial Glucose",
+          "value": 260.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 152.0,
+          "unit": "mmHg",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 96.0,
+          "unit": "mmHg",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 84.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.6,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 97.0,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "LDL Cholesterol",
+          "value": 165.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.1,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "eGFR",
+          "value": 80.0,
+          "unit": "mL/min/1.73m2",
+          "interpretation": "Normal",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "HbA1c",
+          "value": 8.1,
+          "unit": "%",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 156.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Glucose",
+          "value": 156.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Post-Prandial Glucose",
+          "value": 212.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 140.0,
+          "unit": "mmHg",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 88.0,
+          "unit": "mmHg",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 80.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 98.0,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "LDL Cholesterol",
+          "value": 150.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.05,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "HbA1c",
+          "value": 7.5,
+          "unit": "%",
+          "interpretation": "High",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 134.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Glucose",
+          "value": 134.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Post-Prandial Glucose",
+          "value": 178.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 132.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 84.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 76.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.6,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 98.0,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "LDL Cholesterol",
+          "value": 128.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.02,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "HbA1c",
+          "value": 7.1,
+          "unit": "%",
+          "interpretation": "High",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 118.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Glucose",
+          "value": 118.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Post-Prandial Glucose",
+          "value": 152.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 126.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 80.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 74.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 99.0,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "LDL Cholesterol",
+          "value": 105.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 0.98,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "HbA1c",
+          "value": 6.8,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 104.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Glucose",
+          "value": 104.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Post-Prandial Glucose",
+          "value": 138.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 122.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 78.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 72.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 98.0,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "LDL Cholesterol",
+          "value": 92.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 0.95,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "eGFR",
+          "value": 88.0,
+          "unit": "mL/min/1.73m2",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 120.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 78.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 70.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Glucose",
+          "value": 102.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 102.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 99.0,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "HbA1c",
+          "value": 6.8,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        }
+      ],
+      "documents": [
+        {
+          "filename": "OPD_Prescription_Initial_Oct2025.pdf",
+          "created_at": "2025-10-15",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS INDRAPRASTHA\nDepartment of Endocrinology & Metabolism\nPatient: Rajesh Kumar Sharma (52M) | MRN: MRN-100234\nDate: 15-Oct-2025\n\nClinical Assessment: Type 2 Diabetes Mellitus (Uncontroll..."
+        },
+        {
+          "filename": "Biochemistry_Panel_Jan2026.pdf",
+          "created_at": "2026-01-20",
+          "status": "completed",
+          "extracted_text": "LAL PATHLABS CLINICAL BIOCHEMISTRY REPORT\nPatient: Rajesh Kumar Sharma | Date: 20-Jan-2026\n\nHbA1c (Glycosylated Hemoglobin): 8.1 % [Ref: 4.0 - 5.6%]\nEstimated Average Glucose (eAG): 186 mg/dL\nFasting ..."
+        },
+        {
+          "filename": "Handwritten_Cardiology_OPD_Apr2026.png",
+          "created_at": "2026-04-18",
+          "status": "completed",
+          "extracted_text": "FORTIS MEMORIAL RESEARCH INSTITUTE\nCardiology & Lifestyle Clinic\nPt: Rajesh Sharma (52M) | Date: 18/04/2026\nRx:\n- Cont. Tab Metformin 1000mg BD\n- Cont. Tab Telmisartan 40mg OD\n- Cont. Tab Atorvastatin..."
+        },
+        {
+          "filename": "Metabolic_Panel_Jul2026.pdf",
+          "created_at": "2026-07-22",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS BILINGUAL LAB REPORT / अपोलो अस्पताल जांच रिपोर्ट\nPatient: Rajesh Kumar Sharma | Date: 22-Jul-2026\n\nHbA1c: 7.1 % (Significant reduction / महत्वपूर्ण सुधार)\nFasting Blood Sugar / फास्ट..."
+        },
+        {
+          "filename": "Annual_Endocrinology_Summary_Oct2026.pdf",
+          "created_at": "2026-10-05",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS ENDOCRINOLOGY CLINICAL SUMMARY\nPatient: Rajesh Kumar Sharma (52M) | MRN: MRN-100234\nReview Date: 05-Oct-2026\n\n12-MONTH TRAJECTORY OVERVIEW:\n- HbA1c: 8.6% (Oct 2025) -> 8.1% (Jan 2026)..."
+        },
+        {
+          "filename": "Telemetry_Sync_Oct2026.pdf",
+          "created_at": "2026-10-11",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS TELEMETRY WORKUP\nPatient: Rajesh Kumar Sharma | Date: 11-Oct-2026\nVital Signs:\n- Systolic BP: 120 mmHg\n- Diastolic BP: 78 mmHg\n- Heart Rate: 70 bpm\n- Body Temperature: 98.4 F\n- Fastin..."
+        },
+        {
+          "filename": "Scheduled_Consultation_Oct2026.pdf",
+          "created_at": "2026-10-18",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS APPOINTMENT NOTICE\nScheduled Date: 18-Oct-2026\nPatient: Rajesh Kumar Sharma\nPurpose: Annual Diabetic Foot & Dilated Retinal Exam...."
+        }
+      ],
+      "ai_summary": {
+        "en": "Rajesh Kumar Sharma has achieved significant clinical improvement over the past 12 months. His HbA1c has successfully decreased from an initial 8.6% to 6.8% (target achieved) under Metformin 1000mg BID. Blood pressure is well-controlled at 122/78 mmHg on Telmisartan 40mg daily, and LDL cholesterol has normalized to 92 mg/dL on Atorvastatin 20mg. Renal function remains preserved with an eGFR of 88 mL/min/1.73m2.",
+        "hi": "राजेश कुमार शर्मा ने पिछले 12 महीनों में महत्वपूर्ण स्वास्थ्य सुधार हासिल किया है। उनका HbA1c मेटफॉर्मिन 1000mg BID के तहत 8.6% से घटकर 6.8% पर आ गया है (लक्ष्य हासिल हुआ)। टेलमिसार्टन 40mg के साथ रक्तचाप 122/78 mmHg पर पूरी तरह नियंत्रित है और एलडीएल कोलेस्ट्रॉल 92 mg/dL पर सामान्य हो गया है। किडनी की कार्यक्षमता (eGFR 88) स्थिर और सुरक्षित है।"
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333302",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100582",
+      "name": {
+        "given": [
+          "Priya"
+        ],
+        "family": "Nair"
+      },
+      "gender": "FEMALE",
+      "birth_date": "1992-08-23",
+      "address": [
+        {
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "country": "India",
+          "line": [
+            "14th Cross, Indiranagar"
+          ]
+        }
+      ],
+      "telecom": [
+        {
+          "system": "phone",
+          "value": "+91 98112 34567"
+        }
+      ],
+      "emergency_contact": {
+        "name": "Karthik Nair",
+        "relationship": "Brother",
+        "phone": "+91 98112 34568"
+      },
+      "conditions": [
+        {
+          "title": "Moderate Persistent Asthma with acute exacerbation",
+          "code": "J45.41",
+          "status": "active",
+          "onset_date": "2020-09-14"
+        },
+        {
+          "title": "Iron Deficiency Anemia",
+          "code": "D50.9",
+          "status": "active",
+          "onset_date": "2023-06-11"
+        },
+        {
+          "title": "Vitamin D Deficiency",
+          "code": "E55.9",
+          "status": "active",
+          "onset_date": "2023-06-11"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Budesonide/Formoterol 400/12 mcg",
+          "dosage": "400/12 mcg",
+          "status": "active",
+          "start_date": "2025-11-10",
+          "end_date": "2026-06-15"
+        },
+        {
+          "name": "Ferrous Ascorbate 100mg",
+          "dosage": "100 mg",
+          "status": "active",
+          "start_date": "2025-11-10",
+          "end_date": null
+        },
+        {
+          "name": "Cholecalciferol 60000 IU",
+          "dosage": "60,000 IU",
+          "status": "active",
+          "start_date": "2025-11-10",
+          "end_date": null
+        },
+        {
+          "name": "Budesonide/Formoterol 200/6 mcg",
+          "dosage": "200/6 mcg",
+          "status": "active",
+          "start_date": "2026-06-15",
+          "end_date": null
+        }
+      ],
+      "biomarkers": [
+        {
+          "name": "Peak Expiratory Flow",
+          "value": 280.0,
+          "unit": "L/min",
+          "interpretation": "Low",
+          "effective_datetime": "2025-11-10"
+        },
+        {
+          "name": "Hemoglobin",
+          "value": 9.8,
+          "unit": "g/dL",
+          "interpretation": "Low",
+          "effective_datetime": "2025-11-10"
+        },
+        {
+          "name": "Serum Ferritin",
+          "value": 12.0,
+          "unit": "ng/mL",
+          "interpretation": "Low",
+          "effective_datetime": "2025-11-10"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 11.0,
+          "unit": "ng/mL",
+          "interpretation": "Low",
+          "effective_datetime": "2025-11-10"
+        },
+        {
+          "name": "Absolute Eosinophil Count",
+          "value": 620.0,
+          "unit": "cells/mcL",
+          "interpretation": "High",
+          "effective_datetime": "2025-11-10"
+        },
+        {
+          "name": "Peak Expiratory Flow",
+          "value": 340.0,
+          "unit": "L/min",
+          "interpretation": "Low",
+          "effective_datetime": "2026-01-28"
+        },
+        {
+          "name": "Hemoglobin",
+          "value": 10.6,
+          "unit": "g/dL",
+          "interpretation": "Low",
+          "effective_datetime": "2026-01-28"
+        },
+        {
+          "name": "Serum Ferritin",
+          "value": 22.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-28"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 22.0,
+          "unit": "ng/mL",
+          "interpretation": "Low",
+          "effective_datetime": "2026-01-28"
+        },
+        {
+          "name": "Absolute Eosinophil Count",
+          "value": 480.0,
+          "unit": "cells/mcL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-28"
+        },
+        {
+          "name": "Peak Expiratory Flow",
+          "value": 385.0,
+          "unit": "L/min",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-15"
+        },
+        {
+          "name": "Hemoglobin",
+          "value": 11.8,
+          "unit": "g/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-15"
+        },
+        {
+          "name": "Serum Ferritin",
+          "value": 34.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-15"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 34.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-15"
+        },
+        {
+          "name": "Absolute Eosinophil Count",
+          "value": 350.0,
+          "unit": "cells/mcL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-15"
+        },
+        {
+          "name": "Peak Expiratory Flow",
+          "value": 420.0,
+          "unit": "L/min",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-06-15"
+        },
+        {
+          "name": "Hemoglobin",
+          "value": 12.5,
+          "unit": "g/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-06-15"
+        },
+        {
+          "name": "Serum Ferritin",
+          "value": 42.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-06-15"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 40.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-06-15"
+        },
+        {
+          "name": "Absolute Eosinophil Count",
+          "value": 260.0,
+          "unit": "cells/mcL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-06-15"
+        },
+        {
+          "name": "Peak Expiratory Flow",
+          "value": 450.0,
+          "unit": "L/min",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-30"
+        },
+        {
+          "name": "Hemoglobin",
+          "value": 13.2,
+          "unit": "g/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-30"
+        },
+        {
+          "name": "Serum Ferritin",
+          "value": 52.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-30"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 46.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-30"
+        },
+        {
+          "name": "Absolute Eosinophil Count",
+          "value": 220.0,
+          "unit": "cells/mcL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-30"
+        }
+      ],
+      "documents": [
+        {
+          "filename": "Emergency_Pulmonology_Nov2025.pdf",
+          "created_at": "2025-11-10",
+          "status": "completed",
+          "extracted_text": "MANIPAL HOSPITALS BENGALURU\nDepartment of Pulmonary Medicine\nPatient: Priya Nair (34F) | MRN: MRN-100582 | Date: 10-Nov-2025\n\nDiagnosis: Acute Asthma Exacerbation, Iron Deficiency Anemia.\nPEF: 280 L/m..."
+        },
+        {
+          "filename": "Hematology_Followup_Jan2026.pdf",
+          "created_at": "2026-01-28",
+          "status": "completed",
+          "extracted_text": "MANIPAL HOSPITALS HEMATOLOGY REPORT\nPatient: Priya Nair | Date: 28-Jan-2026\n\nHemoglobin: 10.6 g/dL [Ref 12.0 - 15.0]\nRBC Count: 4.1 mil/mcL\nMCV: 76 fL (Microcytic)\nSerum Ferritin: 22 ng/mL [Ref 15 - 1..."
+        },
+        {
+          "filename": "Spirometry_Report_Apr2026.pdf",
+          "created_at": "2026-04-15",
+          "status": "completed",
+          "extracted_text": "PULMONARY FUNCTION TEST (PFT) REPORT\nPatient: Priya Nair (34F) | Date: 15-Apr-2026\n\nFEV1: 2.65 L (84% predicted)\nFVC: 3.20 L (88% predicted)\nFEV1/FVC Ratio: 0.83 (Normal)\nPEF: 385 L/min\nHemoglobin: 11..."
+        },
+        {
+          "filename": "StepDown_Prescription_Jun2026.pdf",
+          "created_at": "2026-06-15",
+          "status": "completed",
+          "extracted_text": "MANIPAL HOSPITALS PULMONOLOGY\nDate: 15-Jun-2026 | Pt: Priya Nair\nRx Step-Down:\n1. Budesonide/Formoterol 200/6 mcg - 2 puffs BID\n2. Continue Ferrous Ascorbate 100mg\n3. Cholecalciferol maintenance: 1 sa..."
+        },
+        {
+          "filename": "Annual_Respiratory_Panel_Sep2026.pdf",
+          "created_at": "2026-09-30",
+          "status": "completed",
+          "extracted_text": "MANIPAL HOSPITALS ANNUAL SUMMARY REPORT\nPatient: Priya Nair (34F) | MRN: MRN-100582 | Date: 30-Sep-2026\n\n10-Month Status:\n- Peak Expiratory Flow: 280 L/min -> 450 L/min (Restored)\n- Hemoglobin: 9.8 g/..."
+        }
+      ],
+      "ai_summary": {
+        "en": "Priya Nair has achieved complete remission of respiratory symptoms following step-down inhaler therapy (Budesonide/Formoterol 200/6 mcg). Her Peak Expiratory Flow has recovered from 280 L/min to 450 L/min. Iron deficiency anemia has resolved with Hemoglobin rising from 9.8 to 13.2 g/dL and ferritin normalizing to 52 ng/mL. Vitamin D levels are now fully replete at 46 ng/mL.",
+        "hi": "प्रिया नायर ने श्वास संबंधी लक्षणों में पूर्ण सुधार हासिल किया है। उनका पीक एक्सपायरेटरी फ्लो (PEF) 280 L/min से बढ़कर 450 L/min हो गया है। एनीमिया पूरी तरह ठीक हो गया है—हीमोग्लोबिन 9.8 से बढ़कर 13.2 g/dL और सीरम फेरिटिन 52 ng/mL पर सामान्य हो गया है। विटामिन डी का स्तर अब 46 ng/mL पर सुरक्षित है।"
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333303",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100791",
+      "name": {
+        "given": [
+          "Amit",
+          "Ramesh"
+        ],
+        "family": "Patel"
+      },
+      "gender": "MALE",
+      "birth_date": "1985-02-14",
+      "address": [
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "India",
+          "line": [
+            "Navrangpura, Near University"
+          ]
+        }
+      ],
+      "telecom": [
+        {
+          "system": "phone",
+          "value": "+91 98220 12345"
+        }
+      ],
+      "emergency_contact": {
+        "name": "Bhavna Patel",
+        "relationship": "Spouse",
+        "phone": "+91 98220 12346"
+      },
+      "conditions": [
+        {
+          "title": "Non-Alcoholic Fatty Liver Disease (Grade 2 Steatosis)",
+          "code": "K76.0",
+          "status": "active",
+          "onset_date": "2023-03-10"
+        },
+        {
+          "title": "Hyperuricemia with Gouty Arthritis",
+          "code": "M10.9",
+          "status": "active",
+          "onset_date": "2024-01-15"
+        },
+        {
+          "title": "Impaired Fasting Glucose (Pre-diabetes)",
+          "code": "R73.01",
+          "status": "active",
+          "onset_date": "2024-01-15"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Febuxostat 40mg",
+          "dosage": "40 mg",
+          "status": "active",
+          "start_date": "2025-11-15",
+          "end_date": null
+        },
+        {
+          "name": "Colchicine 0.5mg",
+          "dosage": "0.5 mg",
+          "status": "stopped",
+          "start_date": "2025-11-15",
+          "end_date": "2025-12-01"
+        }
+      ],
+      "biomarkers": [
+        {
+          "name": "Serum Uric Acid",
+          "value": 9.4,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-11-15"
+        },
+        {
+          "name": "ALT (SGPT)",
+          "value": 88.0,
+          "unit": "U/L",
+          "interpretation": "High",
+          "effective_datetime": "2025-11-15"
+        },
+        {
+          "name": "AST (SGOT)",
+          "value": 65.0,
+          "unit": "U/L",
+          "interpretation": "High",
+          "effective_datetime": "2025-11-15"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 118.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-11-15"
+        },
+        {
+          "name": "HbA1c",
+          "value": 6.2,
+          "unit": "%",
+          "interpretation": "High",
+          "effective_datetime": "2025-11-15"
+        },
+        {
+          "name": "Serum Uric Acid",
+          "value": 7.6,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-02-20"
+        },
+        {
+          "name": "ALT (SGPT)",
+          "value": 70.0,
+          "unit": "U/L",
+          "interpretation": "High",
+          "effective_datetime": "2026-02-20"
+        },
+        {
+          "name": "AST (SGOT)",
+          "value": 52.0,
+          "unit": "U/L",
+          "interpretation": "High",
+          "effective_datetime": "2026-02-20"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 112.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-02-20"
+        },
+        {
+          "name": "Serum Uric Acid",
+          "value": 6.6,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-05-22"
+        },
+        {
+          "name": "ALT (SGPT)",
+          "value": 54.0,
+          "unit": "U/L",
+          "interpretation": "High",
+          "effective_datetime": "2026-05-22"
+        },
+        {
+          "name": "AST (SGOT)",
+          "value": 42.0,
+          "unit": "U/L",
+          "interpretation": "High",
+          "effective_datetime": "2026-05-22"
+        },
+        {
+          "name": "HbA1c",
+          "value": 5.9,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-05-22"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 105.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-05-22"
+        },
+        {
+          "name": "Serum Uric Acid",
+          "value": 6.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-08-10"
+        },
+        {
+          "name": "ALT (SGPT)",
+          "value": 40.0,
+          "unit": "U/L",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-08-10"
+        },
+        {
+          "name": "AST (SGOT)",
+          "value": 32.0,
+          "unit": "U/L",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-08-10"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 100.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-08-10"
+        },
+        {
+          "name": "Serum Uric Acid",
+          "value": 5.4,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-02"
+        },
+        {
+          "name": "ALT (SGPT)",
+          "value": 30.0,
+          "unit": "U/L",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-02"
+        },
+        {
+          "name": "AST (SGOT)",
+          "value": 25.0,
+          "unit": "U/L",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-02"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 95.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-02"
+        },
+        {
+          "name": "HbA1c",
+          "value": 5.6,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-02"
+        }
+      ],
+      "documents": [
+        {
+          "filename": "Liver_UricAcid_Nov2025.pdf",
+          "created_at": "2025-11-15",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS HEPATIC & METABOLIC PANEL\nPatient: Amit Ramesh Patel (41M) | Date: 15-Nov-2025\n\nSerum Uric Acid: 9.4 mg/dL [High, Ref 3.5 - 7.2]\nALT (SGPT): 88 U/L [High, Ref < 45]\nAST (SGOT): 65 U/L..."
+        },
+        {
+          "filename": "Followup_LFT_Feb2026.pdf",
+          "created_at": "2026-02-20",
+          "status": "completed",
+          "extracted_text": "LAB REPORT: LFT & URIC ACID\nPatient: Amit Patel | Date: 20-Feb-2026\nSerum Uric Acid: 7.6 mg/dL\nALT: 70 U/L | AST: 52 U/L\nFasting Blood Sugar: 112 mg/dL..."
+        },
+        {
+          "filename": "MidYear_Hepatic_May2026.pdf",
+          "created_at": "2026-05-22",
+          "status": "completed",
+          "extracted_text": "HEPATIC PANEL & LIPIDS\nPatient: Amit Patel (41M) | Date: 22-May-2026\nUric Acid: 6.6 mg/dL\nALT: 54 U/L | AST: 42 U/L\nHbA1c: 5.9 % (Improved glycemic control)\nTriglycerides: 185 mg/dL..."
+        },
+        {
+          "filename": "USG_Liver_Followup_Aug2026.pdf",
+          "created_at": "2026-08-10",
+          "status": "completed",
+          "extracted_text": "APOLLO RADIOLOGY & HEPATOLOGY\nDate: 10-Aug-2026 | Pt: Amit Patel\nUSG Abdomen: Mild diffuse fatty infiltration (Grade 1 steatosis). Normal portal vein.\nSerum Uric Acid: 6.0 mg/dL\nALT: 40 U/L (Normal) |..."
+        },
+        {
+          "filename": "Annual_Metabolic_Oct2026.pdf",
+          "created_at": "2026-10-02",
+          "status": "completed",
+          "extracted_text": "ANNUAL METABOLIC COMPILATION REPORT\nPatient: Amit Ramesh Patel (41M) | Date: 02-Oct-2026\nTrajectory:\n- Uric Acid: 9.4 -> 5.4 mg/dL (Resolved)\n- ALT: 88 -> 30 U/L (Normal)\n- AST: 65 -> 25 U/L (Normal)\n..."
+        }
+      ],
+      "ai_summary": {
+        "en": "Amit Patel demonstrates sustained normalization of liver enzymes and purine metabolism. Serum Uric Acid decreased from 9.4 mg/dL to 5.4 mg/dL on Febuxostat 40mg, with zero gout recurrences. Liver transaminases normalized from ALT 88 U/L to 30 U/L following lifestyle modification and weight loss. Glycemic markers have normalized to HbA1c 5.6%.",
+        "hi": "अमित पटेल के लिवर एंजाइम और यूरिक एसिड पूरी तरह सामान्य हो गए हैं। फेबुक्सोस्टेट 40mg के साथ सीरम यूरिक एसिड 9.4 से घटकर 5.4 mg/dL पर आ गया है, जिससे गठिया का दर्द समाप्त हो गया है। लिवर एंजाइम (ALT) 88 से घटकर 30 U/L हो गए हैं और HbA1c 5.6% पर सामान्य स्तर पर है।"
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333304",
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "mrn": "MRN-100915",
+      "name": {
+        "given": [
+          "Sunita",
+          "Anand"
+        ],
+        "family": "Deshmukh"
+      },
+      "gender": "FEMALE",
+      "birth_date": "1958-11-30",
+      "address": [
+        {
+          "city": "Pune",
+          "state": "Maharashtra",
+          "country": "India",
+          "line": [
+            "Kothrud, Flat 402"
+          ]
+        }
+      ],
+      "telecom": [
+        {
+          "system": "phone",
+          "value": "+91 98450 67890"
+        }
+      ],
+      "emergency_contact": {
+        "name": "Rohit Deshmukh",
+        "relationship": "Son",
+        "phone": "+91 98450 67891"
+      },
+      "conditions": [
+        {
+          "title": "Severe Postmenopausal Osteoporosis",
+          "code": "M81.0",
+          "status": "active",
+          "onset_date": "2021-05-18"
+        },
+        {
+          "title": "Primary Osteoarthritis of Bilateral Knees",
+          "code": "M17.0",
+          "status": "active",
+          "onset_date": "2022-09-04"
+        },
+        {
+          "title": "Chronic Kidney Disease Stage 2 with Mild Hypertension",
+          "code": "N18.2",
+          "status": "active",
+          "onset_date": "2023-10-12"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Amlodipine 5mg",
+          "dosage": "5 mg",
+          "status": "active",
+          "start_date": "2025-10-25",
+          "end_date": null
+        },
+        {
+          "name": "Calcium Carbonate 500mg + D3",
+          "dosage": "500 mg",
+          "status": "active",
+          "start_date": "2025-10-25",
+          "end_date": null
+        },
+        {
+          "name": "Zoledronic Acid 5mg IV",
+          "dosage": "5 mg",
+          "status": "active",
+          "start_date": "2025-10-25",
+          "end_date": null
+        }
+      ],
+      "biomarkers": [
+        {
+          "name": "Serum Calcium",
+          "value": 8.6,
+          "unit": "mg/dL",
+          "interpretation": "Low",
+          "effective_datetime": "2025-10-25"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 14.0,
+          "unit": "ng/mL",
+          "interpretation": "Low",
+          "effective_datetime": "2025-10-25"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.28,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-25"
+        },
+        {
+          "name": "eGFR",
+          "value": 51.0,
+          "unit": "mL/min/1.73m2",
+          "interpretation": "Low",
+          "effective_datetime": "2025-10-25"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 148.0,
+          "unit": "mmHg",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-25"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 92.0,
+          "unit": "mmHg",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-25"
+        },
+        {
+          "name": "Serum Calcium",
+          "value": 9.1,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-15"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 28.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-15"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.22,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-15"
+        },
+        {
+          "name": "eGFR",
+          "value": 54.0,
+          "unit": "mL/min/1.73m2",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-15"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 136.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-15"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 84.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-15"
+        },
+        {
+          "name": "Serum Calcium",
+          "value": 9.3,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-10"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.18,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-10"
+        },
+        {
+          "name": "eGFR",
+          "value": 56.0,
+          "unit": "mL/min/1.73m2",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-10"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 132.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-10"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 80.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-10"
+        },
+        {
+          "name": "Serum Calcium",
+          "value": 9.4,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-14"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 42.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-14"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.15,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-14"
+        },
+        {
+          "name": "eGFR",
+          "value": 58.0,
+          "unit": "mL/min/1.73m2",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-14"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 128.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-14"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 78.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-14"
+        },
+        {
+          "name": "Serum Calcium",
+          "value": 9.5,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-25"
+        },
+        {
+          "name": "Vitamin D (25-OH)",
+          "value": 46.0,
+          "unit": "ng/mL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-25"
+        },
+        {
+          "name": "Serum Creatinine",
+          "value": 1.12,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-25"
+        },
+        {
+          "name": "eGFR",
+          "value": 60.0,
+          "unit": "mL/min/1.73m2",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-25"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 124.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-25"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 76.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-09-25"
+        }
+      ],
+      "documents": [
+        {
+          "filename": "DEXA_Rheumatology_Oct2025.pdf",
+          "created_at": "2025-10-25",
+          "status": "completed",
+          "extracted_text": "RUBY HALL CLINIC RHEUMATOLOGY & BONE DENSITY\nPatient: Sunita Deshmukh (67F) | Date: 25-Oct-2025\n\nDEXA T-score: Lumbar Spine L1-L4: -3.1 | Femoral Neck: -2.7\nCalcium: 8.6 mg/dL [Ref 8.8 - 10.2]\nVitamin..."
+        },
+        {
+          "filename": "Renal_Electrolytes_Jan2026.pdf",
+          "created_at": "2026-01-15",
+          "status": "completed",
+          "extracted_text": "LAB REPORT: RENAL & ELECTROLYTES\nPatient: Sunita Deshmukh | Date: 15-Jan-2026\nSerum Creatinine: 1.22 mg/dL\neGFR: 54 mL/min/1.73m2\nCalcium: 9.1 mg/dL\nVitamin D: 28 ng/mL\nBP: 136/84 mmHg..."
+        },
+        {
+          "filename": "Orthopedic_Viscosupplementation_Apr2026.pdf",
+          "created_at": "2026-04-10",
+          "status": "completed",
+          "extracted_text": "ORTHOPEDIC CLINIC CONSULT\nDate: 10-Apr-2026 | Pt: Sunita Deshmukh (67F)\nProcedure: Intra-articular Hyaluronic acid injection bilateral knees.\nBP: 132/80 mmHg | Creatinine: 1.18 mg/dL\nAdvice: Avoid hig..."
+        },
+        {
+          "filename": "Bone_Metabolism_Jul2026.pdf",
+          "created_at": "2026-07-14",
+          "status": "completed",
+          "extracted_text": "BONE MINERAL & RENAL PROFILE\nPatient: Sunita Deshmukh | Date: 14-Jul-2026\nCalcium: 9.4 mg/dL\nVitamin D (25-OH): 42 ng/mL\nSerum Creatinine: 1.15 mg/dL\neGFR: 58 mL/min/1.73m2\nBlood Pressure: 128/78 mmHg..."
+        },
+        {
+          "filename": "Geriatric_Annual_Review_Sep2026.pdf",
+          "created_at": "2026-09-25",
+          "status": "completed",
+          "extracted_text": "ANNUAL GERIATRIC MOBILITY & RENAL REVIEW\nPatient: Sunita Anand Deshmukh (67F) | Date: 25-Sep-2026\nProgress Summary:\n- Calcium: 8.6 -> 9.5 mg/dL (Normal)\n- Vitamin D: 14 -> 46 ng/mL (Optimal)\n- Serum C..."
+        }
+      ],
+      "ai_summary": {
+        "en": "Sunita Anand Deshmukh has achieved stable bone mineral density and well-controlled blood pressure (124/76 mmHg on Amlodipine 5mg). Serum calcium is optimal at 9.5 mg/dL and Vitamin D has reached 46 ng/mL following Zoledronic acid infusion and supplementation. Renal function is stable with serum creatinine improving from 1.28 to 1.12 mg/dL (eGFR 60 mL/min). No fractures or falls reported.",
+        "hi": "सुनीता आनंद देशमुख का बोन मिनरल घनत्व स्थिर हो गया है और एम्लोडिपिन 5mg पर रक्तचाप 124/76 mmHg पर नियंत्रित है। जोलेड्रोनिक एसिड और सप्लीमेंट्स के बाद सीरम कैल्शियम 9.5 mg/dL और विटामिन डी 46 ng/mL के सुरक्षित स्तर पर है। किडनी का कार्य (क्रिएटिनिन 1.12, eGFR 60) स्थिर और सुधरा हुआ है। पिछले 12 महीनों में गिरने या फ्रैक्चर की कोई घटना नहीं हुई है।"
+      }
+    }
+  ]
+}

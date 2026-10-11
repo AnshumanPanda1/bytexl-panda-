@@ -12,8 +12,12 @@ export interface PatientLayout {
 }
 
 export const getPatientLayouts = async (patientId: string): Promise<PatientLayout[]> => {
-  const response = await axiosInstance.get(`/patients/${patientId}/layouts`);
-  return response.data;
+  try {
+    const response = await axiosInstance.get(`/patients/${patientId}/layouts`);
+    return response.data || [];
+  } catch (_e) {
+    return [];
+  }
 };
 
 export const getActiveLayout = async (patientId: string): Promise<PatientLayout> => {

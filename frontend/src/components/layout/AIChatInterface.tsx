@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, MessageSquare, Sparkles, BarChart2, Send, Loader2, Bot, User, Database, ChevronRight, History, Plus, Maximize2, Minimize2, Wrench } from 'lucide-react';
+import { X, MessageSquare, Sparkles, BarChart2, Send, Loader2, Bot, User, Database, ChevronRight, History, Plus, Maximize2, Minimize2, Wrench, Languages } from 'lucide-react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { streamAIAssistance, resumeHitlSession, AIStreamMessage, listChatSessions, getChatSessionMessages, deleteChatSession, ChatSession } from '../../services/aiAssistanceService';
@@ -29,6 +29,7 @@ import { ChatVoiceButton } from '../ai/ChatVoiceButton';
 import { RecordingBanner } from '../ai/RecordingBanner';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 import { transcribeAudio } from '../../services/aiAssistanceService';
+import { AISummaryCard } from '../ai/AISummaryCard';
 
 interface Props {
   isFullScreen?: boolean;
@@ -176,6 +177,16 @@ export const AIChatInterface: React.FC<Props> = ({
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const currentSessionIdRef = useRef<string | null>(null);
+
+  // AI response language mode (English vs Hindi)
+  const [aiLanguageMode, setAiLanguageMode] = useState<'en' | 'hi'>(() => {
+    return (localStorage.getItem('ai_response_lang') as 'en' | 'hi') || 'en';
+  });
+
+  const handleLanguageChange = (lang: 'en' | 'hi') => {
+    setAiLanguageMode(lang);
+    localStorage.setItem('ai_response_lang', lang);
+  };
 
   // Phase 6.3 — live graph-flow state (dual-emitted family vocabulary):
   // drives the FlowStatusCard while a graph chat turn is in flight.
@@ -414,11 +425,15 @@ export const AIChatInterface: React.FC<Props> = ({
     const placeholderMessage: Message = { role: 'assistant', content: '', toolCalls: [], citations: [], isExecuting: false };
     setMessages(prev => [...prev, placeholderMessage]);
 
+    const finalInput = aiLanguageMode === 'hi'
+      ? `${messageContent}\n\n[Instruction: Provide your complete response in natural Hindi (हिंदी). Keep clinical units, medication names, and numbers exact.]`
+      : messageContent;
+
     try {
       await streamAIAssistance(
         {
           task_type: 'chat',
-          user_input: messageContent,
+          user_input: finalInput,
           images: messageImages.length ? messageImages : undefined,
           context: {
             patient_id: currentPatient?.id,
@@ -427,7 +442,8 @@ export const AIChatInterface: React.FC<Props> = ({
             medication_id: currentMedicationId,
             allergy_id: currentAllergyId,
             session_id: currentSessionId,
-            current_tab: activeTab
+            current_tab: activeTab,
+            language: aiLanguageMode,
           }
         },
         (msg: AIStreamMessage) => {
@@ -681,9 +697,9 @@ export const AIChatInterface: React.FC<Props> = ({
         <div className={`flex flex-col shrink-0 ${isFullScreen ? 'bg-white dark:bg-dark-surface text-gray-900 dark:text-white' : ''}`}>
           
           {/* Top Header Row */}
-          <div className={`px-4 md:px-6 py-3 md:py-4 flex items-center justify-between ${isFullScreen ? 'border-b border-gray-100 dark:border-dark-border' : 'bg-indigo-600 text-white'}`}>
+          <div className={`px-4 md:px-6 py-3 md:py-4 flex items-center justify-between ${'border-b border-gray-200/80 dark:border-dark-border bg-white dark:bg-dark-surface text-gray-900 dark:text-white'}`}>
              <div className="flex items-center space-x-2 md:space-x-3">
-                <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl ${isFullScreen ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-white/20 text-white'}`}>
+                <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl ${'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'}`}>
                    <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
                  <div className={isFullScreen ? 'hidden md:block' : ''}>
@@ -697,12 +713,12 @@ export const AIChatInterface: React.FC<Props> = ({
 
               {/* Tabs in Center for Full Screen */}
               {isFullScreen && (
-                <div className="hidden sm:flex items-center bg-gray-100 dark:bg-dark-bg p-1 rounded-2xl border border-gray-200 dark:border-dark-border mx-2 md:mx-4">
+                <div className="hidden sm:flex items-center bg-gray-100 dark:bg-dark-bg p-0.5 rounded-lg border border-gray-200 dark:border-dark-border mx-2 md:mx-4">
                    {tabs.map(tab => (
                       <button
                        key={tab.id}
                        onClick={() => setActiveTab(tab.id as any)}
-                       className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${
+                       className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-1.5 md:py-2 rounded-md text-xs font-medium transition-all ${
                          activeTab === tab.id 
                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
                            : 'text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text hover:bg-white/50 dark:hover:bg-dark-surface'
@@ -718,6 +734,34 @@ export const AIChatInterface: React.FC<Props> = ({
 
               {/* Action Buttons & Badge */}
               <div className="flex items-center space-x-0.5 md:space-x-1">
+                  {/* AI Response Language Mode Switch */}
+                  <div className="flex items-center bg-gray-100 dark:bg-dark-bg p-0.5 rounded-lg border border-gray-200 dark:border-dark-border mr-1.5 md:mr-2 shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleLanguageChange('en')}
+                      className={`flex items-center gap-1 px-2 md:px-2.5 py-1 rounded-md text-[10px] md:text-xs font-bold transition-all ${
+                        aiLanguageMode === 'en'
+                          ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
+                      }`}
+                      title="AI Response Language: English"
+                    >
+                      <span>EN</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLanguageChange('hi')}
+                      className={`flex items-center gap-1 px-2 md:px-2.5 py-1 rounded-md text-[10px] md:text-xs font-bold transition-all ${
+                        aiLanguageMode === 'hi'
+                          ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
+                      }`}
+                      title="AI Response Language: Hindi (हिंदी)"
+                    >
+                      <span>हिंदी</span>
+                    </button>
+                  </div>
+
                   <ActiveTaskBadge taskType="chat" className="mr-2 md:mr-3" variant={isFullScreen ? 'default' : 'white'} />
                   
                   {isFullScreen && (
@@ -866,7 +910,7 @@ export const AIChatInterface: React.FC<Props> = ({
           >
             <div className="bg-white dark:bg-dark-surface border border-l-0 border-gray-100 dark:border-dark-border py-8 px-1 rounded-r-2xl shadow-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all flex flex-col items-center gap-4">
                <History className="w-4 h-4 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform" />
-               <div className="[writing-mode:vertical-lr] rotate-180 text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-dark-muted group-hover:text-indigo-600 transition-colors">
+               <div className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-muted group-hover:text-indigo-600 transition-colors">
                  History
                </div>
                <ChevronRight className="w-3 h-3 text-gray-300 dark:text-dark-muted" />
@@ -910,7 +954,7 @@ export const AIChatInterface: React.FC<Props> = ({
                               ? <User className={isFullScreen ? 'w-4 h-4 md:w-5 md:h-5' : 'w-3.5 h-3.5'} />
                               : <Bot className={isFullScreen ? 'w-4 h-4 md:w-5 md:h-5' : 'w-3.5 h-3.5'} />}
                           </div>
-                          <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl text-sm md:text-[15px] leading-relaxed shadow-lg ${
+                          <div className={`p-4 md:p-5 rounded-xl text-sm leading-relaxed shadow-xs ${
                             msg.role === 'user'
                               ? 'bg-indigo-600 text-white rounded-tr-none'
                               : (isFullScreen 
@@ -1041,7 +1085,7 @@ export const AIChatInterface: React.FC<Props> = ({
                                         }`}
                                       >
                                         <Database className={`w-3 h-3 ${tc.status !== 'finished' ? 'animate-pulse' : ''}`} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">{tc.name.replace(/get_recent_|get_|history/g, '').replace(/_/g, ' ')}</span>
+                                        <span className="text-xs font-medium">{tc.name.replace(/get_recent_|get_|history/g, '').replace(/_/g, ' ')}</span>
                                         {tc.status !== 'finished' && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
                                       </button>
                                     );
@@ -1170,24 +1214,15 @@ export const AIChatInterface: React.FC<Props> = ({
             )}
 
             {activeTab === 'insights' && (
-              <div className="max-w-4xl mx-auto w-full p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className={`p-6 md:p-8 rounded-2xl md:rounded-4xl border shadow-2xl ${
-                    isFullScreen 
-                      ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-900 dark:text-amber-200' 
-                      : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30 text-amber-900 dark:text-amber-200'
-                  }`}>
-                    <div className="flex items-center gap-3 md:gap-4 mb-4">
-                       <div className="p-2 md:p-2.5 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-500/20">
-                          <BarChart2 className="w-5 h-5 md:w-5.5 md:h-5.5" />
-                       </div>
-                       <h3 className="text-lg md:text-xl font-black uppercase tracking-[0.2em]">{t('ai_chat.insights.title')}</h3>
-                    </div>
-                    <p className="text-base md:text-lg font-medium leading-relaxed opacity-80">
-                        {currentPatient 
-                          ? t('ai_chat.insights.select_document', { name: `${currentPatient.name?.given?.join(' ')} ${currentPatient.name?.family}` })
-                          : t('ai_chat.insights.select_patient')}
-                    </p>
+              <div className="max-w-4xl mx-auto w-full p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                {currentPatient ? (
+                  <AISummaryCard patientId={String(currentPatient.id)} />
+                ) : (
+                  <div className="p-8 text-center text-gray-500 dark:text-dark-muted rounded-2xl border border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-surface">
+                    <p className="font-semibold text-base mb-1">No Patient Selected</p>
+                    <p className="text-sm">Please select a patient from the top bar to generate and inspect grounded bilingual summaries.</p>
                   </div>
+                )}
               </div>
             )}
 
@@ -1240,7 +1275,50 @@ export const AIChatInterface: React.FC<Props> = ({
                   }
                 }}
               >
-                  <div className={`absolute -inset-1 bg-linear-to-r from-indigo-500 to-blue-500 rounded-[2.5rem] opacity-0 group-focus-within:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none`} />
+                  {/* AI Response Mode Switch in Composer */}
+                  <div className="flex items-center justify-between mb-2.5 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] md:text-xs font-bold text-gray-500 dark:text-dark-muted uppercase tracking-wider flex items-center gap-1.5">
+                        <Languages className="w-3.5 h-3.5 text-indigo-500" />
+                        AI Response Mode:
+                      </span>
+                      <div className="inline-flex rounded-lg bg-gray-100 dark:bg-dark-bg p-0.5 text-xs font-bold border border-gray-200 dark:border-dark-border">
+                        <button
+                          type="button"
+                          onClick={() => handleLanguageChange('en')}
+                          className={`px-2.5 py-0.5 rounded-md transition-all ${
+                            aiLanguageMode === 'en'
+                              ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
+                              : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
+                          }`}
+                        >
+                          English
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleLanguageChange('hi')}
+                          className={`px-2.5 py-0.5 rounded-md transition-all ${
+                            aiLanguageMode === 'hi'
+                              ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
+                              : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
+                          }`}
+                        >
+                          हिंदी (Hindi)
+                        </button>
+                      </div>
+                    </div>
+                    {aiLanguageMode === 'hi' ? (
+                      <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 animate-pulse">
+                        हिंदी मोड सक्रिय • Devanagari Active
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-gray-400 dark:text-dark-muted hidden sm:inline">
+                        English Mode Active
+                      </span>
+                    )}
+                  </div>
+
+                  <div className={`absolute -inset-1 bg-linear-to-r from-indigo-500 to-blue-500 rounded-xl opacity-0 group-focus-within:opacity-30 blur-sm transition-opacity duration-500 pointer-events-none`} />
 
                   {/* Preview rail + recording banner live OUTSIDE the rounded
                       input box so neither thumbnails nor the banner are clipped
@@ -1256,7 +1334,7 @@ export const AIChatInterface: React.FC<Props> = ({
                     onCancel={cancelRecording}
                   />
 
-                  <div className={`relative flex items-center border rounded-[1.8rem] md:rounded-[2.2rem] transition-all shadow-2xl overflow-hidden ${
+                  <div className={`relative flex items-center border rounded-xl transition-all shadow-2xl overflow-hidden ${
                     isDragging ? 'ring-4 ring-indigo-500/40 border-indigo-400' : ''
                   } ${
                     isFullScreen
@@ -1321,14 +1399,18 @@ export const AIChatInterface: React.FC<Props> = ({
                     </div>
                   </div>
                   {isDragging && (
-                    <div className="absolute inset-0 z-10 bg-indigo-50/90 dark:bg-indigo-900/40 flex items-center justify-center pointer-events-none rounded-[1.8rem] md:rounded-[2.2rem]">
+                    <div className="absolute inset-0 z-10 bg-indigo-50/90 dark:bg-indigo-900/40 flex items-center justify-center pointer-events-none rounded-xl">
                       <span className="text-sm font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
                         {t('ai_chat.attachments.drop', { defaultValue: 'Drop images to attach' })}
                       </span>
                     </div>
                   )}
               </form>
-              <p className="text-[8px] md:text-[10px] text-gray-500 dark:text-slate-500 text-center mt-3 md:mt-5 font-black uppercase tracking-[0.2em] opacity-40">{t('ai_chat.input.disclaimer')}</p>
+              <div className="mt-2.5 md:mt-3 px-3 py-2 rounded-xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 flex items-center justify-center gap-2 text-center">
+                <span className="text-[10px] md:text-xs text-amber-800 dark:text-amber-200/90 leading-normal">
+                  <strong className="font-bold">Medical Disclaimer:</strong> This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
+                </span>
+              </div>
             </div>
           )}
         </div>

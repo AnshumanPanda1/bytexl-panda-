@@ -5,7 +5,7 @@ import {
   eachDayOfInterval,
   format
 } from 'date-fns';
-import { MedicationRecord } from '../services/medicationService';
+import { MedicationRecord, MedicationTiming } from '../services/medicationService';
 
 export interface ScheduledMedication {
   id: string;
@@ -34,9 +34,7 @@ export function getMedicationOccurrences(
 
     const medStart = med.start_date ? startOfDay(parseISO(med.start_date)) : null;
     const medEnd = med.end_date ? endOfDay(parseISO(med.end_date)) : null;
-    const timing = med.frequency;
-
-    if (!timing) return;
+    const timing: MedicationTiming = med.frequency || { type: 'daily', frequency: 1, time_of_day: ['08:00'] };
 
     days.forEach(day => {
       // Check if day is within medication start/end range
@@ -92,7 +90,7 @@ export function getMedicationOccurrences(
           ? timing.time_of_day 
           : ['Unspecified'];
 
-        times.forEach(time => {
+        times.forEach((time: string) => {
           occurrences.push({
             id: `${med.id}-${format(day, 'yyyy-MM-dd')}-${time}`,
             name: med.code.text,

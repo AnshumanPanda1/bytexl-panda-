@@ -57,12 +57,19 @@ def build_openai(
     verbatim — reasoning-family models require it for function-tool calls
     on chat completions. ``None`` keeps the provider default.
     """
+    effective_max_tokens = max_tokens
+    if base_url and ("groq.com" in base_url or "groq" in base_url):
+        # Groq on_demand enforces 1000 OTPM (output tokens per minute) limit
+        effective_max_tokens = min(max_tokens, 950)
+    elif max_tokens > 16384 and ("api.openai.com" not in (base_url or "")):
+        effective_max_tokens = 8192
+
     return ChatOpenAI(
         api_key=api_key,
         base_url=base_url,
         model=model_name,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_tokens=effective_max_tokens,
         reasoning_effort=reasoning_effort,
     )
 

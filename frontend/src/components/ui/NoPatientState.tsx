@@ -73,12 +73,41 @@ export const NoPatientState: React.FC<NoPatientStateProps> = ({
 
       {showActions && (
         <div className="flex flex-col w-full gap-3">
+          <button
+            onClick={async () => {
+              try {
+                const { listPatients } = await import('../../services/patientService');
+                const res = await listPatients(undefined, 50, 0);
+                const items = res.items || [];
+                const hero =
+                  items.find((p) => p.name?.given?.includes('Rajesh') || p.name?.family === 'Sharma');
+                if (hero) {
+                  usePatientStore.getState().setPatients(items);
+                  usePatientStore.getState().setCurrentPatient(hero);
+                  navigate('/dashboard');
+                  return;
+                }
+              } catch (e) {
+                console.error('Failed to load hero patient:', e);
+              }
+              const { getTestPatients } = await import('../../data/testPatients');
+              const tests = getTestPatients();
+              usePatientStore.getState().setPatients(tests);
+              usePatientStore.getState().setCurrentPatient(tests[0]);
+              navigate('/dashboard');
+            }}
+            className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-2xl font-bold hover:opacity-95 transition-all shadow-xl shadow-indigo-200 dark:shadow-none inline-flex items-center justify-center gap-2 border border-white/20 active:scale-95"
+          >
+            <Sparkles className="w-5 h-5 text-amber-300" />
+            Launch Hero Patient Demo (Rajesh Kumar Sharma)
+          </button>
+
           {hasPatients ? (
             <button
               onClick={() => navigate('/patients')}
-              className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 dark:shadow-none inline-flex items-center justify-center gap-2"
+              className="w-full py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-gray-700 dark:text-dark-text rounded-2xl font-bold hover:bg-gray-50 transition-all inline-flex items-center justify-center gap-2"
             >
-              <Users className="w-5 h-5" />
+              <Users className="w-5 h-5 text-blue-600" />
               {t('common.no_patient_select_action')}
             </button>
           ) : (

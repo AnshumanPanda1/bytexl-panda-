@@ -478,7 +478,7 @@ async def resume_after_hitl(
     patient_id = str(session.patient_id) if session.patient_id else None
     # Resume turns don't carry exam context.
     tools = await build_chat_tools(
-        db, tenant_id, patient_id, user_id, examination_id=None, label="resume"
+        db, tenant_id, patient_id, user_id, examination_id=None, label="resume", user_input=summary
     )
 
     llm = await ai_provider_service.get_llm("chat", tenant_id=tenant_id, user_id=user_id)

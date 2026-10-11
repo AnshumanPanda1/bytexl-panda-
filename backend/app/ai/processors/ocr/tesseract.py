@@ -9,7 +9,13 @@ from .utils import convert_to_images
 logger = logging.getLogger(__name__)
 
 try:
+    import shutil
     import pytesseract
+
+    # Ensure Windows path to tesseract.exe is registered if not on default PATH
+    tess_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    if shutil.which("tesseract") is None and Path(tess_path).exists():
+        pytesseract.pytesseract.tesseract_cmd = tess_path
 
     HAS_TESSERACT = True
 except ImportError:

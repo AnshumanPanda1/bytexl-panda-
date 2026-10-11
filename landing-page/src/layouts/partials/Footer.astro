@@ -1,0 +1,43 @@
+---
+import Social from "@/components/Social.astro";
+import config from "@/config/config.json";
+import social from "@/config/social.json";
+import { markdownify } from "@/lib/utils/textConverter";
+import type { SocialType } from "@/types";
+
+const { main: socialLinks } = social as SocialType;
+---
+
+<footer class="section pb-0 relative overflow-hidden">
+  <!-- Medical Disclaimer Banner -->
+  <div class="container pb-8">
+    <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
+      <p class="text-xs md:text-sm text-text font-medium leading-relaxed">
+        <strong class="font-bold text-dark dark:text-white">Medical Disclaimer:</strong> This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.
+      </p>
+    </div>
+  </div>
+
+  <!-- Bottom Area -->
+  <hr
+    class="h-px bg-linear-to-r from-transparent from-25% via-white/50 to-75% to-transparent border-0"
+  />
+  <div class="container py-7">
+    <div
+      class="flex justify-between lg:items-center flex-col lg:flex-row gap-y-6 w-full"
+    >
+      <p
+        class="text-base text-text"
+        set:html={markdownify(config.params.copyright)}
+      />
+
+      <Social className="social-icons lg:ml-auto" source={socialLinks} />
+    </div>
+  </div>
+
+  <div
+    class="absolute bottom-0 left-1/2 size-280 blur-2xl -translate-x-1/2 translate-y-1/2 -z-10"
+    style="background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 30%, transparent) 0%, transparent 80%);"
+  >
+  </div>
+</footer>

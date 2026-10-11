@@ -1,0 +1,18 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Structured FHIR / Health Document base -->
+  <path d="M11 8C11 6.34315 12.3431 5 14 5H27L37 15V39C37 40.6569 35.6569 42 34 42H14C12.3431 42 11 40.6569 11 39V8Z" fill="white" fill-opacity="0.12"/>
+  <path d="M11 8C11 6.34315 12.3431 5 14 5H27L37 15V39C37 40.6569 35.6569 42 34 42H14C12.3431 42 11 40.6569 11 39V8Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Folded corner tab -->
+  <path d="M27 5V15H37" stroke="white" stroke-width="2" stroke-linejoin="round" fill="white" fill-opacity="0.2"/>
+  <!-- FHIR JSON brackets { } and medical cross -->
+  <text x="24" y="24" font-size="12" font-family="'Courier New', monospace" font-weight="bold" fill="white" fill-opacity="0.9" text-anchor="middle">{ &plus; }</text>
+  <!-- Schema / data structure lines -->
+  <path d="M16 29H27" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M16 33H23" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M16 37H20" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- Coral Problem Badge: Export blocked / Non-standardized -->
+  <circle cx="34" cy="34" r="8" fill="#FF5353"/>
+  <!-- Blocked export symbol: downward export arrow crossed out or warning sign -->
+  <path d="M34 29V35M31.5 32.5L34 35L36.5 32.5" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="30" y1="38" x2="38" y2="38" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

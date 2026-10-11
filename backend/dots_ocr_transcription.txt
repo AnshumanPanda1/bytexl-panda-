@@ -1,0 +1,68 @@
+
+
+Based on the provided image of the doctor's prescription, here is the detailed transcription of all handwritten text, patient details, vitals, and medications.
+
+---
+
+### **Clinic & Doctor Header**
+*   **Clinic Name:** ಸಾಯಿ ರಾಮ್ ಕ್ಲಿನಿಕ್ / **SAI RAM CLINIC**
+*   **Doctor Details:** 
+    *   **Dr. Sachin Patil** (CONSULTANT FAMILY PHYSICIAN)
+    *   **Mob.:** 9008331474
+*   **Timing:** Mon to sat, 05:30 p.m. to 09:00 p.m.
+*   **Date:** `22/05/25` (handwritten)
+
+---
+
+### **Patient Details**
+*   **Name:** `Mr. Aman` (handwritten)
+*   **Age:** `19 Yrs` (handwritten)
+*   **Sex:** `M` (handwritten)
+
+---
+
+### **Patient Vitals (Handwritten)**
+*   **B.P.:** `120/70`
+*   **HR:** `116/min`
+*   **SPO₂:** `98%`
+*   **Temp:** `102.2°F`
+*   **Wt.:** `Dehydrated` (handwritten note)
+
+---
+
+### **Diagnosis / Prescription Header (Rx)**
+*   **Rx:** `Cold, T. instant?, Fever` (likely referring to cold, fever, and temporary symptomatic treatment)
+*   **General Advice:** `B A G x 1 day` (likely Bed rest / General advice for 1 day)
+
+---
+
+### **Medications (Handwritten List)**
+
+*   **Line 1:** 
+    `- P. Opox-CV 200mg (6) 10 tab.` 
+    *(Circle number: 6)*
+    *(Interpretation: P.O. Opox-CV 200mg, 10 tablets, likely dosage schedule indicated by the circled number 6 or similar index).*
+
+*   **Line 2:** 
+    `- T. Althose-SP (8) 1+1 tab.` 
+    *(Circle number: 8)*
+    *(Interpretation: T. Althose-SP, 1+1 tablet daily / as directed, indexed by circled number 8).*
+
+*   **Line 3:** 
+    `- T. Breezy cool (5)` 
+    *(Circle number: 5)*
+    *(Interpretation: T. Breezy cool, likely a cooling/fever-relief tablet/gel, indexed by circled number 5).*
+
+*   **Line 4:** 
+    `- P. Cipen-D 10mg (10) 1 tab. (10)` 
+    *(Circles: 10 and 10)*
+    *(Interpretation: P.O. Cipen-D 10mg, 1 tablet, indexed by circled numbers 10).*
+
+---
+
+### **Pharmacy Footer (Sri Krishna Medicos)**
+*   **Label:** `For Medicine :` (left side) / `FREE HOME DELIVERY` (right side)
+*   **Pharmacy Name:** ಶ್ರೀ ಕೃಷ್ಣ ಮೆಡಿಕಲ್ಸ್ (**Sri Krishna Medicos**)
+*   **Address (Kannada & English):** 
+    `No.36/37, Shop No.2, next to Dubari Hospital, R.V.V. Anji, D.V.S. Nayak Circle, Kengeri, Bangalore-59`
+*   **Mobile No.:** `Mo.: 7892936588`
