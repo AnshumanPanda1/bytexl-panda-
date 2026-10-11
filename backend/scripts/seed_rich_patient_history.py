@@ -304,47 +304,31 @@ async def run_seed():
 
         # 4. Helper function to copy fixture file to storage
         def _build_valid_pdf_bytes(title: str, text: str) -> bytes:
-            lines = [title, "=" * min(len(title), 50), ""]
-            for l in (text or "").splitlines():
-                clean_line = "".join(c if 32 <= ord(c) < 127 else " " for c in l).strip()
-                if clean_line:
-                    lines.append(clean_line[:75])
-
-            stream_ops = ["BT", "/F1 12 Tf", "50 740 Td", "18 TL"]
-            for idx, line in enumerate(lines[:38]):
-                escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-                if idx == 0:
-                    stream_ops.append(f"({escaped}) Tj")
-                else:
-                    stream_ops.append(f"T* ({escaped}) Tj")
-            stream_ops.append("ET")
-            stream_data = "\n".join(stream_ops).encode("latin-1", "replace")
-            stream_len = len(stream_data)
-
-            obj1 = b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
-            obj2 = b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
-            obj3 = b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
-            obj4 = f"4 0 obj\n<< /Length {stream_len} >>\nstream\n".encode() + stream_data + b"\nendstream\nendobj\n"
-            obj5 = b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
-
-            header = b"%PDF-1.4\n"
-            offset1 = len(header)
-            offset2 = offset1 + len(obj1)
-            offset3 = offset2 + len(obj2)
-            offset4 = offset3 + len(obj3)
-            offset5 = offset4 + len(obj4)
-            xref_offset = offset5 + len(obj5)
-
-            xref = (
-                f"xref\n0 6\n0000000000 65535 f \n"
-                f"{offset1:010d} 00000 n \n"
-                f"{offset2:010d} 00000 n \n"
-                f"{offset3:010d} 00000 n \n"
-                f"{offset4:010d} 00000 n \n"
-                f"{offset5:010d} 00000 n \n"
-            ).encode()
-            trailer = f"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n".encode()
-            return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
+            from reportlab.lib.pagesizes import letter
+            from reportlab.pdfgen import canvas
+            buf = io.BytesIO()
+            c = canvas.Canvas(buf, pagesize=letter)
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(50, 750, title[:65])
+            c.setLineWidth(1)
+            c.setStrokeColorRGB(0.2, 0.4, 0.8)
+            c.line(50, 740, 550, 740)
+            c.setFont("Helvetica", 10)
+            c.setFillColorRGB(0.1, 0.1, 0.1)
+            y = 718
+            for line in (text or "").splitlines():
+                clean = "".join(ch if 32 <= ord(ch) < 127 else " " for ch in line).strip()
+                if not clean:
+                    y -= 10
+                    continue
+                c.drawString(50, y, clean[:85])
+                y -= 14
+                if y < 50:
+                    c.showPage()
+                    c.setFont("Helvetica", 10)
+                    y = 750
+            c.save()
+            return buf.getvalue()
 
         def _build_valid_png_bytes(title: str, text: str) -> bytes:
             from PIL import Image, ImageDraw
