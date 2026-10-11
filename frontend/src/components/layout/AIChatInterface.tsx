@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, MessageSquare, Sparkles, BarChart2, Send, Loader2, Bot, User, Database, ChevronRight, History, Plus, Maximize2, Minimize2, Wrench, Languages } from 'lucide-react';
+import { X, MessageSquare, Sparkles, BarChart2, Send, Loader2, Bot, User, Database, ChevronRight, History, Plus, Maximize2, Minimize2, Wrench, Languages, ClipboardList } from 'lucide-react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { streamAIAssistance, resumeHitlSession, AIStreamMessage, listChatSessions, getChatSessionMessages, deleteChatSession, ChatSession } from '../../services/aiAssistanceService';
@@ -1275,36 +1275,57 @@ export const AIChatInterface: React.FC<Props> = ({
                   }
                 }}
               >
-                  {/* AI Response Mode Switch in Composer */}
-                  <div className="flex items-center justify-between mb-2.5 px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] md:text-xs font-bold text-gray-500 dark:text-dark-muted uppercase tracking-wider flex items-center gap-1.5">
-                        <Languages className="w-3.5 h-3.5 text-indigo-500" />
-                        AI Response Mode:
-                      </span>
-                      <div className="inline-flex rounded-lg bg-gray-100 dark:bg-dark-bg p-0.5 text-xs font-bold border border-gray-200 dark:border-dark-border">
-                        <button
-                          type="button"
-                          onClick={() => handleLanguageChange('en')}
-                          className={`px-2.5 py-0.5 rounded-md transition-all ${
-                            aiLanguageMode === 'en'
-                              ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
-                              : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
-                          }`}
-                        >
-                          English
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleLanguageChange('hi')}
-                          className={`px-2.5 py-0.5 rounded-md transition-all ${
-                            aiLanguageMode === 'hi'
-                              ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
-                              : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
-                          }`}
-                        >
-                          हिंदी (Hindi)
-                        </button>
+                  {/* Quick Action Pills & AI Response Mode Switch in Composer */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 px-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const summaryPrompt = aiLanguageMode === 'hi'
+                            ? "कृपया इस मरीज का विस्तृत और संपूर्ण नैदानिक सारांश (Clinical Summary) तैयार करें। इसमें मुख्य स्वास्थ्य स्थिति (Health Status), सक्रिय दवाएं (Active Medications), हालिया प्रयोगशाला जांच परिणाम (Biomarker Findings), और महत्वपूर्ण प्रवृत्तियों (Trends) को स्पष्ट बिंदुओं में प्रस्तुत करें।"
+                            : "Generate a comprehensive clinical summary for this patient. Include a high-level overview of their health status, active medications, most recent critical biomarker findings, and notable longitudinal trends from their history.";
+                          handleSendMessage(undefined, summaryPrompt);
+                        }}
+                        disabled={loading}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all shadow-xs hover:shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none group"
+                        title="Generate a grounded, full clinical summary of the current patient"
+                      >
+                        <ClipboardList className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform" />
+                        <span>Complete Summary of Patient</span>
+                        <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                      </button>
+
+                      <div className="h-4 w-px bg-gray-200 dark:bg-dark-border mx-0.5 hidden sm:block" />
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] md:text-xs font-bold text-gray-500 dark:text-dark-muted uppercase tracking-wider flex items-center gap-1">
+                          <Languages className="w-3.5 h-3.5 text-indigo-500" />
+                          Mode:
+                        </span>
+                        <div className="inline-flex rounded-lg bg-gray-100 dark:bg-dark-bg p-0.5 text-xs font-bold border border-gray-200 dark:border-dark-border">
+                          <button
+                            type="button"
+                            onClick={() => handleLanguageChange('en')}
+                            className={`px-2 py-0.5 rounded-md transition-all ${
+                              aiLanguageMode === 'en'
+                                ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
+                            }`}
+                          >
+                            English
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleLanguageChange('hi')}
+                            className={`px-2 py-0.5 rounded-md transition-all ${
+                              aiLanguageMode === 'hi'
+                                ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-xs'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-dark-muted'
+                            }`}
+                          >
+                            हिंदी
+                          </button>
+                        </div>
                       </div>
                     </div>
                     {aiLanguageMode === 'hi' ? (
