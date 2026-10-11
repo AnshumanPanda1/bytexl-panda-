@@ -136,8 +136,12 @@ export async function reprocessAllergy(catalogId: string): Promise<AllergyCatalo
 // --- Patient-instance methods ---
 
 export async function getPatientAllergies(patientId: string): Promise<AllergyIntolerance[]> {
-  const response = await api.get<AllergyIntolerance[]>(`/allergies/patient/${patientId}`);
-  return response.data;
+  try {
+    const response = await api.get<AllergyIntolerance[]>(`/allergies/patient/${patientId}`);
+    return response.data || [];
+  } catch (_err) {
+    return [];
+  }
 }
 
 export async function getActiveAllergies(): Promise<AllergyIntolerance[]> {

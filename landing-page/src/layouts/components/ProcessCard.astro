@@ -1,17 +1,36 @@
 ---
 import ImageMod from "@/layouts/components/ImageMod.astro";
+
 interface Props {
   logo: string;
   title: string;
   content: string;
 }
 const { logo, title, content } = Astro.props;
+
+const journeyMap: Record<string, string> = {
+  "1. Upload Your Reports": "/images/journey/step-1-upload.svg",
+  "2. Verify Clinical Facts": "/images/journey/step-2-verify.svg",
+  "3. Understand & Export": "/images/journey/step-3-export.svg",
+  "file-up": "/images/journey/step-1-upload.svg",
+  "file-check": "/images/journey/step-2-verify.svg",
+  "file-down": "/images/journey/step-3-export.svg",
+  "step-1": "/images/journey/step-1-upload.svg",
+  "step-2": "/images/journey/step-2-verify.svg",
+  "step-3": "/images/journey/step-3-export.svg",
+};
+
+const resolvedLogo = journeyMap[logo] || journeyMap[title] || logo;
 ---
 
 <div
-  class="p-8 xl:px-10 xl:py-11 rounded-2xl border border-border flex flex-col items-center text-center"
+  class="group p-8 xl:px-10 xl:py-11 rounded-2xl border border-border flex flex-col items-center text-center transition-all duration-300 hover:border-primary/40 hover:bg-white/[0.02]"
 >
-  <ImageMod src={logo} alt={`${title} icon`} class="mb-6" />
+  <ImageMod
+    src={resolvedLogo}
+    alt={`${title} icon`}
+    class="mb-6 transition-transform duration-300 group-hover:scale-105"
+  />
   <h3 class="text-h5-sm font-bold font-secondary">{title}</h3>
   <div class="w-px h-11 my-4 bg-text-dark/30"></div>
   <p>

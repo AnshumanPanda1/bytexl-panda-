@@ -44,7 +44,7 @@ export function SidebarFooter({ collapsed, compact = false }: { collapsed: boole
             className={aboutPillCompactClass}
           >
             <Info />
-            {t('common.about', 'About MediBot')}
+            {t('common.about', 'About Tattva')}
           </button>
           <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
             v1.0.0
@@ -58,10 +58,10 @@ export function SidebarFooter({ collapsed, compact = false }: { collapsed: boole
             className={aboutPillClass}
           >
             <Info />
-            {t('common.about', 'About MediBot')}
+            {t('common.about', 'About Tattva')}
           </button>
           <p className="text-xs font-medium text-gray-400 dark:text-gray-500">
-            MediBot Health Copilot · v1.0.0
+            Tattva Health Copilot · v1.0.0
           </p>
         </div>
       )}

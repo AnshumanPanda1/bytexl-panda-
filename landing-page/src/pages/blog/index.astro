@@ -1,7 +1,7 @@
 ---
 import Base from "@/layouts/Base.astro";
 import BlogCard from "@/layouts/components/BlogCard.astro";
-import CallToAction from "@/layouts/components/CallToAction.astro";
+
 import FeaturedPostCard from "@/layouts/components/FeaturedPostCard.astro";
 import ImageMod from "@/layouts/components/ImageMod.astro";
 import { getListPage, getSinglePage } from "@/lib/contentParser.astro";
@@ -119,6 +119,4 @@ const latestPosts = allPosts.filter((p) => p.id !== featuredPost.id);
     )
   }
 
-  <!-- Call to Action -->
-  <CallToAction />
 </Base>

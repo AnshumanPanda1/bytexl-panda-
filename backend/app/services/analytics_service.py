@@ -898,15 +898,12 @@ async def get_biomarker_trends(
             source_name = "Manual Entry"
             source_id = None
 
-            if exam_id:
-                source_type = "examination"
-                source_name = exam_name or "Clinical Examination"
-            elif obs.document_id:
-                source_type = "document"
-                source_name = "Uploaded Document"
-            elif obs.performer and isinstance(obs.performer, list) and len(obs.performer) > 0:
+            if obs.performer and isinstance(obs.performer, list) and len(obs.performer) > 0:
                 p = obs.performer[0]
-                if p.get("type") == "Integration":
+                if p.get("type") in ("Telemetry", "Device"):
+                    source_type = "telemetry"
+                    source_name = p.get("display") or "Connected Device Telemetry"
+                elif p.get("type") == "Integration":
                     source_type = "integration"
                     source_name = p.get("display") or "Integration"
                     ref = p.get("reference", "")
@@ -914,6 +911,15 @@ async def get_biomarker_trends(
                         source_id = ref.split("/")[1]
                     else:
                         source_id = source_name  # Fallback to domain if no UUID stored
+            elif b_def and getattr(b_def, "is_telemetry", False):
+                source_type = "telemetry"
+                source_name = "Connected Device Telemetry"
+            elif exam_id:
+                source_type = "examination"
+                source_name = exam_name or "Clinical Examination"
+            elif obs.document_id:
+                source_type = "document"
+                source_name = "Uploaded Document"
 
             # For STATE biomarkers we already resolved (display, is_normal)
             # above; skip the numeric status computation (it would also try
@@ -1112,16 +1118,17 @@ async def get_biomarker_trends(
         """
 
         try:
-            res = await db.execute(
-                text(sql),
-                {
-                    "tenant_id": tenant_id,
-                    "start_date": effective_start_date,
-                    "end_date": effective_end_date,
-                    "slug": slug,
-                },
-            )
-            rows = res.all()
+            async with db.begin_nested():
+                res = await db.execute(
+                    text(sql),
+                    {
+                        "tenant_id": tenant_id,
+                        "start_date": effective_start_date,
+                        "end_date": effective_end_date,
+                        "slug": slug,
+                    },
+                )
+                rows = res.all()
 
             if rows:
                 if slug not in trends:
@@ -1175,8 +1182,8 @@ async def get_biomarker_trends(
                         }
                     )
         except Exception as e:
-            logger.error(f"Failed to query telemetry data for '{slug}': {e}", exc_info=True)
-            # If timescale is not perfectly configured or missing data, skip
+            logger.debug(f"Telemetry table not available for '{slug}': {e}")
+            # If timescale continuous aggregate is not configured or missing, observation vitals will be used
             pass
 
     for key in trends:

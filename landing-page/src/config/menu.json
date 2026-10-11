@@ -1,30 +1,5 @@
 {
-  "main": [
-    {
-      "name": "Features",
-      "url": "/features"
-    },
-    {
-      "name": "Pricing",
-      "url": "/pricing"
-    },
-    {
-      "name": "Blog",
-      "url": "/blog"
-    },
-    {
-      "name": "Integrations",
-      "url": "/integrations"
-    },
-    {
-      "name": "Case Studies",
-      "url": "/case-study"
-    },
-    {
-      "name": "Contact",
-      "url": "/contact"
-    }
-  ],
+  "main": [],
   "footer_col_1_title": "Primary",
   "footer_col_2_title": "Resource",
   "footer_col_3_title": "Legal",
@@ -42,36 +17,11 @@
       "url": "/features"
     },
     {
-      "name": "Pricing",
-      "url": "/pricing"
-    },
-    {
       "name": "Contact",
       "url": "/contact"
     }
   ],
-  "footer_resource": [
-    {
-      "name": "Case Studies",
-      "url": "/case-study"
-    },
-    {
-      "name": "Elements",
-      "url": "/elements"
-    },
-    {
-      "name": "Blog",
-      "url": "/blog"
-    },
-    {
-      "name": "Careers",
-      "url": "/careers"
-    },
-    {
-      "name": "Integrations",
-      "url": "/integrations"
-    }
-  ],
+  "footer_resource": [],
   "footer_legal": [
     {
       "name": "Privacy Policy",

@@ -1,9 +1,11 @@
 ---
+import config from "@/config/config.json";
 // Hero Video Showcase
 // - Autoplay muted + loop (like GHL original)
 // - GSAP scroll animation: starts tilted/scaled, normalizes on scroll (handled by animations.js)
 // - Click button → unmute video, hide overlay button
 // - Click again → mute, show overlay
+const videoSrc = `${config.site.base_path || ""}/showcase.mp4`;
 ---
 
 <div
@@ -20,7 +22,7 @@
     playsinline
     preload="metadata"
   >
-    <source src="/showcase.mp4" type="video/mp4" />
+    <source src={videoSrc} type="video/mp4" />
     Your browser does not support the video tag.
   </video>
 

@@ -1547,6 +1547,7 @@ dependencies = [
     { name = "pyjwt" },
     { name = "pylibjpeg" },
     { name = "pylibjpeg-libjpeg" },
+    { name = "pypdf" },
     { name = "pytesseract" },
     { name = "python-gdcm" },
     { name = "python-multipart" },
@@ -1610,6 +1611,7 @@ requires-dist = [
     { name = "pyjwt", specifier = ">=2.14" },
     { name = "pylibjpeg", specifier = ">=2.1" },
     { name = "pylibjpeg-libjpeg", specifier = ">=2.4" },
+    { name = "pypdf", specifier = ">=5.0" },
     { name = "pytesseract", specifier = ">=0.3" },
     { name = "python-gdcm", specifier = ">=3.2" },
     { name = "python-multipart", specifier = ">=0.0.32" },
@@ -3889,6 +3891,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/14/97/89cb2bd3e7df5ec783706c88d0f9037a8f605461321bbee2864520feea15/pylibjpeg_libjpeg-2.4.0-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:956c0c43af1318a19375f94580d2ce8e314aaa7ab34938457db234eeb8d6b9b9", size = 3293721, upload-time = "2026-03-07T04:52:02.023Z" },
     { url = "https://files.pythonhosted.org/packages/ae/57/4a48b134f368ac11e1e464878670acd84832e5bc8b3c2e028805b54976da/pylibjpeg_libjpeg-2.4.0-cp314-cp314-win32.whl", hash = "sha256:679817baf7c2f7d6e32a89b36ee72a606c2eafd3d143117547d7f2a5d6c5de4b", size = 736798, upload-time = "2026-03-07T04:52:03.442Z" },
     { url = "https://files.pythonhosted.org/packages/70/fd/3c9ab790e2da93ea1d9303974d81d65447843bdd8210693576d2eeadc8f2/pylibjpeg_libjpeg-2.4.0-cp314-cp314-win_amd64.whl", hash = "sha256:980ed0c8e74b58082105c4dd39e5e2cae7f962c971d8d60c96eaf2735cbe973a", size = 750588, upload-time = "2026-03-07T04:52:05.042Z" },
+]
+
+[[package]]
+name = "pypdf"
+version = "6.20.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/45/7e/d08c72b29e89b1ad14acaae817685ca06bac93691bddfd4fac08a703e5b0/pypdf-6.20.0.tar.gz", hash = "sha256:72b1e897fef7f5bbed7f2a93881a4861d98dbf25ae39981c8a023583239edbda", size = 7072602, upload-time = "2026-10-09T10:49:39.165Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/42/a945f65cc61c739ec80f4112c4b78ed1791f25d33f45f19389c9c9e247e2/pypdf-6.20.0-py3-none-any.whl", hash = "sha256:f003fc2014814d264fe7dd3f9d435c158e23e1a85a2233f87a0a2d6d21c914ad", size = 401710, upload-time = "2026-10-09T10:49:36.882Z" },
 ]
 
 [[package]]

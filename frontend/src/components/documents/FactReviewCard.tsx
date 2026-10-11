@@ -298,13 +298,13 @@ export function FactReviewCard({ documentId, onFactUpdated }: FactReviewCardProp
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-dark-text tracking-tight flex items-center gap-2">
-                Canonical Facts & Evidence Grounding
+                Extracted Clinical Findings
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-md">
-                  AIML Validated
+                  Ready for Review
                 </span>
               </h3>
               <p className="text-xs text-gray-500 dark:text-dark-muted">
-                {totalCount} persisted clinical facts linked to this document with provenance quotes & HITL review
+                {totalCount} medical findings extracted from this document. Click to verify or adjust.
               </p>
             </div>
           </div>
@@ -380,7 +380,6 @@ export function FactReviewCard({ documentId, onFactUpdated }: FactReviewCardProp
                     <tr>
                       <th className="px-4 py-3">Biomarker / Test</th>
                       <th className="px-4 py-3">Value</th>
-                      <th className="px-4 py-3">Evidence Quote & Provenance</th>
                       <th className="px-4 py-3">Review Status</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
@@ -396,34 +395,17 @@ export function FactReviewCard({ documentId, onFactUpdated }: FactReviewCardProp
                         <tr key={obs.id} className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/40 transition-colors">
                           <td className="px-4 py-3 font-semibold text-gray-900 dark:text-dark-text">
                             <div>{displayTitle}</div>
-                            {obs.method && (
-                              <span className="text-[10px] text-gray-400 font-normal">Method: {obs.method}</span>
+                            {evidenceText && (
+                              <details className="mt-1 text-[11px] text-gray-500 dark:text-dark-muted cursor-pointer">
+                                <summary className="hover:text-blue-600 transition-colors">Source Quote</summary>
+                                <p className="mt-1 p-1.5 bg-gray-50 dark:bg-dark-bg rounded border border-gray-100 dark:border-dark-border italic">
+                                  "{evidenceText}"
+                                </p>
+                              </details>
                             )}
                           </td>
                           <td className="px-4 py-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                             {val} {unit}
-                          </td>
-                          <td className="px-4 py-3 max-w-md">
-                            <div className="flex flex-col gap-1">
-                              {evidenceText && (
-                                <div className="flex items-start gap-1.5 bg-gray-50 dark:bg-dark-bg/80 p-2 rounded-lg border border-gray-100 dark:border-dark-border/60 text-xs text-gray-600 dark:text-dark-muted font-mono">
-                                  <Quote className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
-                                  <span className="line-clamp-2" title={evidenceText}>
-                                    "{evidenceText}"
-                                  </span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                                <span className="font-semibold text-gray-500 dark:text-dark-muted">
-                                  Pg {obs.page_number ?? 1}
-                                </span>
-                                {obs.confidence != null && (
-                                  <span className="font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-bold">
-                                    {(obs.confidence * 100).toFixed(0)}% conf
-                                  </span>
-                                )}
-                              </div>
-                            </div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">{getStatusBadge(obs.review_status)}</td>
                           <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
@@ -468,9 +450,7 @@ export function FactReviewCard({ documentId, onFactUpdated }: FactReviewCardProp
                   <thead className="bg-gray-50/80 dark:bg-dark-bg text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     <tr>
                       <th className="px-4 py-3">Medication</th>
-                      <th className="px-4 py-3">Dosage / Strength</th>
-                      <th className="px-4 py-3">Route / Duration</th>
-                      <th className="px-4 py-3">Evidence Quote & Provenance</th>
+                      <th className="px-4 py-3">Dosage / Instructions</th>
                       <th className="px-4 py-3">Review Status</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
@@ -486,57 +466,32 @@ export function FactReviewCard({ documentId, onFactUpdated }: FactReviewCardProp
                       return (
                         <tr key={med.id} className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/40 transition-colors">
                           <td className="px-4 py-3 font-semibold text-gray-900 dark:text-dark-text">
-                            <div>{displayTitle}</div>
-                            {med.status && (
-                              <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                                {med.status}
-                              </span>
+                            <div className="flex items-center gap-2">
+                              <span>{displayTitle}</span>
+                              {med.status && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                  {med.status}
+                                </span>
+                              )}
+                            </div>
+                            {evidenceText && (
+                              <details className="mt-1 text-[11px] text-gray-500 dark:text-dark-muted cursor-pointer">
+                                <summary className="hover:text-emerald-600 transition-colors">Source Quote</summary>
+                                <p className="mt-1 p-1.5 bg-gray-50 dark:bg-dark-bg rounded border border-gray-100 dark:border-dark-border italic">
+                                  "{evidenceText}"
+                                </p>
+                              </details>
                             )}
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-700 dark:text-dark-text font-medium whitespace-nowrap">
-                            <div>{med.dosage || 'Not specified'}</div>
-                            {strength && (
-                              <span className="inline-block text-[10px] font-mono text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950 px-1 rounded mt-0.5">
-                                Str: {strength}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-dark-muted whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
-                              {route && (
-                                <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300 capitalize">
-                                  Route: {route}
-                                </span>
-                              )}
-                              {duration && (
-                                <span className="text-[10px] text-gray-500 font-mono">
-                                  Dur: {duration}
-                                </span>
-                              )}
-                              {!route && !duration && <span className="text-gray-400">—</span>}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 max-w-md">
-                            <div className="flex flex-col gap-1">
-                              {evidenceText && (
-                                <div className="flex items-start gap-1.5 bg-gray-50 dark:bg-dark-bg/80 p-2 rounded-lg border border-gray-100 dark:border-dark-border/60 text-xs text-gray-600 dark:text-dark-muted font-mono">
-                                  <Quote className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                                  <span className="line-clamp-2" title={evidenceText}>
-                                    "{evidenceText}"
-                                  </span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                                <span className="font-semibold text-gray-500 dark:text-dark-muted">
-                                  Pg {med.page_number ?? 1}
-                                </span>
-                                {med.confidence != null && (
-                                  <span className="font-mono bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold">
-                                    {(med.confidence * 100).toFixed(0)}% conf
-                                  </span>
-                                )}
+                            <div>{med.dosage || 'Standard dose'}</div>
+                            {(strength || route || duration) && (
+                              <div className="text-[10px] text-gray-400 mt-0.5 space-x-1">
+                                {strength && <span className="font-mono text-purple-600 dark:text-purple-400 font-semibold">{strength}</span>}
+                                {route && <span>• {route}</span>}
+                                {duration && <span>• {duration}</span>}
                               </div>
-                            </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">{getStatusBadge(med.review_status)}</td>
                           <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">

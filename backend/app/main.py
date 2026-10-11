@@ -161,6 +161,26 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 _abort_or_warn(e, "Demo data seeding")
 
+        # Ensure Hero Patient (Rajesh Kumar Sharma) is seeded for judging and clinical demonstrations
+        try:
+            from uuid import UUID
+            from sqlalchemy import select
+            from app.core.database import AsyncSessionLocal
+            from app.models.fhir.patient import Patient
+
+            async with AsyncSessionLocal() as db:
+                hero_patient_id = UUID("33333333-3333-4333-8333-333333333301")
+                hero_res = await db.execute(select(Patient).where(Patient.id == hero_patient_id))
+                hero_exists = hero_res.scalar_one_or_none()
+
+            if not hero_exists:
+                logger.info("Hero patient not found in database — seeding rich demo patient history...")
+                from scripts.seed_rich_patient_history import run_seed
+                await run_seed()
+                logger.info("Hero patient seed completed.")
+        except Exception as e:
+            logger.warning("Auto-seed hero patient failed (continuing): %s", e)
+
         # First-run setup token. If the system is uninitialized (zero
         # users), prepare the setup token per SETUP_TOKEN_MODE and log
         # mode-specific guidance. The wizard reads the mode + URL hint via
@@ -301,7 +321,7 @@ _docs_enabled = settings.ENABLE_API_DOCS or settings.HA_APP_ENV in (
 )
 app = FastAPI(
     title=settings.APP_NAME,
-    description="MediBot — AI-Powered Personal Health Copilot API",
+    description="Tattva — AI-Powered Personal Health Copilot API",
     version=settings.VERSION,
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,
@@ -510,13 +530,13 @@ else:
 if settings.HA_APP_ENV == "development":
     _trusted_hosts = ["*"]
 else:
-    _trusted_hosts = []
+    _trusted_hosts = ["localhost", "127.0.0.1", "tattva-backend", "*.azurecontainerapps.io"]
     for _u in (settings.APP_URL, settings.FRONTEND_URL):
         try:
             from urllib.parse import urlparse
 
             _h = urlparse(_u).hostname
-            if _h:
+            if _h and _h not in _trusted_hosts:
                 _trusted_hosts.append(_h)
         except Exception:
             pass

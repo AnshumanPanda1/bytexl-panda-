@@ -27,7 +27,7 @@ gallery:
 what_we_offer:
   enable: true
   title: "What We Offer"
-  subtitle: "Automark's intuitive platform makes it easy for team members to organize, prioritize and solve customer requests — all in a familiar interface."
+  subtitle: "Tattva's intuitive platform makes it easy for team members to organize, prioritize and solve customer requests — all in a familiar interface."
   offers:
     - logo: "/images/icons/healthicon.svg"
       title: "Health & Wellness"

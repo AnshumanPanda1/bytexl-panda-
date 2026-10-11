@@ -306,22 +306,26 @@ class AIAssistanceService:
             tenant_id=tenant_id,
         )
         stream_chunks_yielded = 0
+        text_yielded = False
         try:
             async for chunk in stream_loop_as_sse(loop, flow_events=flow_events):
                 stream_chunks_yielded += 1
+                if chunk and not chunk.startswith("event: flow_") and not chunk.startswith("event: flow_event"):
+                    text_yielded = True
                 yield chunk
         except Exception as exc:
             logger.warning(
                 f"Interactive chat reasoning loop encountered an error: {exc}. "
-                f"Chunks yielded so far: {stream_chunks_yielded}. Attempting resilient response..."
+                f"Chunks yielded so far: {stream_chunks_yielded}, text_yielded: {text_yielded}. Attempting resilient response..."
             )
-            if stream_chunks_yielded == 0:
+            if not text_yielded:
                 # Try lean direct LLM call without tools (avoids tool payload bloat)
                 try:
+                    is_hi = bool(context and context.get("language") in ("hi", "hindi"))
                     lean_prompt = (
-                        "You are MediBot, a helpful AI medical assistant. "
-                        "Answer the user clearly and professionally using Markdown. "
-                        "Include relevant clinical considerations and remind the user to consult a licensed doctor."
+                        "You are Tattva, a helpful AI medical assistant. "
+                        + ("Answer the user entirely in fluent Hindi (हिंदी) using Devanagari script, keeping clinical units (mg/dL, mmHg, %, bpm) and drug names exact. " if is_hi else "Answer the user clearly and professionally using Markdown. ")
+                        + "Include relevant clinical considerations and remind the user to consult a licensed doctor."
                     )
                     lean_messages = [
                         SystemMessage(content=lean_prompt),

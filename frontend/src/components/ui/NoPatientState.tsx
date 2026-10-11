@@ -79,18 +79,22 @@ export const NoPatientState: React.FC<NoPatientStateProps> = ({
                 const { listPatients } = await import('../../services/patientService');
                 const res = await listPatients(undefined, 50, 0);
                 const items = res.items || [];
-                if (items.length > 0) {
+                const hero =
+                  items.find((p) => p.name?.given?.includes('Rajesh') || p.name?.family === 'Sharma');
+                if (hero) {
                   usePatientStore.getState().setPatients(items);
-                  const hero =
-                    items.find((p) => p.name?.given?.includes('Rajesh') || p.name?.family === 'Sharma') ||
-                    items[0];
                   usePatientStore.getState().setCurrentPatient(hero);
                   navigate('/dashboard');
+                  return;
                 }
               } catch (e) {
                 console.error('Failed to load hero patient:', e);
-                navigate('/patients');
               }
+              const { getTestPatients } = await import('../../data/testPatients');
+              const tests = getTestPatients();
+              usePatientStore.getState().setPatients(tests);
+              usePatientStore.getState().setCurrentPatient(tests[0]);
+              navigate('/dashboard');
             }}
             className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-2xl font-bold hover:opacity-95 transition-all shadow-xl shadow-indigo-200 dark:shadow-none inline-flex items-center justify-center gap-2 border border-white/20 active:scale-95"
           >

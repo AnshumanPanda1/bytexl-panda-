@@ -199,7 +199,7 @@ export function TaskLogViewer({ examinationId, onClose, isOpen }: TaskLogViewerP
             </div>
             <span>{logs.length} Log Entries</span>
           </div>
-          <span>MediBot AI Runtime</span>
+          <span>Tattva AI Runtime</span>
         </div>
       </div>
     </div>

@@ -19,7 +19,7 @@ import {
 } from '../../services/dashboardLayoutService';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { NoPatientState } from '../../components/ui/NoPatientState';
-import { Settings, Plus, Save, ChevronDown, Trash2, Copy, LayoutTemplate, Edit2, Star, Zap, UploadCloud, Sparkles, Clock, Share2, FileText, ArrowRight } from 'lucide-react';
+import { Settings, Plus, Save, ChevronDown, Trash2, Copy, LayoutTemplate, Edit2, Star, Zap } from 'lucide-react';
 import {
   getCardDefinition,
   resolveCardComponent,
@@ -741,10 +741,20 @@ function Dashboard() {
     let cardData = undefined;
     if (cardBiomarker) {
       const keys = Object.keys(cardsData);
+      const target = cardBiomarker.toLowerCase().replace(/[^a-z0-9]/g, '');
       const exactKey = keys.find(k => k === cardBiomarker);
       const lowerKey = keys.find(k => k.toLowerCase() === cardBiomarker.toLowerCase());
-      const slugKey = keys.find(k => k === cardBiomarker.toLowerCase().replace(/\s+/g, '-'));
-      const keyToUse = exactKey || lowerKey || slugKey;
+      const slugKey = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === target);
+      const aliasKey = keys.find(k => {
+        const kNorm = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if ((target.includes('systolic') || target.includes('bloodpressure')) && (kNorm.includes('systolic') || kNorm.includes('sbp') || kNorm.includes('bloodpressuresystolic'))) return true;
+        if (target.includes('diastolic') && (kNorm.includes('diastolic') || kNorm.includes('dbp') || kNorm.includes('bloodpressurediastolic'))) return true;
+        if ((target.includes('heart') || target.includes('pulse') || target.includes('hr')) && (kNorm.includes('heart') || kNorm.includes('pulse') || kNorm.includes('hr'))) return true;
+        if (target.includes('temp') && kNorm.includes('temp')) return true;
+        if ((target.includes('sugar') || target.includes('glucose')) && (kNorm.includes('glucose') || kNorm.includes('sugar'))) return true;
+        return false;
+      });
+      const keyToUse = exactKey || lowerKey || slugKey || aliasKey;
       if (keyToUse) cardData = cardsData[keyToUse];
     }
 
@@ -880,12 +890,29 @@ function Dashboard() {
         }
         actions={
           <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto overflow-x-auto sm:overflow-visible no-scrollbar pb-1 sm:pb-0">
-            {isEditMode && (
+            {!isEditMode ? (
+              <>
+                <button
+                  onClick={() => navigate('/examinations/upload')}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-xs transition-all active:scale-95 shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Upload Record</span>
+                </button>
+                <button 
+                  onClick={() => setIsEditMode(true)}
+                  className="shrink-0 p-2.5 rounded-xl transition-all shadow-xs border bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-dark-border text-gray-500 dark:text-dark-muted border-gray-200 dark:border-dark-border"
+                  title={t('dashboard.edit_layout')}
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
               <>
                 <div ref={addCardMenuRef} className="relative shrink-0">
                   <button 
                     onClick={() => setIsAddCardMenuOpen(!isAddCardMenuOpen)}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95 shadow-xs border border-blue-100 dark:border-blue-900/30"
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95 shadow-xs border border-blue-100 dark:border-blue-900/30"
                   >
                     <Plus className="w-4 h-4" />
                     <span className="hidden xs:inline">{t('dashboard.add_card')}</span>
@@ -906,72 +933,23 @@ function Dashboard() {
                 </div>
                 <button 
                   onClick={saveCurrentLayout}
-                  className="shrink-0 flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200/50 dark:shadow-none active:scale-95"
+                  className="shrink-0 flex items-center space-x-2 px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-xs active:scale-95"
                 >
                   <Save className="w-4 h-4" />
                   <span className="hidden xs:inline">{t('dashboard.save_layout')}</span>
                 </button>
+                <button 
+                  onClick={() => setIsEditMode(false)}
+                  className="shrink-0 p-2.5 rounded-xl transition-all shadow-xs border bg-orange-600 text-white border-orange-700"
+                  title="Done Editing"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
               </>
             )}
-            <button 
-              onClick={() => setIsEditMode(!isEditMode)}
-              className={`shrink-0 p-2.5 rounded-xl transition-all shadow-xs border ${isEditMode ? 'bg-orange-600 text-white border-orange-700' : 'bg-white dark:bg-dark-surface hover:bg-gray-50 dark:hover:bg-dark-border text-gray-500 dark:text-dark-muted border-gray-200 dark:border-dark-border'}`}
-              title={t('dashboard.edit_layout')}
-            >
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
         }
       />
-
-      {/* Copilot Ingestion Hub Hero Banner */}
-      <div className="mb-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 rounded-2xl p-6 text-white shadow-xl">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-xs font-semibold uppercase tracking-wider mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>AI Health Copilot</span>
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight mb-1">
-              Personal Health Ingestion Hub
-            </h2>
-            <p className="text-blue-100 text-sm leading-relaxed">
-              Upload diagnostic lab reports, prescriptions, and medical records to extract clinical observations, generate bilingual summaries, and export FHIR bundles.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <button
-              onClick={() => navigate('/examinations/upload')}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-700 font-bold text-sm shadow-md hover:bg-blue-50 transition-all active:scale-95 shrink-0"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Upload Document</span>
-            </button>
-            <button
-              onClick={() => navigate('/ai-assistant')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/30 hover:bg-blue-500/50 text-white font-medium text-sm border border-white/20 transition-all shrink-0"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Bilingual AI Summary</span>
-            </button>
-            <button
-              onClick={() => navigate('/events')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/30 hover:bg-blue-500/50 text-white font-medium text-sm border border-white/20 transition-all shrink-0"
-            >
-              <Clock className="w-4 h-4" />
-              <span>Timeline</span>
-            </button>
-            <button
-              onClick={() => navigate('/settings/export-import')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/30 hover:bg-blue-500/50 text-white font-medium text-sm border border-white/20 transition-all shrink-0"
-            >
-              <Share2 className="w-4 h-4" />
-              <span>FHIR / ABHA</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       <ResponsiveGridLayout
         className="layout"

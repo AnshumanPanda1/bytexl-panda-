@@ -2,25 +2,29 @@
 import ImageMod from "@/layouts/components/ImageMod.astro";
 import Base from "@/layouts/Base.astro";
 import ValueCard from "@/layouts/components/ValueCard.astro";
-import BusinessNeeds from "@/layouts/components/BusinessNeeds.astro";
-import ComparisonRow from "@/layouts/components/ComparisonRow.astro";
 import PricingSection from "@/layouts/components/PricingSection.astro";
 import ProcessCard from "@/layouts/components/ProcessCard.astro";
 import GradientBlob from "@/layouts/components/GradientBlob.astro";
-import BrandsCarousel from "@/layouts/components/BrandsCarousel.astro";
-import OurStory from "@/layouts/components/OurStory.astro";
-import Faq from "@/layouts/components/Faq.astro";
 import CallToAction from "@/layouts/components/CallToAction.astro";
 import VideoShowcase from "@/layouts/components/VideoShowcase.astro";
 import LeadGeneration from "@/layouts/components/LeadGeneration.astro";
+import ProblemCard from "@/layouts/components/ProblemCard.astro";
 import config from "@/config/config.json";
 import { getListPage } from "@/lib/contentParser.astro";
 import { markdownify } from "@/lib/utils/textConverter";
-import Testimonial from "@/partials/Testimonial.astro";
 import Features from "@/partials/Features.astro";
 import type { Homepage } from "@/types";
 const homepage = await getListPage("homepage", "-index");
 const homepageData: Homepage = homepage.data;
+
+const problemIcons = [
+  "/images/problems/problem-1-unstructured.svg",
+  "/images/problems/problem-2-terminology.svg",
+  "/images/problems/problem-3-scattered.svg",
+  "/images/problems/problem-4-reference-ranges.svg",
+  "/images/problems/problem-5-language.svg",
+  "/images/problems/problem-6-fhir.svg",
+];
 
 const { checklist_form_action } = config.params;
 ---
@@ -233,53 +237,50 @@ const { checklist_form_action } = config.params;
               <p class="subtitle">{homepageData.main_features.content}</p>
             </div>
             <div class="section-content">
-              <div class="feature-items-group mb-9">
-                {homepageData.main_features.items
-                  .slice(0, 3)
-                  .map((text: string) => (
-                    <div class="bg-body border border-border px-4 w-full py-2.5 rounded-full flex items-center justify-center relative z-10 gap-x-2">
-                      <svg
-                        class="shrink-0"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M9.99999 1.04163C14.9476 1.04163 18.9583 5.05241 18.9583 9.99996C18.9583 14.9475 14.9476 18.9583 9.99999 18.9583C5.05244 18.9583 1.04166 14.9475 1.04166 9.99996C1.04166 5.05241 5.05244 1.04163 9.99999 1.04163ZM8.02571 6.8538C7.69841 6.58685 7.2159 6.6057 6.9108 6.91077C6.60581 7.21587 6.5869 7.6984 6.85383 8.02568L6.9108 8.08915L8.82157 9.99996L6.91161 11.9108C6.5863 12.2362 6.58619 12.7638 6.91161 13.0891C7.23705 13.4143 7.76464 13.4145 8.09 13.0891L9.99999 11.1784L11.91 13.0891L11.9735 13.1461C12.3007 13.413 12.7832 13.394 13.0884 13.0891C13.3934 12.7842 13.4128 12.3015 13.1462 11.9742L13.0884 11.9108L11.1776 9.99996L13.0892 8.08915L13.1462 8.02568C13.4131 7.69839 13.3942 7.21587 13.0892 6.91077C12.7841 6.6057 12.3016 6.58685 11.9742 6.8538L11.9108 6.91077L9.99999 8.82154L8.08918 6.91077L8.02571 6.8538Z"
-                          fill="var(--color-secondary)"
-                        />
-                      </svg>
-                      <span class="font-semibold text-white text-lg">
-                        {text}
-                      </span>
-                    </div>
-                  ))}
+              {/* Desktop Layout: 2 rows of 3 with deliberate centered connecting lines */}
+              <div class="hidden lg:flex flex-col gap-6">
+                <!-- Row 1: Problems 1 to 3 -->
+                <div class="relative">
+                  <div class="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-px pointer-events-none z-0">
+                    <div class="w-full h-full bg-linear-to-r from-transparent via-white/15 to-transparent"></div>
+                  </div>
+                  <div class="grid grid-cols-3 gap-6 relative z-10">
+                    {homepageData.main_features.items.slice(0, 3).map((text: string, idx: number) => (
+                      <ProblemCard
+                        index={idx}
+                        title={text}
+                        icon={problemIcons[idx]}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <!-- Row 2: Problems 4 to 6 -->
+                <div class="relative">
+                  <div class="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-px pointer-events-none z-0">
+                    <div class="w-full h-full bg-linear-to-r from-transparent via-white/15 to-transparent"></div>
+                  </div>
+                  <div class="grid grid-cols-3 gap-6 relative z-10">
+                    {homepageData.main_features.items.slice(3, 6).map((text: string, idx: number) => (
+                      <ProblemCard
+                        index={idx + 3}
+                        title={text}
+                        icon={problemIcons[idx + 3]}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div class="feature-items-group">
-                {homepageData.main_features.items
-                  .slice(3)
-                  .map((text: string) => (
-                    <div class="bg-body border border-border px-4 w-full py-2.5 rounded-full flex items-center justify-center relative z-10 gap-x-2">
-                      <svg
-                        class="shrink-0"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M9.99999 1.04163C14.9476 1.04163 18.9583 5.05241 18.9583 9.99996C18.9583 14.9475 14.9476 18.9583 9.99999 18.9583C5.05244 18.9583 1.04166 14.9475 1.04166 9.99996C1.04166 5.05241 5.05244 1.04163 9.99999 1.04163ZM8.02571 6.8538C7.69841 6.58685 7.2159 6.6057 6.9108 6.91077C6.60581 7.21587 6.5869 7.6984 6.85383 8.02568L6.9108 8.08915L8.82157 9.99996L6.91161 11.9108C6.5863 12.2362 6.58619 12.7638 6.91161 13.0891C7.23705 13.4143 7.76464 13.4145 8.09 13.0891L9.99999 11.1784L11.91 13.0891L11.9735 13.1461C12.3007 13.413 12.7832 13.394 13.0884 13.0891C13.3934 12.7842 13.4128 12.3015 13.1462 11.9742L13.0884 11.9108L11.1776 9.99996L13.0892 8.08915L13.1462 8.02568C13.4131 7.69839 13.3942 7.21587 13.0892 6.91077C12.7841 6.6057 12.3016 6.58685 11.9742 6.8538L11.9108 6.91077L9.99999 8.82154L8.08918 6.91077L8.02571 6.8538Z"
-                          fill="var(--color-secondary)"
-                        />
-                      </svg>
-                      <span class="font-semibold text-white text-lg">
-                        {text}
-                      </span>
-                    </div>
-                  ))}
+
+              {/* Tablet & Mobile Layout: Responsive grid with clean stacking and no clutter */}
+              <div class="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-5 relative">
+                {homepageData.main_features.items.map((text: string, index: number) => (
+                  <ProblemCard
+                    index={index}
+                    title={text}
+                    icon={problemIcons[index]}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -326,11 +327,6 @@ const { checklist_form_action } = config.params;
     )
   }
 
-  <!-- Business Needs -->
-  <BusinessNeeds />
-
-  <!-- Comparison -->
-  <ComparisonRow />
 
   <!-- Testimonial Quote -->
   {
@@ -363,8 +359,6 @@ const { checklist_form_action } = config.params;
     )
   }
 
-  <!-- Our Partners -->
-  <BrandsCarousel />
 
   <!-- Single Testimonial -->
   {
@@ -520,8 +514,6 @@ const { checklist_form_action } = config.params;
     )
   }
 
-  <!-- Our Thought / CEO Letter -->
-  <OurStory />
 
   <!-- Integrations -->
   {
@@ -573,9 +565,6 @@ const { checklist_form_action } = config.params;
     )
   }
 
-  <Testimonial />
-
-  <Faq />
 
   <CallToAction />
 </Base>

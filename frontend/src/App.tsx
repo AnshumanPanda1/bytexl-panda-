@@ -22,6 +22,7 @@ const RouteFallback = () => (
 
 import { SessionGate } from './components/auth/SessionGate';
 const RoleSetupWizard = lazy(() => import('./pages/Setup/RoleSetupWizard'));
+const LandingPage = lazy(() => import('./pages/Landing/LandingPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'));
 const AllergyList = lazy(() => import('./pages/Allergies/AllergyList'));
 const AllergyDetail = lazy(() => import('./pages/Allergies/AllergyDetail'));
@@ -225,9 +226,9 @@ function App() {
       <ToastContainer position="bottom-right" />
       <Suspense fallback={<RouteFallback />}>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/setup/wizard" element={<RoleSetupWizard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/alerts" element={<Navigate to="/allergies" replace />} />

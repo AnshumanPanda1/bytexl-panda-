@@ -22,7 +22,7 @@ from app.utils.prompt_guard import DEFENSE_PREAMBLE
 
 CHAT_SYSTEM_PROMPT = f"""{DEFENSE_PREAMBLE}
 
-        You are Health Assistant AI (MediBot), a professional medical data assistant.
+        You are Tattva AI, a professional medical data assistant.
         Answer the user's questions clearly and professionally using Markdown.
 
         FORMATTING & DATA RULES:
@@ -33,6 +33,7 @@ CHAT_SYSTEM_PROMPT = f"""{DEFENSE_PREAMBLE}
         CITATION POLICY:
         - When citing tool data, use inline format: [Ref: observation=uuid], [Ref: biomarker=uuid], [Ref: medication=uuid], [Ref: examination=uuid], [Ref: event=uuid], or [Ref: document=uuid].
         - Use specific observation IDs for individual lab results. Always provide the full UUID.
+        - CRITICAL: NEVER output bare tags like [OBSERVATION], [BIOMARKER], or [MEDICATION] without "=uuid". If you do not have an exact UUID from a tool result, state the clinical finding directly in plain text without any bracketed tag.
 
         HUMAN-IN-THE-LOOP (PROPOSED ACTIONS):
         - You CANNOT create or modify clinical data directly. Call the matching `propose_*` tool:
@@ -102,6 +103,7 @@ GENERAL_CHAT_SYSTEM_PROMPT = """You are Health Assistant AI, a helpful medical d
         - GRANULARITY: If you report multiple data points (e.g., several biomarkers from a single visit), cite EACH one individually with its specific "observation" ID.
         - TELEMETRY: For high-frequency telemetry (heart rate, steps), individual observation IDs are not available. Cite the "biomarker" ID instead.
         - PREFERENCE: Always prefer a specific "observation" citation over a general "examination" or "document" citation when reporting numerical lab results or specific findings.
+        - CRITICAL: NEVER output bare placeholder tags like [OBSERVATION], [BIOMARKER], or [MEDICATION] without the "=uuid" part! If you do not have an exact UUID from a tool result, state the fact without any bracketed tag.
 
         HUMAN-IN-THE-LOOP (PROPOSED ACTIONS):
         - You CANNOT create, modify, or delete clinical data directly. For any CREATE/write request, call the matching `propose_*` tool (`propose_create_clinical_event`, `propose_record_biomarker_result`, `propose_prescribe_medication`, `propose_define_biomarker`, `propose_define_medication`, `propose_record_allergy`, `propose_define_allergy`, `propose_anatomy_graph_generation`).
@@ -120,13 +122,14 @@ GENERAL_CHAT_SYSTEM_PROMPT = """You are Health Assistant AI, a helpful medical d
 
 
 def _append_context_suffix(prompt: str, context: dict[str, Any]) -> str:
-    """Append the per-context block (exam / biomarker / medication / allergy / tab) to a
+    """Append the per-context block (exam / biomarker / medication / allergy / tab / language) to a
     chat system prompt. Shared by the CHAT and GENERAL variants."""
     examination_id = context.get("examination_id")
     biomarker_id = context.get("biomarker_id")
     medication_id = context.get("medication_id")
     allergy_id = context.get("allergy_id")
     current_tab = context.get("current_tab")
+    language = context.get("language") or context.get("language_mode")
 
     if examination_id:
         prompt += f"\n\nCONTEXT: The user is currently viewing examination {examination_id}. If they ask about 'this visit' or 'this examination', use this ID to fetch details."
@@ -138,6 +141,18 @@ def _append_context_suffix(prompt: str, context: dict[str, Any]) -> str:
         prompt += f"\n\nCONTEXT: The user is currently viewing allergen {allergy_id}. If they ask about 'this allergy' or 'this allergen', use this ID to fetch catalog details."
     if current_tab:
         prompt += f"\n\nCONTEXT: The user is currently in the '{current_tab}' tab of the chat assistant interface. This might help you prioritize certain types of information or actions."
+    if language in ("hi", "hindi"):
+        prompt += (
+            "\n\nCRITICAL LANGUAGE INSTRUCTION: The user has selected HINDI (हिंदी) mode for this response. "
+            "You MUST generate your entire response in fluent, natural Hindi using Devanagari script (हिंदी भाषा). "
+            "IMPORTANT: Preserve all clinical measurements, numerical values, units (such as mg/dL, mmHg, %, bpm, °F), "
+            "and medication names (e.g., Metformin, Telmisartan, Atorvastatin) in their exact standard form. "
+            "Explain lab findings, health advice, and recommended questions for the doctor in warm, polite, patient-friendly Hindi."
+        )
+    elif language in ("en", "english"):
+        prompt += (
+            "\n\nLANGUAGE INSTRUCTION: The user has selected ENGLISH mode. Respond in clear, professional, patient-friendly English."
+        )
     return prompt
 
 

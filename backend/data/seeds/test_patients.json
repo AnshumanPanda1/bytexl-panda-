@@ -107,6 +107,13 @@
           "effective_datetime": "2025-10-15"
         },
         {
+          "name": "Glucose",
+          "value": 184.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
           "name": "Post-Prandial Glucose",
           "value": 260.0,
           "unit": "mg/dL",
@@ -125,6 +132,27 @@
           "value": 96.0,
           "unit": "mmHg",
           "interpretation": "High",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 84.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.6,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2025-10-15"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 97.0,
+          "unit": "%",
+          "interpretation": "Normal",
           "effective_datetime": "2025-10-15"
         },
         {
@@ -163,6 +191,13 @@
           "effective_datetime": "2026-01-20"
         },
         {
+          "name": "Glucose",
+          "value": 156.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
           "name": "Post-Prandial Glucose",
           "value": 212.0,
           "unit": "mg/dL",
@@ -181,6 +216,27 @@
           "value": 88.0,
           "unit": "mmHg",
           "interpretation": "High",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 80.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-01-20"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 98.0,
+          "unit": "%",
+          "interpretation": "Normal",
           "effective_datetime": "2026-01-20"
         },
         {
@@ -212,6 +268,13 @@
           "effective_datetime": "2026-04-18"
         },
         {
+          "name": "Glucose",
+          "value": 134.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-04-18"
+        },
+        {
           "name": "Post-Prandial Glucose",
           "value": 178.0,
           "unit": "mg/dL",
@@ -229,6 +292,27 @@
           "name": "Blood Pressure Diastolic",
           "value": 84.0,
           "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 76.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.6,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-04-18"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 98.0,
+          "unit": "%",
           "interpretation": "Normal",
           "effective_datetime": "2026-04-18"
         },
@@ -261,6 +345,13 @@
           "effective_datetime": "2026-07-22"
         },
         {
+          "name": "Glucose",
+          "value": 118.0,
+          "unit": "mg/dL",
+          "interpretation": "High",
+          "effective_datetime": "2026-07-22"
+        },
+        {
           "name": "Post-Prandial Glucose",
           "value": 152.0,
           "unit": "mg/dL",
@@ -278,6 +369,27 @@
           "name": "Blood Pressure Diastolic",
           "value": 80.0,
           "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 74.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-07-22"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 99.0,
+          "unit": "%",
           "interpretation": "Normal",
           "effective_datetime": "2026-07-22"
         },
@@ -310,6 +422,13 @@
           "effective_datetime": "2026-10-05"
         },
         {
+          "name": "Glucose",
+          "value": 104.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
           "name": "Post-Prandial Glucose",
           "value": 138.0,
           "unit": "mg/dL",
@@ -327,6 +446,27 @@
           "name": "Blood Pressure Diastolic",
           "value": 78.0,
           "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 72.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 98.0,
+          "unit": "%",
           "interpretation": "Normal",
           "effective_datetime": "2026-10-05"
         },
@@ -350,6 +490,62 @@
           "unit": "mL/min/1.73m2",
           "interpretation": "Normal",
           "effective_datetime": "2026-10-05"
+        },
+        {
+          "name": "Blood Pressure Systolic",
+          "value": 120.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Blood Pressure Diastolic",
+          "value": 78.0,
+          "unit": "mmHg",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Heart Rate",
+          "value": 70.0,
+          "unit": "bpm",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Body Temperature",
+          "value": 98.4,
+          "unit": "°F",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Glucose",
+          "value": 102.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Fasting Blood Glucose",
+          "value": 102.0,
+          "unit": "mg/dL",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "Oxygen Saturation",
+          "value": 99.0,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
+        },
+        {
+          "name": "HbA1c",
+          "value": 6.8,
+          "unit": "%",
+          "interpretation": "Normal",
+          "effective_datetime": "2026-10-11"
         }
       ],
       "documents": [
@@ -382,6 +578,18 @@
           "created_at": "2026-10-05",
           "status": "completed",
           "extracted_text": "APOLLO HOSPITALS ENDOCRINOLOGY CLINICAL SUMMARY\nPatient: Rajesh Kumar Sharma (52M) | MRN: MRN-100234\nReview Date: 05-Oct-2026\n\n12-MONTH TRAJECTORY OVERVIEW:\n- HbA1c: 8.6% (Oct 2025) -> 8.1% (Jan 2026)..."
+        },
+        {
+          "filename": "Telemetry_Sync_Oct2026.pdf",
+          "created_at": "2026-10-11",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS TELEMETRY WORKUP\nPatient: Rajesh Kumar Sharma | Date: 11-Oct-2026\nVital Signs:\n- Systolic BP: 120 mmHg\n- Diastolic BP: 78 mmHg\n- Heart Rate: 70 bpm\n- Body Temperature: 98.4 F\n- Fastin..."
+        },
+        {
+          "filename": "Scheduled_Consultation_Oct2026.pdf",
+          "created_at": "2026-10-18",
+          "status": "completed",
+          "extracted_text": "APOLLO HOSPITALS APPOINTMENT NOTICE\nScheduled Date: 18-Oct-2026\nPatient: Rajesh Kumar Sharma\nPurpose: Annual Diabetic Foot & Dilated Retinal Exam...."
         }
       ],
       "ai_summary": {

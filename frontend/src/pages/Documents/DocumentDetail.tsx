@@ -287,30 +287,36 @@ export default function DocumentDetail() {
           <div className="flex items-center space-x-3">
             <button
               onClick={handleDownload}
-              className="flex items-center px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all font-bold text-sm border border-blue-100 dark:border-blue-900/30 active:scale-95"
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-sm shadow-xs active:scale-95"
               title={t('common.download')}
             >
               <Download className="w-4 h-4 mr-2" />
               {t('common.download')}
             </button>
 
-            <button
-              onClick={handleReprocess}
-              disabled={isReprocessing}
-              className="flex items-center px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all font-bold text-sm border border-amber-100 dark:border-amber-900/30 disabled:opacity-50 active:scale-95"
-              title={t('documents_explorer.reprocess')}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isReprocessing ? 'animate-spin' : ''}`} />
-              {isReprocessing ? t('documents_explorer.processing') : t('documents_explorer.reprocess')}
-            </button>
-            
-            <button
-              onClick={handleDelete}
-              className="flex items-center px-4 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-all font-bold text-sm border border-red-100 dark:border-red-900/30 active:scale-95"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {t('common.delete')}
-            </button>
+            <details className="relative">
+              <summary className="list-none flex items-center px-3 py-2 bg-gray-100 dark:bg-dark-bg text-gray-700 dark:text-dark-text rounded-xl hover:bg-gray-200 dark:hover:bg-dark-surface transition-all font-medium text-sm cursor-pointer select-none">
+                <MoreVertical className="w-4 h-4 mr-1" />
+                Actions
+              </summary>
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-surface rounded-xl shadow-lg border border-gray-100 dark:border-dark-border py-1 z-20">
+                <button
+                  onClick={handleReprocess}
+                  disabled={isReprocessing}
+                  className="w-full text-left px-4 py-2 text-xs font-medium text-gray-700 dark:text-dark-text hover:bg-amber-50 dark:hover:bg-amber-950/30 flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-amber-500 ${isReprocessing ? 'animate-spin' : ''}`} />
+                  {isReprocessing ? t('documents_explorer.processing') : t('documents_explorer.reprocess')}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {t('common.delete')}
+                </button>
+              </div>
+            </details>
           </div>
         }
       />
@@ -491,44 +497,32 @@ export default function DocumentDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8 pt-8 border-t border-gray-50 dark:border-dark-border">
-          <div className="flex items-start space-x-3">
-             <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
-                <Clock className="w-4 h-4" />
-             </div>
-             <div>
-                <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest">{t('documents_explorer.audit_info')}</p>
-                <div className="mt-1 space-y-0.5">
-                   <p className="text-xs text-gray-600 dark:text-dark-text">{t('documents_explorer.created')}: <span className="font-bold">{docData?.created_at ? new Date(docData.created_at).toLocaleString() : '-'}</span></p>
-                   <p className="text-xs text-gray-600 dark:text-dark-text">{t('documents_explorer.updated')}: <span className="font-bold">{docData?.updated_at ? new Date(docData.updated_at).toLocaleString() : '-'}</span></p>
-                </div>
-             </div>
+        <details className="mt-6 pt-4 border-t border-gray-100 dark:border-dark-border text-xs text-gray-500 cursor-pointer">
+          <summary className="font-semibold text-gray-400 dark:text-dark-muted hover:text-blue-600 transition-colors">
+            Technical Details & Audit Info
+          </summary>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 p-4 bg-gray-50 dark:bg-dark-bg/60 rounded-xl">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest">{t('documents_explorer.audit_info')}</p>
+              <div className="mt-1 space-y-0.5">
+                <p className="text-xs text-gray-600 dark:text-dark-text">{t('documents_explorer.created')}: <span className="font-bold">{docData?.created_at ? new Date(docData.created_at).toLocaleString() : '-'}</span></p>
+                <p className="text-xs text-gray-600 dark:text-dark-text">{t('documents_explorer.updated')}: <span className="font-bold">{docData?.updated_at ? new Date(docData.updated_at).toLocaleString() : '-'}</span></p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest">{t('documents_explorer.storage_path')}</p>
+              <p className="mt-1 text-xs font-mono text-gray-500 dark:text-dark-muted truncate max-w-[200px]" title={docData?.file_path}>
+                .../{docData?.file_path?.split('/').slice(-2).join('/')}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest">{t('documents_explorer.access_control')}</p>
+              <p className="mt-1 text-xs text-gray-600 dark:text-dark-text">
+                {t('documents_explorer.resource_id')}: <span className="font-mono font-bold">{docData?.id?.substring(0,8)}...</span>
+              </p>
+            </div>
           </div>
-          <div className="flex items-start space-x-3">
-             <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
-                <Database className="w-4 h-4" />
-             </div>
-             <div>
-                <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest">{t('documents_explorer.storage_path')}</p>
-                <p className="mt-1 text-xs font-mono text-gray-500 dark:text-dark-muted truncate max-w-[200px]" title={docData?.file_path}>
-                   .../{docData?.file_path?.split('/').slice(-2).join('/')}
-                </p>
-             </div>
-          </div>
-          <div className="flex items-start space-x-3">
-             <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400">
-                <Shield className="w-4 h-4" />
-             </div>
-             <div>
-                <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest">{t('documents_explorer.access_control')}</p>
-                <p className="mt-1 text-xs text-gray-600 dark:text-dark-text">
-                   {t('documents_explorer.resource_id')}: <span className="font-mono font-bold">{docData?.id?.substring(0,8)}...</span>
-                   <br/>
-                   {t('documents_explorer.extraction')}: <span className="font-bold">{docData?.include_in_extraction ? 'Enabled' : 'Disabled'}</span>
-                </p>
-             </div>
-          </div>
-        </div>
+        </details>
       </div>
 
       {docData?.patient_id && (
@@ -627,27 +621,21 @@ export default function DocumentDetail() {
             )}
           </div>
 
-          {(docData?.extracted_text) && (
-            <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-xs border border-gray-100 dark:border-dark-border p-8">
-              <h2 className="text-sm font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest mb-6">
-                {t('documents_explorer.clinical_text')}
-              </h2>
-              <div className="mt-4 border-l-4 border-blue-500 dark:border-blue-600 pl-4 py-2 bg-gray-50 dark:bg-dark-bg rounded-r-xl">
-                <p className="text-gray-600 dark:text-dark-muted italic whitespace-pre-wrap max-h-96 overflow-y-auto custom-scrollbar text-sm leading-relaxed">
-                  {docData.extracted_text || 'No text extracted yet or extraction pending.'}
+          {docData?.extracted_text && (
+            <details className="bg-white dark:bg-dark-surface rounded-2xl shadow-xs border border-gray-100 dark:border-dark-border p-6 cursor-pointer">
+              <summary className="text-sm font-bold text-gray-500 dark:text-dark-muted hover:text-blue-600 transition-colors uppercase tracking-widest flex items-center justify-between select-none">
+                <span className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  {t('documents_explorer.clinical_text')} (Transcribed Text)
+                </span>
+                <span className="text-xs font-normal text-gray-400 capitalize">Click to view text</span>
+              </summary>
+              <div className="mt-4 border-l-4 border-blue-500 pl-4 py-2 bg-gray-50 dark:bg-dark-bg rounded-r-xl">
+                <p className="text-gray-600 dark:text-dark-muted italic whitespace-pre-wrap max-h-72 overflow-y-auto custom-scrollbar text-xs leading-relaxed">
+                  {docData.extracted_text}
                 </p>
               </div>
-              
-              <div className="mt-6 flex flex-wrap gap-4">
-                <button
-                  onClick={() => setShowRawText(true)}
-                  className="flex items-center px-6 py-2.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all text-xs font-bold uppercase tracking-wider border border-purple-100 dark:border-purple-900/30 active:scale-95"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  {t('documents_explorer.view_raw_ocr')}
-                </button>
-              </div>
-            </div>
+            </details>
           )}
         </div>
       )}

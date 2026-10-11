@@ -82,7 +82,7 @@ TOOLING_ENV_NAMES: frozenset[str] = frozenset(
 
 class Settings(BaseSettings):
     # Application
-    APP_NAME: str = "MediBot"
+    APP_NAME: str = "Tattva"
     VERSION: str = "1.0.0"
     HA_APP_ENV: str = "development"
     DEBUG: bool = False

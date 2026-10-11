@@ -12,16 +12,16 @@ const AboutPage = () => {
   return (
     <div className="w-full max-w-4xl mx-auto pb-20">
       <PageHeader
-        title={t('common.about', 'About MediBot')}
+        title={t('common.about', 'About Tattva')}
         icon={<HealthMark size={24} theme={logoTheme} />}
       />
 
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <AboutPanel
-          appName="MediBot"
+          appName="Tattva"
           familyCurrent="health"
           tagline="AI-Powered Personal Health Copilot"
-          description="MediBot is an intelligent, bilingual health copilot built to convert messy medical reports and lab tests into structured facts with source provenance. Featuring high-speed LPU inference for English and Hindi summaries, an interactive timeline, FHIR R4 interoperability, and simulated ABHA workflows."
+          description="Tattva is an intelligent, bilingual health copilot built to convert messy medical reports and lab tests into structured facts with source provenance. Featuring high-speed LPU inference for English and Hindi summaries, an interactive timeline, FHIR R4 interoperability, and simulated ABHA workflows."
           version="1.0.0"
           license={{
             name: 'Apache License 2.0',
@@ -65,7 +65,7 @@ const AboutPage = () => {
             children:
               'This software is for informational and hackathon demonstration purposes only. It does NOT provide medical diagnosis or act as a substitute for professional medical care. Always consult licensed medical professionals for health advice, diagnoses, or treatment decisions.',
           }}
-          copyright="© 2026 MediBot Team"
+          copyright="© 2026 Tattva Team"
           theme={logoTheme}
         />
       </div>

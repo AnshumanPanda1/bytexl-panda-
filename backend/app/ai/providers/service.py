@@ -676,24 +676,33 @@ class AIProviderService:
                     llm=llm,
                 )
 
-        # Priority 1: Gemini Vision for OCR if key is configured
+        # Priority 1: OpenRouter Vision for handwriting OCR if key is configured
         from app.services.ai_summary_service import _load_secret_config
         sec_cfg = _load_secret_config()
-        gemini_key = sec_cfg.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY") or sec_cfg.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if gemini_key:
-            logger.info("AI Resolution [ocr]: Using Google Gemini Vision (gemini-2.5-flash) for OCR.")
+        openrouter_key = (
+            sec_cfg.get("OPENROUTER_API_KEY")
+            or os.getenv("OPENROUTER_API_KEY")
+            or (sec_cfg.get("LLM_API_KEY") if "openrouter" in sec_cfg.get("LLM_BASE_URL", "").lower() else None)
+        )
+        if openrouter_key:
+            ocr_model = (
+                sec_cfg.get("OCR_MODEL")
+                or os.getenv("OCR_MODEL")
+                or "dots-studio/dots-3-note-preview:free"
+            )
+            logger.info(f"AI Resolution [ocr]: Using OpenRouter Vision ({ocr_model}) for OCR.")
             llm = chat_models.build_openai(
-                api_key=gemini_key,
-                base_url="https://generativelanguage.googleapis.com/v1beta/openai",
-                model_name="gemini-2.5-flash",
+                api_key=openrouter_key,
+                base_url="https://openrouter.ai/api/v1",
+                model_name=ocr_model,
                 temperature=0.0,
-                max_tokens=8192,
+                max_tokens=4096,
             )
             return get_ocr_processor(
                 provider=ProviderType.OPENAI.value,
-                api_key=gemini_key,
-                api_base="https://generativelanguage.googleapis.com/v1beta/openai",
-                model="gemini-2.5-flash",
+                api_key=openrouter_key,
+                api_base="https://openrouter.ai/api/v1",
+                model=ocr_model,
                 temperature=0.0,
                 llm=llm,
             )

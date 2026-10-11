@@ -1,5 +1,5 @@
 ---
-enable: true
+enable: false
 title: "Real Stories From Local <strong>Business Owners</strong>"
 
 # Testimonials

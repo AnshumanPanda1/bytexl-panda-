@@ -90,9 +90,8 @@ class DoctorModel(Base, UUIDMixin, TenantMixin, AuditMixin, VersionedMixin):
         qualifications = []
         specialty_name = self.specialty
         if specialty_name or self.license_number:
-            q = {}
-            if specialty_name:
-                q["code"] = {"text": specialty_name}
+            code_text = specialty_name or "Medical License"
+            q = {"code": {"text": code_text}}
             if self.license_number:
                 q["identifier"] = [{"value": self.license_number}]
             qualifications.append(q)

@@ -38,6 +38,9 @@ htmlcov/
 node_modules/
 frontend/dist/
 frontend/node_modules/
+landing-page/node_modules/
+landing-page/dist/
+.chronos/
 
 # Dev + docs + non-runtime dirs
 dev/
@@ -46,6 +49,11 @@ docs/
 *.md
 !README.md
 docker/
+!docker/Dockerfile*
+!docker/nginx.conf
+!docker/nginx-frontend.conf
+!docker/init-db.sql
+!docker/init-roles.sh
 scripts/
 assets/
 .claude

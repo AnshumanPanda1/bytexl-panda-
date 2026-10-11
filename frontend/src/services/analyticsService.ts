@@ -10,24 +10,25 @@ function getFallbackBiomarkerTrends(patientId?: string) {
 
   const result: Record<string, any[]> = {};
   testData.biomarkers.forEach(b => {
-    result[b.slug] = [
-      {
-        date: b.effective_datetime,
-        value: b.value,
-        raw_value: b.value,
-        unit: b.unit,
-        raw_unit: b.unit,
-        name: b.name,
-        status: b.interpretation || 'Normal',
-        reference_range_min: b.reference_range_min,
-        reference_range_max: b.reference_range_max,
-        standard_range_min: b.reference_range_min,
-        standard_range_max: b.reference_range_max,
-        source_name: 'Diagnostic Laboratory Panel',
-        examination_name: 'Diagnostic Laboratory Panel',
-        source_type: DataSourceType.DOCUMENT,
-      }
-    ];
+    if (!result[b.slug]) {
+      result[b.slug] = [];
+    }
+    result[b.slug].push({
+      date: b.effective_datetime,
+      value: b.value,
+      raw_value: b.value,
+      unit: b.unit,
+      raw_unit: b.unit,
+      name: b.name,
+      status: b.interpretation || 'Normal',
+      reference_range_min: b.reference_range_min,
+      reference_range_max: b.reference_range_max,
+      standard_range_min: b.reference_range_min,
+      standard_range_max: b.reference_range_max,
+      source_name: 'Diagnostic Laboratory Panel',
+      examination_name: 'Diagnostic Laboratory Panel',
+      source_type: DataSourceType.DOCUMENT,
+    });
   });
   return { biomarkers: result };
 }

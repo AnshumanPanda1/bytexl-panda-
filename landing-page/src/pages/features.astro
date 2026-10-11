@@ -1,11 +1,6 @@
 ---
 import DynamicIcon from "@/helpers/DynamicIcon";
 import Base from "@/layouts/Base.astro";
-import BrandsCarousel from "@/layouts/components/BrandsCarousel.astro";
-import BusinessNeeds from "@/layouts/components/BusinessNeeds.astro";
-import CallToAction from "@/layouts/components/CallToAction.astro";
-import ComparisonRow from "@/layouts/components/ComparisonRow.astro";
-import Faq from "@/layouts/components/Faq.astro";
 import GradientBlob from "@/layouts/components/GradientBlob.astro";
 import ImageMod from "@/layouts/components/ImageMod.astro";
 import ShowcaseCard from "@/layouts/components/ShowcaseCard.astro";
@@ -48,13 +43,17 @@ const featuresData: Features = features.data;
             >
           </div>
         </div>
-        <div class="col-12">
-          <ImageMod
-            src={featuresData.banner.image}
-            alt="Automark Dashboard"
-            class="w-full"
-          />
-        </div>
+        {
+          featuresData.banner.image && (
+            <div class="col-12">
+              <ImageMod
+                src={featuresData.banner.image}
+                alt="Tattva Dashboard"
+                class="w-full"
+              />
+            </div>
+          )
+        }
       </div>
     </div>
     <div
@@ -67,8 +66,6 @@ const featuresData: Features = features.data;
     class="h-px bg-linear-to-r from-transparent from-10% via-white/50 to-90% to-transparent border-0"
   />
 
-  <!-- Trusted Partners -->
-  <BrandsCarousel />
 
   <!-- Smart Platform Cards -->
   {
@@ -158,15 +155,6 @@ const featuresData: Features = features.data;
       ))
   }
 
-  <!-- Business Needs -->
-  <BusinessNeeds />
 
-  <!-- Comparison -->
-  <ComparisonRow />
 
-  <!-- FAQ -->
-  <Faq />
-
-  <!-- Call to Action -->
-  <CallToAction />
 </Base>

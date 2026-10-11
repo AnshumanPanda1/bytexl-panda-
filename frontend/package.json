@@ -1,7 +1,7 @@
 {
-  "name": "medibot-frontend",
+  "name": "tattva-frontend",
   "version": "1.0.0",
-  "description": "MediBot - AI-Powered Personal Health Copilot",
+  "description": "Tattva - AI-Powered Personal Health Copilot",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

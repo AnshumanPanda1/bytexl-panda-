@@ -90,12 +90,12 @@ class AISummaryService:
 
         if api_key:
             self.api_key = api_key
+        elif openrouter_key:
+            self.api_key = openrouter_key
         elif groq_key:
             self.api_key = groq_key
         elif gemini_key:
             self.api_key = gemini_key
-        elif openrouter_key:
-            self.api_key = openrouter_key
         else:
             self.api_key = openai_key
 
@@ -109,23 +109,24 @@ class AISummaryService:
 
         if explicit_model:
             self.model_name = explicit_model
+        elif openrouter_key:
+            self.model_name = "nvidia/nemotron-3-super-120b-a12b:free"
         elif groq_key:
             self.model_name = "llama-3.3-70b-versatile"
         elif gemini_key:
             self.model_name = "gemini-2.5-flash"
-        elif openrouter_key:
-            # Valid active free model on OpenRouter (gemma-4 does not exist)
-            self.model_name = "meta-llama/llama-3.3-70b-instruct:free"
         else:
-            self.model_name = "meta-llama/llama-3.3-70b-instruct:free"
+            self.model_name = "nvidia/nemotron-3-super-120b-a12b:free"
 
         if base_url:
             self.base_url = base_url
         elif secret_cfg.get("LLM_BASE_URL") or os.getenv("LLM_BASE_URL"):
             self.base_url = secret_cfg.get("LLM_BASE_URL") or os.getenv("LLM_BASE_URL")
-        elif groq_key and not openrouter_key:
+        elif openrouter_key:
+            self.base_url = "https://openrouter.ai/api/v1"
+        elif groq_key:
             self.base_url = "https://api.groq.com/openai/v1"
-        elif gemini_key and not openrouter_key:
+        elif gemini_key:
             self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
         elif "groq" in (self.model_name or "").lower():
             self.base_url = "https://api.groq.com/openai/v1"

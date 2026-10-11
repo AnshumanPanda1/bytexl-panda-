@@ -1,0 +1,27 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lab Document 1 (Back Left, tilted) -->
+  <g transform="rotate(-12 16 19)">
+    <rect x="7" y="7" width="18" height="24" rx="3" fill="white" fill-opacity="0.15" stroke="white" stroke-width="1.6"/>
+    <path d="M10 12H19" stroke="white" stroke-opacity="0.4" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M10 16H16" stroke="white" stroke-opacity="0.4" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+  <!-- Lab Document 2 (Back Right, tilted) -->
+  <g transform="rotate(14 31 18)">
+    <rect x="23" y="7" width="18" height="24" rx="3" fill="white" fill-opacity="0.2" stroke="white" stroke-width="1.6"/>
+    <path d="M26 12H35" stroke="white" stroke-opacity="0.4" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M26 16H32" stroke="white" stroke-opacity="0.4" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+  <!-- Main Foreground Lab Report (Center bottom) -->
+  <rect x="13" y="16" width="20" height="26" rx="3" fill="#0D0B1C" stroke="white" stroke-width="2"/>
+  <rect x="13" y="16" width="20" height="26" rx="3" fill="white" fill-opacity="0.15"/>
+  <!-- Clinical test lines -->
+  <path d="M17 22H27" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M17 26H29" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M17 30H24" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- Broken trajectory line connecting scattered records -->
+  <path d="M11 26C16 32 24 33 30 33" stroke="#FF5353" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+  <!-- Coral Problem Badge: Scattered / Disconnected records -->
+  <circle cx="34" cy="34" r="8" fill="#FF5353"/>
+  <!-- Broken link symbol inside badge -->
+  <path d="M31.5 32.5L33.5 30.5M34.5 37.5L36.5 35.5M31 36L37 32" stroke="white" stroke-width="1.7" stroke-linecap="round"/>
+</svg>

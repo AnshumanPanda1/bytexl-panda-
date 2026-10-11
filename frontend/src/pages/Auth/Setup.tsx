@@ -175,8 +175,8 @@ function Setup({ onSignedIn, onAlreadyInitialized, embedded = false }: SetupProp
     <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-bg px-4 py-8">
       <div className="max-w-md w-full bg-white dark:bg-dark-surface rounded-lg shadow-md p-8">
         <div className="text-center mb-8">
-          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-16 h-16 mx-auto mb-4" alt="MediBot Logo" />
-          <h1 className="text-3xl font-bold text-blue-600">MediBot</h1>
+          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-16 h-16 mx-auto mb-4" alt="Tattva Logo" />
+          <h1 className="text-3xl font-bold text-blue-600">Tattva</h1>
           <p className="text-gray-600 dark:text-dark-muted mt-2">
             Welcome — let's create your administrator account.
           </p>

@@ -600,32 +600,18 @@ function ExaminationUpload() {
           />
         ) : (
           <>
-            {/* 1. Date & Documents first */}
+            {/* 1. Primary Action: Document Upload Front & Center */}
             <div className="space-y-3">
-              {/* Examination Date */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted mb-1">
-                  Examination Date <span className="text-red-500">*</span>
-                </label>
-                <DatePicker
-                  placeholder={t('common.select_date', 'Select date')}
-                  required
-                  value={examinationDate}
-                  onChange={setExaminationDate}
-                />
-              </div>
-
-              {/* Document Upload */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
-                    <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
-                      Document Upload
+                    <label className="block text-xs font-bold text-gray-900 dark:text-dark-text">
+                      Upload Medical Document or Prescription
                     </label>
                     <ActiveTaskBadge workflow="full_reconstruction" size="sm" showText={false} />
                   </div>
                   <span className="text-[11px] text-gray-400 dark:text-dark-muted">
-                    PDF, PNG, JPG, JPEG, TXT, DICOM (Max 50MB)
+                    PDF, PNG, JPG, JPEG (Max 50MB)
                   </span>
                 </div>
 
@@ -651,15 +637,19 @@ function ExaminationUpload() {
                   />
                   <label
                     htmlFor="file-upload"
-                    className="flex flex-col sm:flex-row items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 dark:border-dark-border rounded-lg hover:border-blue-500 dark:hover:border-blue-400 bg-gray-50/50 dark:bg-dark-bg/30 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center gap-2.5 p-6 sm:p-8 border-2 border-dashed border-blue-200 dark:border-blue-900/50 rounded-xl hover:border-blue-500 dark:hover:border-blue-400 bg-blue-50/20 dark:bg-blue-950/10 hover:bg-blue-50/40 transition-all cursor-pointer text-center group"
                   >
-                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-xs">
-                      <Upload className="w-4 h-4" />
-                      <span>{files.length === 0 ? 'Click to select or drag & drop files' : 'Add More Files'}</span>
+                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Upload className="w-6 h-6" />
                     </div>
-                    <span className="text-[11px] text-gray-400 dark:text-dark-muted hidden sm:inline">
-                      (PNG, JPG, JPEG, PDF)
-                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-dark-text">
+                        {files.length === 0 ? 'Click to upload or drag & drop prescription / lab report' : 'Click to add more documents'}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-dark-muted mt-1">
+                        AI will transcribe handwriting and extract medications & biomarkers automatically
+                      </p>
+                    </div>
                   </label>
                 </div>
 
@@ -701,7 +691,7 @@ function ExaminationUpload() {
                   </div>
                 )}
 
-                {/* Document Cards */}
+                {/* Document Cards Preview */}
                 {files.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-3">
                     {files.map((f, i) => (
@@ -717,108 +707,136 @@ function ExaminationUpload() {
                   </div>
                 )}
               </div>
+
+              {/* Examination Date (Compact) */}
+              <div className="w-full sm:w-72">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted mb-1">
+                  Examination / Visit Date <span className="text-red-500">*</span>
+                </label>
+                <DatePicker
+                  placeholder={t('common.select_date', 'Select date')}
+                  required
+                  value={examinationDate}
+                  onChange={setExaminationDate}
+                />
+              </div>
             </div>
 
-            {/* 2. Clinical Notes Next */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted mb-1">
-                Clinical Notes <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
-              </label>
-              <RichTextEditor 
-                value={notes} 
-                onChange={setNotes} 
-                placeholder="Add clinical observations, diagnosis, or treatment notes..." 
-                minHeight="110px"
-              />
-            </div>
+            {/* 2. Optional Visit Details Collapsible Accordion */}
+            <details className="group border border-gray-200 dark:border-dark-border rounded-xl bg-gray-50/40 dark:bg-dark-bg/20 transition-all">
+              <summary className="flex items-center justify-between p-3.5 px-4 cursor-pointer text-xs font-semibold text-gray-700 dark:text-dark-text select-none hover:bg-gray-50 dark:hover:bg-dark-bg/40 rounded-xl">
+                <span className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-blue-600 group-open:rotate-45 transition-transform" />
+                  <span>Additional Visit Details (Physician, Facility, Notes) — Optional</span>
+                </span>
+                <span className="text-[11px] text-gray-400 font-normal">
+                  Click to {notes || patientNotes || selectedDoctorIds.length > 0 ? 'edit' : 'expand'}
+                </span>
+              </summary>
 
-            {/* 3. Category, Facility, Physician in a Compact Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
-              {/* Category */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-gray-700 dark:text-dark-muted">
-                    Category <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
+              <div className="p-4 pt-1 space-y-4 border-t border-gray-100 dark:border-dark-border/40">
+                {/* Category, Facility, Physician */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2">
+                  {/* Category */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                        Category
+                      </label>
+                      <AIAssistButton 
+                        taskType="magic_fill_examination"
+                        context={{ patientId }}
+                        showLabel={false}
+                        placeholder="Describe visit to categorize..."
+                        onSuggestedData={(data) => {
+                          if (data.category) setCategory(data.category);
+                        }}
+                      />
+                    </div>
+                    <CategorySelector
+                      categories={dynamicCategories}
+                      selectedName={category}
+                      onSelect={(name) => setCategory(name)}
+                      onCreate={handleCreateCategory}
+                      placeholder={t('examination_detail.header.select_category', 'Select category')}
+                    />
+                  </div>
+
+                  {/* Facility / Organization */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                      Medical Facility
+                    </label>
+                    <OrganizationSelector
+                      organizations={availableOrganizations}
+                      selectedId={selectedOrganizationId}
+                      onSelect={(id) => setSelectedOrganizationId(id)}
+                      onCreate={handleCreateOrganization}
+                    />
+                  </div>
+
+                  {/* Attending Physician */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                      Attending Physician
+                    </label>
+                    
+                    {discoveredDoctors.length > 0 && (
+                      <div className="mb-1 flex flex-wrap gap-1">
+                        {discoveredDoctors.map(name => (
+                          <button
+                            key={name}
+                            type="button"
+                            disabled={isCreatingDoctor}
+                            onClick={() => handleCreateDoctor(name)}
+                            className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded text-[11px] font-medium border border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-100 transition-colors"
+                          >
+                            <Sparkles className="w-2.5 h-2.5" />
+                            <span>+ Dr. {name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <DoctorSelector
+                      doctors={availableDoctors}
+                      selectedIds={selectedDoctorIds}
+                      onSelect={(id) => setSelectedDoctorIds(prev => [...prev, id])}
+                      onDeselect={(id) => setSelectedDoctorIds(prev => prev.filter(i => i !== id))}
+                      onCreateDoctor={handleCreateDoctor}
+                      placeholder={t('examinations.attending_physician', 'Select physician')}
+                    />
+                  </div>
+                </div>
+
+                {/* Clinical Notes */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted mb-1">
+                    Clinical Notes
                   </label>
-                  <AIAssistButton 
-                    taskType="magic_fill_examination"
-                    context={{ patientId }}
-                    showLabel={false}
-                    placeholder="Describe visit to categorize..."
-                    onSuggestedData={(data) => {
-                      if (data.category) setCategory(data.category);
-                    }}
+                  <RichTextEditor 
+                    value={notes} 
+                    onChange={setNotes} 
+                    placeholder="Add clinical observations, diagnosis, or treatment notes..." 
+                    minHeight="100px"
                   />
                 </div>
-                <CategorySelector
-                  categories={dynamicCategories}
-                  selectedName={category}
-                  onSelect={(name) => setCategory(name)}
-                  onCreate={handleCreateCategory}
-                  placeholder={t('examination_detail.header.select_category', 'Select category')}
-                />
+
+                {/* Patient Notes */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
+                    Patient Notes
+                  </label>
+                  <textarea
+                    value={patientNotes}
+                    onChange={(e) => setPatientNotes(e.target.value)}
+                    placeholder="Patient observations, reported symptoms, or reasons for visit..."
+                    rows={2}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 dark:border-dark-border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-bg/50 text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-gray-500 outline-hidden transition-all resize-y min-h-[50px]"
+                  />
+                </div>
               </div>
-
-              {/* Facility / Organization */}
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
-                  Medical Facility <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
-                </label>
-                <OrganizationSelector
-                  organizations={availableOrganizations}
-                  selectedId={selectedOrganizationId}
-                  onSelect={(id) => setSelectedOrganizationId(id)}
-                  onCreate={handleCreateOrganization}
-                />
-              </div>
-
-              {/* Attending Physician */}
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
-                  Attending Physician <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
-                </label>
-                
-                {discoveredDoctors.length > 0 && (
-                  <div className="mb-1 flex flex-wrap gap-1">
-                    {discoveredDoctors.map(name => (
-                      <button
-                        key={name}
-                        type="button"
-                        disabled={isCreatingDoctor}
-                        onClick={() => handleCreateDoctor(name)}
-                        className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded text-[11px] font-medium border border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-100 transition-colors"
-                      >
-                        <Sparkles className="w-2.5 h-2.5" />
-                        <span>+ Dr. {name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <DoctorSelector
-                  doctors={availableDoctors}
-                  selectedIds={selectedDoctorIds}
-                  onSelect={(id) => setSelectedDoctorIds(prev => [...prev, id])}
-                  onDeselect={(id) => setSelectedDoctorIds(prev => prev.filter(i => i !== id))}
-                  onCreateDoctor={handleCreateDoctor}
-                  placeholder={t('examinations.attending_physician', 'Select physician')}
-                />
-              </div>
-            </div>
-
-            {/* 4. Patient Notes */}
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-gray-700 dark:text-dark-muted">
-                Patient Notes <span className="text-gray-400 dark:text-dark-muted/70 font-normal">(Optional)</span>
-              </label>
-              <textarea
-                value={patientNotes}
-                onChange={(e) => setPatientNotes(e.target.value)}
-                placeholder="Patient observations, reported symptoms, or reasons for visit..."
-                rows={2}
-                className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 dark:border-dark-border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-dark-bg/50 text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-gray-500 outline-hidden transition-all resize-y min-h-[60px]"
-              />
-            </div>
+            </details>
           </>
         )}
 
@@ -903,11 +921,23 @@ function ExaminationUpload() {
           <button
             type="submit"
             disabled={uploading}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-xs disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
           >
-            {uploading 
-              ? ((files.length > 0 || bulkFiles.length > 0) ? 'Creating & Uploading...' : 'Saving...') 
-              : (isBulkMode ? 'Save Examinations' : 'Save Examination')}
+            {uploading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>{(files.length > 0 || bulkFiles.length > 0) ? 'Analyzing & Ingesting...' : 'Saving...'}</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-blue-200" />
+                <span>
+                  {files.length > 0 || bulkFiles.length > 0
+                    ? 'Upload & Analyze Records'
+                    : isBulkMode ? 'Save Examinations' : 'Save Examination'}
+                </span>
+              </>
+            )}
           </button>
         </div>
       </form>
@@ -944,7 +974,7 @@ function ExaminationUpload() {
         context={{ patientId }}
         title="Magic Fill"
         subtitle="Clinical Extraction"
-        description="Describe the visit in natural language. MediBot AI will extract the date, category, doctors, and notes automatically."
+        description="Describe the visit in natural language. Tattva AI will extract the date, category, doctors, and notes automatically."
         placeholder="e.g. Yesterday I visited Dr. Smith for a checkup..."
       />
     </div>

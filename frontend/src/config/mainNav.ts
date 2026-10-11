@@ -1,9 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
+  Users,
   FileText,
   Sparkles,
-  Clock,
   Activity,
   Share2,
   Settings,
@@ -30,43 +30,42 @@ export interface MainNavItem {
 
 /**
  * Streamlined MediBot Copilot Navigation:
- * Focused on Document Ingestion, Fact Review, Bilingual AI Summary,
- * Patient Timeline, Biomarker Trends, and FHIR Interop.
+ * Focused on Dashboard, Patients, Records, Analytics, AI Copilot, and Settings.
  */
 export const MAIN_NAV: MainNavItem[] = [
-  // 1. Ingestion Hub & Overview
+  // 1. Dashboard (Overview & Hero Patient Summary)
   {
     path: '/dashboard',
     labelKey: 'common.dashboard',
     icon: LayoutDashboard,
   },
 
-  // 2. Document Extraction & Review
+  // 2. Patients (Patient Profiles & History)
+  {
+    path: '/patients',
+    labelKey: 'common.patients',
+    icon: Users,
+  },
+
+  // 3. Records (Prescriptions, Lab Reports, Ingestion)
   {
     path: '/documents',
     labelKey: 'common.documents_explorer',
     icon: FileText,
   },
 
-  // 3. Bilingual AI Summaries & Copilot
-  {
-    path: '/ai-assistant',
-    labelKey: 'common.ai_assistant',
-    icon: Sparkles,
-  },
-
-  // 4. Patient Health Timeline
-  {
-    path: '/events',
-    labelKey: 'events.title',
-    icon: Clock,
-  },
-
-  // 5. Biomarker Trends (Good to have)
+  // 4. Analytics (Biomarker Trends & Trajectories)
   {
     path: '/biomarkers',
     labelKey: 'common.biomarkers',
     icon: Activity,
+  },
+
+  // 5. Bilingual AI Copilot
+  {
+    path: '/ai-assistant',
+    labelKey: 'common.ai_assistant',
+    icon: Sparkles,
   },
 
   // 6. FHIR / ABDM Data Interoperability & Export
@@ -76,7 +75,7 @@ export const MAIN_NAV: MainNavItem[] = [
     icon: Share2,
   },
 
-  // 7. Settings (Appearance, Preferences)
+  // 7. Settings (Preferences, Theme)
   {
     path: '/settings',
     labelKey: 'common.settings',
@@ -131,7 +130,7 @@ export function resolveActiveNavId(
       continue;
     }
     if (item.path === '/dashboard') {
-      if (pathname === '/dashboard' || pathname === '/') return item.path;
+      if (pathname === '/dashboard') return item.path;
       continue;
     }
     if (item.path === '/export-import') {

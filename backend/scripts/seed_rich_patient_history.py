@@ -32,16 +32,29 @@ if backend_dir not in sys.path:
 
 from sqlalchemy import delete, select
 from app.core.database import AsyncSessionLocal
+from app.models.biomarker_model import BiomarkerDefinition, Unit
 from app.models.clinical_event import ClinicalEvent
 from app.models.doctor_model import DoctorModel
 from app.models.document_model import DocumentModel
-from app.models.enums import ClinicalEventStatus, CodingSystem, Gender, MedicationStatus, OrganizationType
+from app.models.enums import (
+    AllergyCategory,
+    AllergyClinicalStatus,
+    AllergyCriticality,
+    ClinicalEventStatus,
+    CodingSystem,
+    Gender,
+    MedicationStatus,
+    OrganizationType,
+    QuantityType,
+)
 from app.models.examination_model import ExaminationModel
+from app.models.fhir.allergy import AllergyIntolerance
 from app.models.fhir.medication import Medication
 from app.models.fhir.organization import OrganizationModel
 from app.models.fhir.patient import Observation, Patient
 from app.models.health_summary_model import PatientHealthSummary
 from app.models.tenant_model import TenantModel
+from app.models.user_model import UserModel as User
 from app.services.document_service import HA_UPLOAD_DIR
 
 TENANT_ID = UUID("11111111-1111-4111-8111-111111111111")
@@ -49,17 +62,31 @@ ADMIN_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 async def run_seed():
+    global TENANT_ID, ADMIN_USER_ID
     print("=== Starting MediBot Comprehensive Patient History Seeder ===")
 
-    fixtures_dir = Path(backend_dir) / "tests" / "ocr_benchmark"
-    fixtures_35_dir = fixtures_dir / "fixtures_35"
-    fixtures_basic_dir = fixtures_dir / "fixtures"
-
-    tenant_upload_dir = Path(HA_UPLOAD_DIR) / str(TENANT_ID)
-    tenant_upload_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Upload directory: {tenant_upload_dir}")
-
     async with AsyncSessionLocal() as session:
+        # Discover existing tenant and admin user
+        t_res = await session.execute(select(TenantModel))
+        existing_tenant = t_res.scalars().first()
+        if existing_tenant:
+            TENANT_ID = existing_tenant.id
+            print(f"Using existing tenant: {TENANT_ID}")
+
+        u_res = await session.execute(select(User))
+        existing_user = u_res.scalars().first()
+        if existing_user:
+            ADMIN_USER_ID = existing_user.id
+            print(f"Using existing admin user: {ADMIN_USER_ID}")
+
+        fixtures_dir = Path(backend_dir) / "tests" / "ocr_benchmark"
+        fixtures_35_dir = fixtures_dir / "fixtures_35"
+        fixtures_basic_dir = fixtures_dir / "fixtures"
+
+        tenant_upload_dir = Path(HA_UPLOAD_DIR) / str(TENANT_ID)
+        tenant_upload_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Upload directory: {tenant_upload_dir}")
+
         # 1. Ensure Tenant
         tenant = await session.get(TenantModel, TENANT_ID)
         if not tenant:
@@ -160,6 +187,121 @@ async def run_seed():
         await session.commit()
         print("Ensured 4 specialized physicians.")
 
+        # 3b. Ensure Standard Units & Biomarker Definitions
+        std_units = [
+            {"symbol": "mmHg", "name": "Millimeters of mercury", "quantity_type": QuantityType.PRESSURE},
+            {"symbol": "bpm", "name": "Beats per minute", "quantity_type": QuantityType.OTHER},
+            {"symbol": "°F", "name": "Degrees Fahrenheit", "quantity_type": QuantityType.TEMPERATURE},
+            {"symbol": "°C", "name": "Degrees Celsius", "quantity_type": QuantityType.TEMPERATURE},
+            {"symbol": "mg/dL", "name": "Milligrams per deciliter", "quantity_type": QuantityType.MASS_CONCENTRATION},
+            {"symbol": "%", "name": "Percentage", "quantity_type": QuantityType.PERCENTAGE},
+            {"symbol": "mL/min/1.73m2", "name": "mL/min/1.73m2", "quantity_type": QuantityType.OTHER},
+        ]
+        unit_lookup = {}
+        for u in std_units:
+            res = await session.execute(select(Unit).where(Unit.symbol == u["symbol"]))
+            row = res.scalar_one_or_none()
+            if not row:
+                row = Unit(**u, conversion_multiplier=1.0)
+                session.add(row)
+                await session.flush()
+            unit_lookup[row.symbol] = row.id
+
+        std_defs = [
+            {
+                "slug": "systolic-blood-pressure",
+                "name": "Systolic Blood Pressure",
+                "aliases": ["Systolic BP", "Blood Pressure Systolic", "SBP", "Systolic"],
+                "preferred_unit_id": unit_lookup.get("mmHg"),
+                "is_telemetry": True,
+                "reference_range_min": 90.0,
+                "reference_range_max": 120.0,
+            },
+            {
+                "slug": "diastolic-blood-pressure",
+                "name": "Diastolic Blood Pressure",
+                "aliases": ["Diastolic BP", "Blood Pressure Diastolic", "DBP", "Diastolic"],
+                "preferred_unit_id": unit_lookup.get("mmHg"),
+                "is_telemetry": True,
+                "reference_range_min": 60.0,
+                "reference_range_max": 80.0,
+            },
+            {
+                "slug": "heart-rate",
+                "name": "Heart Rate",
+                "aliases": ["Pulse", "HR", "Resting Heart Rate"],
+                "preferred_unit_id": unit_lookup.get("bpm"),
+                "is_telemetry": True,
+                "reference_range_min": 60.0,
+                "reference_range_max": 100.0,
+            },
+            {
+                "slug": "body-temperature",
+                "name": "Body Temperature",
+                "aliases": ["Body Temp", "Temperature", "Temp"],
+                "preferred_unit_id": unit_lookup.get("°F"),
+                "is_telemetry": True,
+                "reference_range_min": 97.0,
+                "reference_range_max": 99.0,
+            },
+            {
+                "slug": "glucose",
+                "name": "Glucose",
+                "aliases": ["Blood Sugar", "Fasting Blood Glucose", "Blood Glucose", "FBS", "Fasting Glucose"],
+                "preferred_unit_id": unit_lookup.get("mg/dL"),
+                "is_telemetry": True,
+                "reference_range_min": 70.0,
+                "reference_range_max": 100.0,
+            },
+            {
+                "slug": "hba1c",
+                "name": "HbA1c",
+                "aliases": ["Hemoglobin A1c", "Glycated Hemoglobin"],
+                "preferred_unit_id": unit_lookup.get("%"),
+                "is_telemetry": False,
+                "reference_range_min": 4.0,
+                "reference_range_max": 5.7,
+            },
+            {
+                "slug": "oxygen-saturation",
+                "name": "Oxygen Saturation",
+                "aliases": ["SpO2", "O2 Sat"],
+                "preferred_unit_id": unit_lookup.get("%"),
+                "is_telemetry": True,
+                "reference_range_min": 95.0,
+                "reference_range_max": 100.0,
+            },
+        ]
+        bio_def_lookup = {}
+        for d in std_defs:
+            res = await session.execute(select(BiomarkerDefinition).where(BiomarkerDefinition.slug == d["slug"]))
+            row = res.scalar_one_or_none()
+            if not row:
+                row = BiomarkerDefinition(
+                    slug=d["slug"],
+                    name=d["name"],
+                    aliases=d["aliases"],
+                    preferred_unit_id=d["preferred_unit_id"],
+                    is_telemetry=d["is_telemetry"],
+                    reference_range_min=d["reference_range_min"],
+                    reference_range_max=d["reference_range_max"],
+                )
+                session.add(row)
+                await session.flush()
+            bio_def_lookup[row.slug.lower()] = row
+            bio_def_lookup[row.name.lower()] = row
+            for a in row.aliases or []:
+                bio_def_lookup[a.lower()] = row
+
+        all_existing_defs = (await session.execute(select(BiomarkerDefinition))).scalars().all()
+        for row in all_existing_defs:
+            bio_def_lookup[row.slug.lower()] = row
+            bio_def_lookup[row.name.lower()] = row
+            for a in row.aliases or []:
+                bio_def_lookup[a.lower()] = row
+        await session.commit()
+        print("Ensured standard biometric units and definitions.")
+
         # 4. Helper function to copy fixture file to storage
         def copy_sample_file(fixture_name: str, doc_uuid: UUID, preferred_ext: str = ".pdf") -> tuple[Path, str, int]:
             source_file = None
@@ -211,6 +353,19 @@ async def run_seed():
                     {"title": "Essential (Primary) Hypertension", "code": "I10", "onset": "2021-08-15", "status": ClinicalEventStatus.ACTIVE},
                     {"title": "Mixed Hyperlipidemia", "code": "E78.2", "onset": "2023-01-20", "status": ClinicalEventStatus.ACTIVE},
                 ],
+                "allergies": [
+                    {
+                        "name": "Penicillin",
+                        "catalog_id": UUID("2be02295-6973-415c-ad02-2d360c3b85cb"),
+                        "category": AllergyCategory.MEDICATION,
+                        "criticality": AllergyCriticality.HIGH,
+                        "clinical_status": AllergyClinicalStatus.ACTIVE,
+                        "verification_status": "confirmed",
+                        "onset_date": datetime(2018, 5, 10, tzinfo=UTC),
+                        "note": "Severe anaphylactoid reaction with generalized urticaria and facial angioedema after oral amoxicillin in May 2018. Strict avoidance of all beta-lactam antibiotics.",
+                        "reactions": [{"manifestation": "Urticaria & Wheezing", "severity": "severe", "date": "2018-05-10"}],
+                    }
+                ],
                 "encounters": [
                     {
                         "date": date(2025, 10, 15),
@@ -223,9 +378,13 @@ async def run_seed():
                         "biomarkers": [
                             {"name": "HbA1c", "value": 8.6, "unit": "%", "interp": "High"},
                             {"name": "Fasting Blood Glucose", "value": 184.0, "unit": "mg/dL", "interp": "High"},
+                            {"name": "Glucose", "value": 184.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Post-Prandial Glucose", "value": 260.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Blood Pressure Systolic", "value": 152.0, "unit": "mmHg", "interp": "High"},
                             {"name": "Blood Pressure Diastolic", "value": 96.0, "unit": "mmHg", "interp": "High"},
+                            {"name": "Heart Rate", "value": 84.0, "unit": "bpm", "interp": "Normal"},
+                            {"name": "Body Temperature", "value": 98.6, "unit": "°F", "interp": "Normal"},
+                            {"name": "Oxygen Saturation", "value": 97.0, "unit": "%", "interp": "Normal"},
                             {"name": "LDL Cholesterol", "value": 165.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Serum Creatinine", "value": 1.10, "unit": "mg/dL", "interp": "Normal"},
                             {"name": "eGFR", "value": 80.0, "unit": "mL/min/1.73m2", "interp": "Normal"},
@@ -246,9 +405,13 @@ async def run_seed():
                         "biomarkers": [
                             {"name": "HbA1c", "value": 8.1, "unit": "%", "interp": "High"},
                             {"name": "Fasting Blood Glucose", "value": 156.0, "unit": "mg/dL", "interp": "High"},
+                            {"name": "Glucose", "value": 156.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Post-Prandial Glucose", "value": 212.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Blood Pressure Systolic", "value": 140.0, "unit": "mmHg", "interp": "High"},
                             {"name": "Blood Pressure Diastolic", "value": 88.0, "unit": "mmHg", "interp": "High"},
+                            {"name": "Heart Rate", "value": 80.0, "unit": "bpm", "interp": "Normal"},
+                            {"name": "Body Temperature", "value": 98.4, "unit": "°F", "interp": "Normal"},
+                            {"name": "Oxygen Saturation", "value": 98.0, "unit": "%", "interp": "Normal"},
                             {"name": "LDL Cholesterol", "value": 150.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Serum Creatinine", "value": 1.05, "unit": "mg/dL", "interp": "Normal"},
                         ],
@@ -268,9 +431,13 @@ async def run_seed():
                         "biomarkers": [
                             {"name": "HbA1c", "value": 7.5, "unit": "%", "interp": "High"},
                             {"name": "Fasting Blood Glucose", "value": 134.0, "unit": "mg/dL", "interp": "High"},
+                            {"name": "Glucose", "value": 134.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Post-Prandial Glucose", "value": 178.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Blood Pressure Systolic", "value": 132.0, "unit": "mmHg", "interp": "Normal"},
                             {"name": "Blood Pressure Diastolic", "value": 84.0, "unit": "mmHg", "interp": "Normal"},
+                            {"name": "Heart Rate", "value": 76.0, "unit": "bpm", "interp": "Normal"},
+                            {"name": "Body Temperature", "value": 98.6, "unit": "°F", "interp": "Normal"},
+                            {"name": "Oxygen Saturation", "value": 98.0, "unit": "%", "interp": "Normal"},
                             {"name": "LDL Cholesterol", "value": 128.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Serum Creatinine", "value": 1.02, "unit": "mg/dL", "interp": "Normal"},
                         ],
@@ -287,9 +454,13 @@ async def run_seed():
                         "biomarkers": [
                             {"name": "HbA1c", "value": 7.1, "unit": "%", "interp": "High"},
                             {"name": "Fasting Blood Glucose", "value": 118.0, "unit": "mg/dL", "interp": "High"},
+                            {"name": "Glucose", "value": 118.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Post-Prandial Glucose", "value": 152.0, "unit": "mg/dL", "interp": "High"},
                             {"name": "Blood Pressure Systolic", "value": 126.0, "unit": "mmHg", "interp": "Normal"},
                             {"name": "Blood Pressure Diastolic", "value": 80.0, "unit": "mmHg", "interp": "Normal"},
+                            {"name": "Heart Rate", "value": 74.0, "unit": "bpm", "interp": "Normal"},
+                            {"name": "Body Temperature", "value": 98.4, "unit": "°F", "interp": "Normal"},
+                            {"name": "Oxygen Saturation", "value": 99.0, "unit": "%", "interp": "Normal"},
                             {"name": "LDL Cholesterol", "value": 105.0, "unit": "mg/dL", "interp": "Normal"},
                             {"name": "Serum Creatinine", "value": 0.98, "unit": "mg/dL", "interp": "Normal"},
                         ],
@@ -308,13 +479,48 @@ async def run_seed():
                         "biomarkers": [
                             {"name": "HbA1c", "value": 6.8, "unit": "%", "interp": "Normal"},
                             {"name": "Fasting Blood Glucose", "value": 104.0, "unit": "mg/dL", "interp": "Normal"},
+                            {"name": "Glucose", "value": 104.0, "unit": "mg/dL", "interp": "Normal"},
                             {"name": "Post-Prandial Glucose", "value": 138.0, "unit": "mg/dL", "interp": "Normal"},
                             {"name": "Blood Pressure Systolic", "value": 122.0, "unit": "mmHg", "interp": "Normal"},
                             {"name": "Blood Pressure Diastolic", "value": 78.0, "unit": "mmHg", "interp": "Normal"},
+                            {"name": "Heart Rate", "value": 72.0, "unit": "bpm", "interp": "Normal"},
+                            {"name": "Body Temperature", "value": 98.4, "unit": "°F", "interp": "Normal"},
+                            {"name": "Oxygen Saturation", "value": 98.0, "unit": "%", "interp": "Normal"},
                             {"name": "LDL Cholesterol", "value": 92.0, "unit": "mg/dL", "interp": "Normal"},
                             {"name": "Serum Creatinine", "value": 0.95, "unit": "mg/dL", "interp": "Normal"},
                             {"name": "eGFR", "value": 88.0, "unit": "mL/min/1.73m2", "interp": "Normal"},
                         ],
+                        "meds": [],
+                    },
+                    {
+                        "date": date(2026, 10, 11),
+                        "org_id": UUID("22222222-2222-4222-8222-222222222201"),
+                        "doctor_id": UUID("44444444-4444-4444-8444-444444444401"),
+                        "notes": "Routine Telemetry Sync & Endocrinology Consultation. Fasting blood glucose 102 mg/dL. BP 120/78 mmHg. Resting Heart Rate 70 bpm. Body Temp 98.4°F. Continuous glucose sensor and home BP monitor synchronized successfully. Triple therapy regimen maintained.",
+                        "doc_filename": "Telemetry_Sync_Oct2026.pdf",
+                        "fixture": "doc_01_native_cbc_english.pdf",
+                        "doc_text": "APOLLO HOSPITALS TELEMETRY WORKUP\nPatient: Rajesh Kumar Sharma | Date: 11-Oct-2026\nVital Signs:\n- Systolic BP: 120 mmHg\n- Diastolic BP: 78 mmHg\n- Heart Rate: 70 bpm\n- Body Temperature: 98.4 F\n- Fasting Glucose: 102 mg/dL\n- SpO2: 99%\nAssessment: Optimal glycemic control and normal blood pressure.\nRx: Cont. Metformin 1000mg BD, Telmisartan 40mg OD, Atorvastatin 20mg HS.",
+                        "biomarkers": [
+                            {"name": "Blood Pressure Systolic", "value": 120.0, "unit": "mmHg", "interp": "Normal"},
+                            {"name": "Blood Pressure Diastolic", "value": 78.0, "unit": "mmHg", "interp": "Normal"},
+                            {"name": "Heart Rate", "value": 70.0, "unit": "bpm", "interp": "Normal"},
+                            {"name": "Body Temperature", "value": 98.4, "unit": "°F", "interp": "Normal"},
+                            {"name": "Glucose", "value": 102.0, "unit": "mg/dL", "interp": "Normal"},
+                            {"name": "Fasting Blood Glucose", "value": 102.0, "unit": "mg/dL", "interp": "Normal"},
+                            {"name": "Oxygen Saturation", "value": 99.0, "unit": "%", "interp": "Normal"},
+                            {"name": "HbA1c", "value": 6.8, "unit": "%", "interp": "Normal"},
+                        ],
+                        "meds": [],
+                    },
+                    {
+                        "date": date(2026, 10, 18),
+                        "org_id": UUID("22222222-2222-4222-8222-222222222201"),
+                        "doctor_id": UUID("44444444-4444-4444-8444-444444444401"),
+                        "notes": "Scheduled Annual Retinal Screening & Diabetic Podiatry Check with Dr. Sunita Anand at Apollo Clinic.",
+                        "doc_filename": "Scheduled_Consultation_Oct2026.pdf",
+                        "fixture": "doc_03_native_prescription_active.pdf",
+                        "doc_text": "APOLLO HOSPITALS APPOINTMENT NOTICE\nScheduled Date: 18-Oct-2026\nPatient: Rajesh Kumar Sharma\nPurpose: Annual Diabetic Foot & Dilated Retinal Exam.",
+                        "biomarkers": [],
                         "meds": [],
                     },
                 ],
@@ -334,6 +540,19 @@ async def run_seed():
                     {"title": "Moderate Persistent Asthma with acute exacerbation", "code": "J45.41", "onset": "2020-09-14", "status": ClinicalEventStatus.ACTIVE},
                     {"title": "Iron Deficiency Anemia", "code": "D50.9", "onset": "2023-06-11", "status": ClinicalEventStatus.ACTIVE},
                     {"title": "Vitamin D Deficiency", "code": "E55.9", "onset": "2023-06-11", "status": ClinicalEventStatus.ACTIVE},
+                ],
+                "allergies": [
+                    {
+                        "name": "Pollen",
+                        "catalog_id": UUID("6f7b829f-90be-4ff1-a4db-ff1aef2742f3"),
+                        "category": AllergyCategory.ENVIRONMENT,
+                        "criticality": AllergyCriticality.HIGH,
+                        "clinical_status": AllergyClinicalStatus.ACTIVE,
+                        "verification_status": "confirmed",
+                        "onset_date": datetime(2020, 9, 14, tzinfo=UTC),
+                        "note": "Seasonal pollen triggers acute bronchospasm and severe allergic rhinitis.",
+                        "reactions": [{"manifestation": "Bronchospasm & Rhinorrhea", "severity": "moderate", "date": "2020-09-14"}],
+                    }
                 ],
                 "encounters": [
                     {
@@ -444,6 +663,19 @@ async def run_seed():
                     {"title": "Non-Alcoholic Fatty Liver Disease (Grade 2 Steatosis)", "code": "K76.0", "onset": "2023-03-10", "status": ClinicalEventStatus.ACTIVE},
                     {"title": "Hyperuricemia with Gouty Arthritis", "code": "M10.9", "onset": "2024-01-15", "status": ClinicalEventStatus.ACTIVE},
                     {"title": "Impaired Fasting Glucose (Pre-diabetes)", "code": "R73.01", "onset": "2024-01-15", "status": ClinicalEventStatus.ACTIVE},
+                ],
+                "allergies": [
+                    {
+                        "name": "Shellfish",
+                        "catalog_id": UUID("1b347f04-d432-44a3-91fa-ef5ad291891c"),
+                        "category": AllergyCategory.FOOD,
+                        "criticality": AllergyCriticality.HIGH,
+                        "clinical_status": AllergyClinicalStatus.ACTIVE,
+                        "verification_status": "confirmed",
+                        "onset_date": datetime(2019, 11, 20, tzinfo=UTC),
+                        "note": "Immediate oral pruritus, lip swelling, and nausea upon consuming shrimp or crab.",
+                        "reactions": [{"manifestation": "Angioedema & Nausea", "severity": "moderate", "date": "2019-11-20"}],
+                    }
                 ],
                 "encounters": [
                     {
@@ -662,6 +894,7 @@ async def run_seed():
                 patient = Patient(
                     id=pid,
                     tenant_id=TENANT_ID,
+                    user_id=ADMIN_USER_ID,
                     mrn=p_cfg["mrn"],
                     name=p_cfg["name"],
                     gender=p_cfg["gender"],
@@ -672,6 +905,8 @@ async def run_seed():
                 )
                 session.add(patient)
             else:
+                patient.tenant_id = TENANT_ID
+                patient.user_id = ADMIN_USER_ID
                 patient.name = p_cfg["name"]
                 patient.gender = p_cfg["gender"]
                 patient.birth_date = p_cfg["birth_date"]
@@ -685,11 +920,28 @@ async def run_seed():
             # Clean previous records for clean deterministic demo state
             await session.execute(delete(Observation).where(Observation.patient_id == pid))
             await session.execute(delete(Medication).where(Medication.patient_id == pid))
+            await session.execute(delete(AllergyIntolerance).where(AllergyIntolerance.patient_id == pid))
             await session.execute(delete(ClinicalEvent).where(ClinicalEvent.patient_id == pid))
             await session.execute(delete(DocumentModel).where(DocumentModel.patient_id == pid))
             await session.execute(delete(ExaminationModel).where(ExaminationModel.patient_id == pid))
             await session.execute(delete(PatientHealthSummary).where(PatientHealthSummary.patient_id == pid))
             await session.flush()
+
+            # Insert Allergies
+            for al_cfg in p_cfg.get("allergies", []):
+                al = AllergyIntolerance(
+                    patient_id=pid,
+                    tenant_id=TENANT_ID,
+                    clinical_status=al_cfg.get("clinical_status", AllergyClinicalStatus.ACTIVE),
+                    verification_status=al_cfg.get("verification_status", "confirmed"),
+                    category=al_cfg.get("category", AllergyCategory.MEDICATION),
+                    criticality=al_cfg.get("criticality", AllergyCriticality.HIGH),
+                    code={"text": al_cfg["name"], "catalog_id": str(al_cfg.get("catalog_id", ""))} if al_cfg.get("catalog_id") else {"text": al_cfg["name"]},
+                    onset_date=al_cfg.get("onset_date"),
+                    note=al_cfg.get("note"),
+                    reactions=al_cfg.get("reactions", []),
+                )
+                session.add(al)
 
             # Insert Conditions
             for c in p_cfg["conditions"]:
@@ -745,11 +997,15 @@ async def run_seed():
                 # Biomarkers (Observations)
                 enc_dt = datetime.combine(enc["date"], datetime.min.time(), tzinfo=UTC)
                 for b in enc["biomarkers"]:
+                    def_match = bio_def_lookup.get(b["name"].lower())
+                    is_telem = def_match.is_telemetry if def_match else (b["name"].lower() in ("heart rate", "body temperature", "oxygen saturation", "systolic blood pressure", "blood pressure systolic", "glucose"))
                     obs = Observation(
                         patient_id=pid,
                         tenant_id=TENANT_ID,
                         examination_id=exam_id,
                         document_id=doc_id,
+                        biomarker_id=def_match.id if def_match else None,
+                        raw_unit_id=unit_lookup.get(b["unit"]),
                         subject={"reference": f"Patient/{pid}"},
                         status="final",
                         code={"text": b["name"]},
@@ -761,6 +1017,7 @@ async def run_seed():
                         review_status="verified",
                         effective_datetime=enc_dt,
                         page_number=1,
+                        performer=[{"type": "Telemetry", "display": "Connected Health Monitor"}] if is_telem else None,
                     )
                     session.add(obs)
 
@@ -780,6 +1037,7 @@ async def run_seed():
                         start_date=m["start"],
                         end_date=m["end"],
                         reason=f"{m['name']} prescribed therapy",
+                        frequency=m.get("frequency", {"type": "daily", "frequency": 1, "times": ["08:00", "20:00"]}),
                     )
                     session.add(med)
 
@@ -809,7 +1067,10 @@ async def run_seed():
             print(f"  -> Successfully seeded 5 encounters, 5 documents, conditions, medications, and biomarker trajectories for {p_name}")
 
     print("\n=== All 4 demo patients successfully populated with 12-month historical records! ===")
-    export_static_seeds(patients_config)
+    try:
+        export_static_seeds(patients_config)
+    except Exception as exc:
+        print(f"Notice: static seed export skipped: {exc}")
 
 
 def export_static_seeds(patients_config):

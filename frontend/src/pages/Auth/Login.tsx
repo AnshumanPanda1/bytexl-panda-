@@ -242,7 +242,7 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-bg">
         <div className="max-w-md w-full bg-white dark:bg-dark-surface rounded-lg shadow-md p-8">
           <div className="text-center mb-6">
-            <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-12 h-12 mx-auto mb-3" alt="MediBot Logo" />
+            <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-12 h-12 mx-auto mb-3" alt="Tattva Logo" />
             <h1 className="text-2xl font-bold text-blue-600">
               {mfaEnrollment
                 ? t('auth.mfa_enroll_title', 'Set up two-factor authentication')
@@ -342,8 +342,8 @@ function Login({ onSignedIn }: { onSignedIn?: () => void }) {
     <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-dark-bg p-4">
       <div className="max-w-md w-full bg-white dark:bg-dark-surface rounded-2xl shadow-xl border border-gray-200/80 dark:border-dark-border p-8 sm:p-10">
         <div className="text-center mb-7">
-          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-12 h-12 mx-auto mb-3" alt="MediBot Logo" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-dark-text tracking-tight">MediBot</h1>
+          <img src={theme === 'dark' ? '/icon.svg' : '/icon-light.svg'} className="w-12 h-12 mx-auto mb-3" alt="Tattva Logo" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-dark-text tracking-tight">Tattva</h1>
           <p className="text-sm text-gray-500 dark:text-dark-muted mt-1.5">
             {t('auth.sign_in_title')}
           </p>

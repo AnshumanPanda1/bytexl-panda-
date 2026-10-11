@@ -9,23 +9,35 @@ export const HeroPatientBanner: React.FC = () => {
   const { currentPatient, setCurrentPatient, setPatients } = usePatientStore();
 
   const isHeroSelected =
-    currentPatient?.name?.given?.includes('Rajesh') ||
-    currentPatient?.name?.family === 'Sharma';
+    Boolean(
+      currentPatient?.name?.given?.includes('Rajesh') ||
+      currentPatient?.name?.family === 'Sharma' ||
+      currentPatient?.id === '33333333-3333-4333-8333-333333333301'
+    );
 
   const selectHeroPatient = async () => {
     try {
       const res = await listPatients(undefined, 50, 0);
       const items = res.items || [];
-      if (items.length > 0) {
+      const hero =
+        items.find(
+          (p) =>
+            p.id === '33333333-3333-4333-8333-333333333301' ||
+            p.name?.given?.includes('Rajesh') ||
+            p.name?.family === 'Sharma'
+        );
+      if (hero) {
         setPatients(items);
-        const hero =
-          items.find((p) => p.name?.given?.includes('Rajesh') || p.name?.family === 'Sharma') ||
-          items[0];
         setCurrentPatient(hero);
+        return;
       }
     } catch (e) {
       console.error('Failed to auto-select hero patient:', e);
     }
+    const { getTestPatients } = await import('../../data/testPatients');
+    const tests = getTestPatients();
+    setPatients(tests);
+    setCurrentPatient(tests[0]);
   };
 
   if (!isHeroSelected) {
